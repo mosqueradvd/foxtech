@@ -1,0 +1,209 @@
+/**
+ * lib/sync.ts
+ * Dexie → Supabase sync engine.
+ *
+ * BUG-FIX #3 — Preventing duplicate inserts:
+ * 1. After uploading a photo/signature, the public URL is written back to Dexie
+ *    IMMEDIATELY so on the next sync run, `photo_blob` is still present but
+ *    `photo_url` is already set → the upload branch is skipped (no re-upload).
+ * 2. The `online` event listener is debounced by 2 seconds to avoid firing
+ *    multiple times from rapid reconnects (browser fires 'online' several times).
+ * 3. `syncInProgress` is module-level (single flag across the session).
+ * 4. `markIncidentSynced` updates sync_status in Dexie; the Supabase upsert is
+ *    idempotent by `id` so even if called twice it won't create a new row.
+ */
+"use client";
+
+import { supabase } from "./supabase";
+import {
+    getPendingIncidents,
+    getPendingInspections,
+    markIncidentSynced,
+    markInspectionSynced,
+    db,
+} from "./db";
+
+let syncInProgress = false;
+let onlineDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+// ── Upload helpers ─────────────────────────────────────────────────────────
+
+async function uploadPhoto(incidentId: string, base64DataUrl: string): Promise<string | null> {
+    try {
+        const res = await fetch(base64DataUrl);
+        const blob = await res.blob();
+        const fileName = `incidents/${incidentId}/photo.jpg`;
+
+        const { error } = await supabase.storage
+            .from("incident-photos")
+            .upload(fileName, blob, { contentType: "image/jpeg", upsert: true });
+
+        if (error) throw error;
+
+        const { data } = supabase.storage.from("incident-photos").getPublicUrl(fileName);
+        return data.publicUrl;
+    } catch (err) {
+        console.warn("[FOXTECH] Photo upload failed:", err);
+        return null;
+    }
+}
+
+async function uploadSignature(incidentId: string, base64DataUrl: string): Promise<string | null> {
+    try {
+        const res = await fetch(base64DataUrl);
+        const blob = await res.blob();
+        const fileName = `signatures/${incidentId}.png`;
+
+        const { error } = await supabase.storage
+            .from("incident-photos")
+            .upload(fileName, blob, { contentType: "image/png", upsert: true });
+
+        if (error) throw error;
+
+        const { data } = supabase.storage.from("incident-photos").getPublicUrl(fileName);
+        return data.publicUrl;
+    } catch (err) {
+        console.warn("[FOXTECH] Signature upload failed:", err);
+        return null;
+    }
+}
+
+// ── Sync incidents ─────────────────────────────────────────────────────────
+
+async function syncIncidents(): Promise<void> {
+    const pending = await getPendingIncidents();
+    if (!pending.length) return;
+
+    for (const incident of pending) {
+        try {
+            // --- Photo: only upload if we have a blob AND no URL yet ---
+            let photoUrl = incident.photo_url;
+            if (incident.photo_blob && !photoUrl) {
+                const uploaded = await uploadPhoto(incident.id, incident.photo_blob);
+                if (uploaded) {
+                    photoUrl = uploaded;
+                    // Write URL back to Dexie immediately so next sync skips re-upload
+                    await db.incidents.update(incident.id, { photo_url: uploaded });
+                }
+            }
+
+            // --- Signature: same logic ---
+            let signatureUrl = incident.signature_url;
+            if (incident.signature_blob && !signatureUrl) {
+                const uploaded = await uploadSignature(incident.id, incident.signature_blob);
+                if (uploaded) {
+                    signatureUrl = uploaded;
+                    await db.incidents.update(incident.id, { signature_url: uploaded });
+                }
+            }
+
+            // --- Upsert to Supabase (idempotent by id) ---
+            const { error } = await supabase.from("incidents").upsert(
+                {
+                    id: incident.id,
+                    company_id: incident.company_id || null,
+                    reported_by_name: incident.reported_by_name || null,
+                    reported_by_role: incident.reported_by_role || null,
+                    event_type: incident.event_type || null,
+                    description: incident.description || null,
+                    photo_url: photoUrl || null,
+                    photo_lat: incident.photo_lat || null,
+                    photo_lng: incident.photo_lng || null,
+                    photo_timestamp: incident.photo_timestamp || null,
+                    signature_url: signatureUrl || null,
+                    location_name: incident.location_name || null,
+                    synced_at: new Date().toISOString(),
+                    created_at: incident.created_at,
+                },
+                {
+                    onConflict: "id",   // explicit conflict target
+                    ignoreDuplicates: false, // update on conflict
+                }
+            );
+
+            if (!error) {
+                await markIncidentSynced(incident.id);
+                console.info("[FOXTECH] Incident synced:", incident.id);
+            } else {
+                console.error("[FOXTECH] Incident sync error:", error.message);
+            }
+        } catch (err) {
+            console.error("[FOXTECH] Unexpected sync error for incident:", incident.id, err);
+        }
+    }
+}
+
+// ── Sync inspections ───────────────────────────────────────────────────────
+
+async function syncInspections(): Promise<void> {
+    const pending = await getPendingInspections();
+    if (!pending.length) return;
+
+    for (const inspection of pending) {
+        try {
+            const { error } = await supabase.from("inspections").upsert(
+                {
+                    id: inspection.id,
+                    company_id: inspection.company_id || null,
+                    inspector_name: inspection.inspector_name || null,
+                    template_name: inspection.template_name || null,
+                    score_percent: inspection.score_percent ?? null,
+                    items: inspection.items || [],
+                    location_name: inspection.location_name || null,
+                    created_at: inspection.created_at,
+                },
+                { onConflict: "id", ignoreDuplicates: false }
+            );
+
+            if (!error) {
+                await markInspectionSynced(inspection.id);
+                console.info("[FOXTECH] Inspection synced:", inspection.id);
+            }
+        } catch (err) {
+            console.error("[FOXTECH] Unexpected sync error for inspection:", inspection.id, err);
+        }
+    }
+}
+
+// ── Public API ─────────────────────────────────────────────────────────────
+
+/**
+ * Push all pending Dexie records to Supabase.
+ * Safe to call multiple times — guarded by syncInProgress flag.
+ */
+export async function syncPendingData(): Promise<void> {
+    if (typeof navigator === "undefined" || !navigator.onLine) return;
+    if (syncInProgress) return;
+
+    syncInProgress = true;
+    try {
+        await Promise.allSettled([syncIncidents(), syncInspections()]);
+    } finally {
+        syncInProgress = false;
+    }
+}
+
+/**
+ * Initialize the sync engine — call once at app startup.
+ * Returns a cleanup function.
+ */
+export function initSync(): () => void {
+    // Only sync on first mount if there are pending records (don't fire blindly)
+    syncPendingData();
+
+    const handleOnline = () => {
+        // Debounce: browsers fire 'online' multiple times on reconnect
+        if (onlineDebounceTimer) clearTimeout(onlineDebounceTimer);
+        onlineDebounceTimer = setTimeout(() => {
+            console.info("[FOXTECH] Network restored — syncing...");
+            syncPendingData();
+        }, 2000); // 2-second delay to let connection stabilize
+    };
+
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+        window.removeEventListener("online", handleOnline);
+        if (onlineDebounceTimer) clearTimeout(onlineDebounceTimer);
+    };
+}

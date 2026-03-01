@@ -1,0 +1,36 @@
+{
+  "name": "FOXTECH HSE",
+  "short_name": "FOXTECH",
+  "description": "Plataforma HSE/SST para trabajadores de campo y consultores de seguridad",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1A1F2E",
+  "theme_color": "#F59E0B",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["productivity", "business"],
+  "shortcuts": [
+    {
+      "name": "Reportar Incidente",
+      "short_name": "Reportar",
+      "description": "Registrar nuevo evento de seguridad",
+      "url": "/report",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
