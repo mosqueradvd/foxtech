@@ -254,7 +254,7 @@ export default function DashboardPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-[#334155]">
-                                        {["EMPRESA", "TIPO DE EVENTO", "HORA", "ESTADO", ""].map((h) => (
+                                        {["EMPRESA", "TIPO DE EVENTO", "HORA", "CLASIFICACIÓN", "ESTADO", ""].map((h) => (
                                             <th
                                                 key={h}
                                                 className="text-left text-[#64748B] text-[10px] font-bold uppercase tracking-wider px-4 py-3"
@@ -276,7 +276,7 @@ export default function DashboardPage() {
                                             <IncidentRow
                                                 key={inc.id}
                                                 incident={inc}
-                                                onClick={() => router.push(`/dashboard/incidents/${inc.id}`)}
+                                                onClick={() => router.push(`/dashboard/events/${inc.id}`)}
                                             />
                                         ))
                                     ) : (

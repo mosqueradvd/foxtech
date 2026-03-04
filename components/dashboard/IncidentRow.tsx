@@ -38,6 +38,20 @@ function formatTime(dateStr?: string): string {
     }
 }
 
+function ClassificationBadge({ status }: { status?: string }) {
+    const map: Record<string, { label: string; cls: string }> = {
+        pending: { label: "Pendiente", cls: "bg-amber-900/40 text-amber-400 border-amber-700/30" },
+        classified: { label: "Clasificado", cls: "bg-blue-900/40 text-blue-400 border-blue-700/30" },
+        investigated: { label: "Investigado", cls: "bg-green-900/40 text-green-400 border-green-700/30" },
+    };
+    const s = map[status ?? "pending"] ?? map.pending;
+    return (
+        <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide ${s.cls}`}>
+            {s.label}
+        </span>
+    );
+}
+
 export function IncidentRow({ incident, onClick }: IncidentRowProps) {
     return (
         <tr
@@ -52,6 +66,9 @@ export function IncidentRow({ incident, onClick }: IncidentRowProps) {
                 <StatusBadge variant={getEventBadge(incident.event_type)} />
             </td>
             <td className="py-4 px-4 text-[#64748B] text-sm">{formatTime(incident.created_at)}</td>
+            <td className="py-4 px-4">
+                <ClassificationBadge status={(incident as Incident & { classification_status?: string }).classification_status} />
+            </td>
             <td className="py-4 px-4">
                 <StatusBadge
                     variant={getSyncBadge(incident)}
