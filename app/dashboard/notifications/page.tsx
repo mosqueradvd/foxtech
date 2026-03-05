@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-    ArrowLeft, Bell, AlertTriangle, CheckCircle2, Clock,
+    ArrowLeft, Bell, AlertTriangle, CheckCircle2,
     FileText, Download, Building2, Send
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import {
     db,
     type LocalIncident,
@@ -13,7 +14,6 @@ import {
     type NotificationType,
     getNotificationsForIncident,
     upsertNotification,
-    getPendingMintrabajoCases,
 } from "@/lib/db";
 import {
     businessDaysRemaining,
@@ -171,13 +171,39 @@ export default function NotificationsPage() {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const seriousIncidents = await db.incidents
-                .where("severity")
-                .anyOf(["grave", "mortal"])
-                .toArray();
+            // Module 2 saves to Supabase with classification = "ACCIDENTE_TRABAJO_GRAVE" | "ACCIDENTE_TRABAJO_FATAL"
+            const { data, error } = await supabase
+                .from("incidents")
+                .select("*")
+                .in("classification", ["ACCIDENTE_TRABAJO_GRAVE", "ACCIDENTE_TRABAJO_FATAL"])
+                .order("created_at", { ascending: false });
+
+            if (error) {
+                console.error("Error loading serious incidents:", error);
+                return;
+            }
+
+            const rawIncidents = (data ?? []) as LocalIncident[];
+
+            // Map Supabase classification → severity for the notification logic
+            const mappedIncidents: LocalIncident[] = rawIncidents.map((inc) => ({
+                ...inc,
+                severity: (inc as unknown as Record<string, string>)["classification"] === "ACCIDENTE_TRABAJO_FATAL"
+                    ? "mortal"
+                    : "grave",
+                // Map worker_job_title → worker_position (used in letters)
+                worker_position: (inc as unknown as Record<string, string>)["worker_job_title"] || inc.worker_position,
+                // Map worker_arl from Supabase field
+                worker_arl: (inc as unknown as Record<string, string>)["worker_arl"] || inc.worker_arl,
+                worker_eps: (inc as unknown as Record<string, string>)["worker_eps"] || inc.worker_eps,
+                // Map location from event_city/event_address
+                location_name: (inc as unknown as Record<string, string>)["location_name"]
+                    || [(inc as unknown as Record<string, string>)["event_address"], (inc as unknown as Record<string, string>)["event_city"]].filter(Boolean).join(", ")
+                    || "",
+            }));
 
             const enriched: EnrichedIncident[] = await Promise.all(
-                seriousIncidents.map(async (inc) => {
+                mappedIncidents.map(async (inc) => {
                     const notifications = await getNotificationsForIncident(inc.id);
                     const days = businessDaysRemaining(inc.created_at);
                     const urgency = urgencyLevel(days);
@@ -196,8 +222,15 @@ export default function NotificationsPage() {
 
             setIncidents(enriched);
 
-            const pending = await getPendingMintrabajoCases();
-            setPendingCount(pending.length);
+            // Count incidents without Mintrabajo notification
+            const notifiedIds = new Set(
+                (await db.notifications
+                    .where("type").equals("mintrabajo")
+                    .filter((n) => n.status === "sent" || n.status === "filed")
+                    .toArray()
+                ).map((n) => n.incident_id)
+            );
+            setPendingCount(enriched.filter((i) => !notifiedIds.has(i.id)).length);
 
             if (!selected && enriched.length > 0) {
                 setSelected(enriched[0]);
@@ -209,6 +242,7 @@ export default function NotificationsPage() {
             setLoading(false);
         }
     }, [selected]);
+
 
     useEffect(() => {
         loadData();
