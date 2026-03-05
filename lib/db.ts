@@ -99,11 +99,34 @@ export interface LocalInspection {
     updated_at: string;
 }
 
+// ─── Module 4: Notification Tracking ─────────────────────────────────────
+
+export type NotificationType = "mintrabajo" | "arl" | "eps";
+export type NotificationStatus = "pending" | "sent" | "filed";
+
+export interface LocalNotification {
+    id: string;
+    incident_id: string;
+    /** Which entity was notified */
+    type: NotificationType;
+    /** pending = generated but not sent, sent = sent (no filing number), filed = sent + radicado */
+    status: NotificationStatus;
+    /** ISO timestamp when actually sent/filed */
+    sent_at?: string;
+    /** Radicado / case number from Mintrabajo, ARL or EPS */
+    filing_number?: string;
+    /** Name of the legal representative who signed */
+    signed_by?: string;
+    created_at: string;
+    updated_at: string;
+}
+
 // ─── Dexie Database Definition ────────────────────────────────────────
 
 class FoxtechDB extends Dexie {
     incidents!: EntityTable<LocalIncident, "id">;
     inspections!: EntityTable<LocalInspection, "id">;
+    notifications!: EntityTable<LocalNotification, "id">;
 
     constructor() {
         super("FoxtechDB");
@@ -115,10 +138,16 @@ class FoxtechDB extends Dexie {
         });
 
         // v2: add Module 2 classification fields + new indexes
-        // Dexie only needs to list indexed fields; unindexed fields are auto-stored.
         this.version(2).stores({
             incidents: "id, sync_status, created_at, classification_status, severity",
             inspections: "id, sync_status, created_at",
+        });
+
+        // v3: Module 4 — notifications table (new, backward-compatible)
+        this.version(3).stores({
+            incidents: "id, sync_status, created_at, classification_status, severity",
+            inspections: "id, sync_status, created_at",
+            notifications: "id, incident_id, type, status, created_at",
         });
     }
 }
@@ -182,4 +211,39 @@ export async function getClassifiedAccidents(): Promise<LocalIncident[]> {
         .where("classification_status")
         .equals("classified")
         .toArray();
+}
+
+// ─── Notification Helpers (Module 4) ─────────────────────────────────────
+
+/** Get all notifications for a given incident */
+export async function getNotificationsForIncident(
+    incidentId: string
+): Promise<LocalNotification[]> {
+    return db.notifications.where("incident_id").equals(incidentId).toArray();
+}
+
+/** Create or update a notification record */
+export async function upsertNotification(
+    notification: LocalNotification
+): Promise<void> {
+    await db.notifications.put(notification);
+}
+
+/** Get all grave/mortal incidents that have NOT been notified to Mintrabajo */
+export async function getPendingMintrabajoCases(): Promise<LocalIncident[]> {
+    const seriousIncidents = await db.incidents
+        .where("severity")
+        .anyOf(["grave", "mortal"])
+        .toArray();
+
+    const notifiedIds = new Set(
+        (await db.notifications
+            .where("type")
+            .equals("mintrabajo")
+            .filter((n) => n.status === "sent" || n.status === "filed")
+            .toArray()
+        ).map((n) => n.incident_id)
+    );
+
+    return seriousIncidents.filter((i) => !notifiedIds.has(i.id));
 }
