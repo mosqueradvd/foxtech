@@ -46,6 +46,39 @@ export interface LocalIncident {
     sync_status: "pending" | "synced" | "error";
     created_at: string;
     updated_at: string;
+
+    // ─── Module 2: Classification fields (DB v2) ─────────────────────────
+    /** Set to 'classified' once the Module 2 wizard is completed */
+    classification_status?: "pending" | "classified";
+
+    // Worker data
+    worker_name?: string;
+    worker_id_number?: string;
+    worker_position?: string;
+    worker_eps?: string;
+    worker_arl?: string;
+    worker_hire_date?: string;
+
+    // Accident classification (Res. 1401 / Ley 1562)
+    severity?: "leve" | "grave" | "mortal";
+    is_work_accident?: boolean;
+    work_center?: string;
+    accident_zone?: "dentro_empresa" | "fuera_empresa" | "en_trayecto" | "comision";
+    accident_mechanism?: string;
+    accident_agent?: string;
+    activity_at_time?: string;
+
+    // Injury classification (FURAT / Res. 1401)
+    injury_type?: string;
+    body_part_code?: string;
+    body_part_description?: string;
+    disability_days?: number;
+    /**
+     * ANSI Z16.1 charged day entry IDs.
+     * Used to calculate DIAS_CARGADOS_AT in RUC/CCS export.
+     * See lib/constants/ansi-charged-days.ts
+     */
+    charged_day_entries?: string[];
 }
 
 export interface LocalInspection {
@@ -75,8 +108,16 @@ class FoxtechDB extends Dexie {
     constructor() {
         super("FoxtechDB");
 
+        // v1: original schema
         this.version(1).stores({
             incidents: "id, sync_status, created_at",
+            inspections: "id, sync_status, created_at",
+        });
+
+        // v2: add Module 2 classification fields + new indexes
+        // Dexie only needs to list indexed fields; unindexed fields are auto-stored.
+        this.version(2).stores({
+            incidents: "id, sync_status, created_at, classification_status, severity",
             inspections: "id, sync_status, created_at",
         });
     }
@@ -133,4 +174,12 @@ export async function markInspectionSynced(id: string): Promise<void> {
         sync_status: "synced",
         updated_at: new Date().toISOString(),
     });
+}
+
+/** Get all classified accidents (for RUC export) */
+export async function getClassifiedAccidents(): Promise<LocalIncident[]> {
+    return db.incidents
+        .where("classification_status")
+        .equals("classified")
+        .toArray();
 }
