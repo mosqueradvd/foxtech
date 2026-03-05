@@ -103,9 +103,11 @@ export default function DashboardPage() {
         { id: "incidents", label: "Incidentes", icon: AlertTriangle, badge: totalIncidents || undefined, href: "/dashboard" },
         { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard" },
         { id: "companies", label: "Empresas", icon: Building2, href: "/dashboard" },
+        { id: "notifications", label: "Notificaciones", icon: Bell, href: "/dashboard/notifications" },
         { id: "exports", label: "Exportaciones", icon: Download, href: "/dashboard/exports" },
         { id: "reports", label: "Reportes PDF", icon: FileText, href: "/dashboard" },
     ];
+
 
 
     return (
