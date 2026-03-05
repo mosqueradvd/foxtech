@@ -344,6 +344,10 @@ export async function downloadMintrabajoLetterPDF(
 ): Promise<void> {
     const doc = <MintrabajoLetterDocument input={input} />;
     const blob = await pdf(doc).toBlob();
-    const fileName = `Mintrabajo_Notificacion_${input.incident.id.slice(0, 8).toUpperCase()}.pdf`;
+    const workerSlug = (input.incident.worker_name ?? "Trabajador")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+    const dateSlug = input.incident.created_at.slice(0, 10).replace(/-/g, "");
+    const fileName = `Mintrabajo_${workerSlug}_${dateSlug}.pdf`;
     downloadBlob(blob, fileName);
 }
