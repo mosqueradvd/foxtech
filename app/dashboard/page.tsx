@@ -20,7 +20,9 @@ import {
     MapPin,
     RefreshCw,
     User,
+    Download,
 } from "lucide-react";
+
 import { supabase, type Incident, type Company } from "@/lib/supabase";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { IncidentRow } from "@/components/dashboard/IncidentRow";
@@ -97,12 +99,14 @@ export default function DashboardPage() {
 
     // Nav items
     const navItems = [
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { id: "incidents", label: "Incidentes", icon: AlertTriangle, badge: totalIncidents || undefined },
-        { id: "inspections", label: "Inspecciones", icon: ClipboardList },
-        { id: "companies", label: "Empresas", icon: Building2 },
-        { id: "reports", label: "Reportes PDF", icon: FileText },
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+        { id: "incidents", label: "Incidentes", icon: AlertTriangle, badge: totalIncidents || undefined, href: "/dashboard" },
+        { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard" },
+        { id: "companies", label: "Empresas", icon: Building2, href: "/dashboard" },
+        { id: "exports", label: "Exportaciones", icon: Download, href: "/dashboard/exports" },
+        { id: "reports", label: "Reportes PDF", icon: FileText, href: "/dashboard" },
     ];
+
 
     return (
         <div className="flex h-screen bg-[#1A1F2E] overflow-hidden">
@@ -131,7 +135,10 @@ export default function DashboardPage() {
                         return (
                             <button
                                 key={item.id}
-                                onClick={() => setActiveNav(item.id)}
+                                onClick={() => {
+                                    setActiveNav(item.id);
+                                    if (item.href) router.push(item.href);
+                                }}
                                 className={[
                                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                                     isActive
@@ -150,6 +157,7 @@ export default function DashboardPage() {
                         );
                     })}
                 </nav>
+
 
                 {/* User profile at bottom */}
                 <div className="px-4 py-4 border-t border-[#334155] flex items-center gap-3">
