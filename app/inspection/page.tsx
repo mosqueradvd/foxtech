@@ -237,21 +237,30 @@ export default function InspectionPage() {
                                     </div>
                                 </div>
 
-                                <div className="p-3 bg-[#141824] rounded-xl border border-[#334155] space-y-3">
-                                    <p className="text-xs font-bold text-[#F59E0B] flex items-center gap-1.5">— Plan de Acción <span>(Opcional)</span></p>
-                                    <input type="text" placeholder="¿Qué acción correctiva se va a tomar?"
-                                        value={item.action_plan?.description || ''}
-                                        onChange={(e) => updateActionPlan(item.id, 'description', e.target.value)}
-                                        className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] outline-none focus:border-[#F59E0B] min-h-[44px]" />
-                                    <div className="flex gap-2">
-                                        <input type="text" placeholder="Responsable"
-                                            value={item.action_plan?.responsible_name || ''}
-                                            onChange={(e) => updateActionPlan(item.id, 'responsible_name', e.target.value)}
+                                <div className="p-4 bg-[#141824] rounded-xl border border-[#334155] space-y-3 mt-1">
+                                    <p className="text-xs font-bold text-[#F59E0B] flex items-center gap-1.5 uppercase">— Plan de Acción <span className="text-[#64748B] font-normal lowercase">(Opcional)</span></p>
+                                    <div>
+                                        <label className="text-[#94A3B8] text-[10px] font-bold uppercase tracking-wider block mb-1">Acción Correctiva</label>
+                                        <input type="text" placeholder="¿Qué se va a hacer?"
+                                            value={item.action_plan?.description || ''}
+                                            onChange={(e) => updateActionPlan(item.id, 'description', e.target.value)}
                                             className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] outline-none focus:border-[#F59E0B] min-h-[44px]" />
-                                        <input type="date"
-                                            value={item.action_plan?.deadline || ''}
-                                            onChange={(e) => updateActionPlan(item.id, 'deadline', e.target.value)}
-                                            className="w-[140px] flex-shrink-0 bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] appearance-none outline-none focus:border-[#F59E0B] min-h-[44px]" />
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[#94A3B8] text-[10px] font-bold uppercase tracking-wider block mb-1">Responsable</label>
+                                            <input type="text" placeholder="Nombre completo"
+                                                value={item.action_plan?.responsible_name || ''}
+                                                onChange={(e) => updateActionPlan(item.id, 'responsible_name', e.target.value)}
+                                                className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] outline-none focus:border-[#F59E0B] min-h-[44px]" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[#94A3B8] text-[10px] font-bold uppercase tracking-wider block mb-1">Fecha Límite</label>
+                                            <input type="date"
+                                                value={item.action_plan?.deadline || ''}
+                                                onChange={(e) => updateActionPlan(item.id, 'deadline', e.target.value)}
+                                                className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] appearance-none outline-none focus:border-[#F59E0B] min-h-[44px]" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
