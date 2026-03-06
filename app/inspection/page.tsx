@@ -13,6 +13,7 @@ import { db, generateId } from "@/lib/db";
 import { syncPendingData } from "@/lib/sync";
 import { INSPECTION_TEMPLATES, type InspectionTemplate, type TemplateItem, type CheckState } from "@/lib/inspection-templates";
 import { PhotoCapture } from "@/components/forms/PhotoCapture";
+import { VoiceNarration } from "@/components/forms/VoiceNarration";
 
 interface CheckItem extends TemplateItem {
     checked: CheckState;
@@ -22,6 +23,7 @@ interface CheckItem extends TemplateItem {
         description: string;
         responsible_name: string;
         deadline: string;
+        voice_blob?: string;
     };
 }
 
@@ -68,6 +70,16 @@ export default function InspectionPage() {
             if (item.id === id) {
                 const action_plan = item.action_plan || { description: '', responsible_name: '', deadline: '' };
                 return { ...item, action_plan: { ...action_plan, [field]: value } };
+            }
+            return item;
+        }));
+    };
+
+    const updateActionPlanVoice = (id: string, text: string, voice_blob?: string) => {
+        setItems((prev) => prev.map((item) => {
+            if (item.id === id) {
+                const action_plan = item.action_plan || { description: '', responsible_name: '', deadline: '' };
+                return { ...item, action_plan: { ...action_plan, description: text, voice_blob } };
             }
             return item;
         }));
@@ -238,13 +250,14 @@ export default function InspectionPage() {
                                 </div>
 
                                 <div className="p-4 bg-[#141824] rounded-xl border border-[#334155] space-y-3 mt-1">
-                                    <p className="text-xs font-bold text-[#F59E0B] flex items-center gap-1.5 uppercase">— Plan de Acción <span className="text-[#64748B] font-normal lowercase">(Opcional)</span></p>
+                                    <p className="text-xs font-bold text-[#F59E0B] flex items-center gap-1.5 uppercase">— Plan de Acción</p>
                                     <div>
-                                        <label className="text-[#94A3B8] text-[10px] font-bold uppercase tracking-wider block mb-1">Acción Correctiva</label>
-                                        <input type="text" placeholder="¿Qué se va a hacer?"
-                                            value={item.action_plan?.description || ''}
-                                            onChange={(e) => updateActionPlan(item.id, 'description', e.target.value)}
-                                            className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] outline-none focus:border-[#F59E0B] min-h-[44px]" />
+                                        <VoiceNarration
+                                            label="Acción Correctiva"
+                                            placeholder="¿Qué se va a hacer?"
+                                            value={{ text: item.action_plan?.description || '', audioBlob: item.action_plan?.voice_blob }}
+                                            onChange={(v) => updateActionPlanVoice(item.id, v.text, v.audioBlob)}
+                                        />
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div>
@@ -271,18 +284,31 @@ export default function InspectionPage() {
 
             {/* CTA */}
             <div className="fixed bottom-0 left-0 right-0 px-4 py-4 bg-[#1A1F2E]/95 backdrop-blur-sm border-t border-[#334155]">
-                <button onClick={handleFinish} disabled={evaluated.length < 5}
-                    className={[
-                        "w-full min-h-[48px] rounded-xl font-bold text-base transition-all active:scale-[0.98]",
-                        evaluated.length < 5
-                            ? "bg-amber-900/40 text-amber-800 cursor-not-allowed"
-                            : "bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg shadow-amber-900/20",
-                    ].join(" ")}
-                >
-                    {evaluated.length < 5
-                        ? `Evalúe al menos 5 ítems (${evaluated.length}/5)`
-                        : `Finalizar — ${score}% Cumplimiento`}
-                </button>
+                {(() => {
+                    // Validation: Failed items must have an action plan description or voice note
+                    const hasMissingActionPlans = items.some(
+                        (i) => i.checked === false &&
+                            (!i.action_plan || (!i.action_plan.description.trim() && !i.action_plan.voice_blob))
+                    );
+                    const disabled = evaluated.length < 5 || hasMissingActionPlans;
+
+                    return (
+                        <button onClick={handleFinish} disabled={disabled}
+                            className={[
+                                "w-full min-h-[48px] rounded-xl font-bold text-base transition-all active:scale-[0.98]",
+                                disabled
+                                    ? "bg-amber-900/40 text-amber-800 cursor-not-allowed"
+                                    : "bg-[#F59E0B] hover:bg-[#D97706] text-black shadow-lg shadow-amber-900/20",
+                            ].join(" ")}
+                        >
+                            {evaluated.length < 5
+                                ? `Evalúa al menos 5 ítems (${evaluated.length}/5)`
+                                : hasMissingActionPlans
+                                    ? "Falta el plan de acción en fallas"
+                                    : `Finalizar — ${score}% Cumplimiento`}
+                        </button>
+                    )
+                })()}
             </div>
         </div>
     );

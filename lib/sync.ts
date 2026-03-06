@@ -141,15 +141,19 @@ async function syncInspections(): Promise<void> {
 
     for (const inspection of pending) {
         try {
-            // Upload photos for failed items
+            // Upload photos & voice notes for failed items
             let itemsUpdated = false;
             const syncedItems = await Promise.all(
                 (inspection.items || []).map(async (item) => {
-                    if (item.photo_blob && !item.photo_url) {
+                    let updatedItem = { ...item };
+                    let changed = false;
+
+                    // Photo upload
+                    if (updatedItem.photo_blob && !updatedItem.photo_url) {
                         try {
-                            const res = await fetch(item.photo_blob);
+                            const res = await fetch(updatedItem.photo_blob);
                             const blob = await res.blob();
-                            const fileName = `inspections/${inspection.id}/${item.id}.jpg`;
+                            const fileName = `inspections/${inspection.id}/${item.id}-photo.jpg`;
 
                             const { error } = await supabase.storage
                                 .from("incident-photos")
@@ -157,14 +161,37 @@ async function syncInspections(): Promise<void> {
 
                             if (!error) {
                                 const { data } = supabase.storage.from("incident-photos").getPublicUrl(fileName);
-                                itemsUpdated = true;
-                                return { ...item, photo_url: data.publicUrl };
+                                updatedItem.photo_url = data.publicUrl;
+                                changed = true;
                             }
                         } catch (err) {
                             console.warn("[FOXTECH] Inspection photo upload failed:", err);
                         }
                     }
-                    return item;
+
+                    // Voice upload
+                    if (updatedItem.action_plan?.voice_blob && !updatedItem.action_plan.voice_url) {
+                        try {
+                            const res = await fetch(updatedItem.action_plan.voice_blob);
+                            const blob = await res.blob();
+                            const fileName = `inspections/${inspection.id}/${item.id}-voice.webm`;
+
+                            const { error } = await supabase.storage
+                                .from("incident-photos")
+                                .upload(fileName, blob, { contentType: "audio/webm", upsert: true });
+
+                            if (!error) {
+                                const { data } = supabase.storage.from("incident-photos").getPublicUrl(fileName);
+                                updatedItem.action_plan = { ...updatedItem.action_plan, voice_url: data.publicUrl };
+                                changed = true;
+                            }
+                        } catch (err) {
+                            console.warn("[FOXTECH] Inspection voice upload failed:", err);
+                        }
+                    }
+
+                    if (changed) itemsUpdated = true;
+                    return updatedItem;
                 })
             );
 
@@ -173,10 +200,15 @@ async function syncInspections(): Promise<void> {
                 await db.inspections.update(inspection.id, { items: syncedItems });
             }
 
-            // Strip the base64 photo_blob so we don't send mega-strings to Postgres
+            // Strip the base64 blobs so we don't send mega-strings to Postgres
             const dbItems = syncedItems.map((item) => {
-                const { photo_blob, ...rest } = item;
-                return rest;
+                const copy: any = { ...item };
+                delete copy.photo_blob;
+                if (copy.action_plan) {
+                    copy.action_plan = { ...copy.action_plan };
+                    delete copy.action_plan.voice_blob;
+                }
+                return copy;
             });
 
             const { error } = await supabase.from("inspections").upsert(

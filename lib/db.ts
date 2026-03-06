@@ -113,6 +113,8 @@ export interface LocalInspection {
             description: string;
             responsible_name: string;
             deadline: string;
+            voice_blob?: string;     // NEW: local base64 audio
+            voice_url?: string;      // NEW: remote storage URL
         };
     }>;
     location_name?: string;
