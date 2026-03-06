@@ -237,16 +237,39 @@ export default function SignPage() {
                     <p className="text-[#334155] text-xs text-center">Ubicación GPS no disponible (opcional)</p>
                 )}
 
-                {/* Legal checkbox */}
-                <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
-                        className="mt-0.5 w-5 h-5 rounded accent-[#F59E0B] flex-shrink-0 cursor-pointer" />
-                    <span className="text-[#94A3B8] text-sm leading-relaxed">
+                {/* Legal confirmation — tappable card, much clearer than native checkbox on mobile */}
+                <button
+                    type="button"
+                    onClick={() => setAgreed((v) => !v)}
+                    className={[
+                        "w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98]",
+                        agreed
+                            ? "bg-[#F59E0B]/10 border-[#F59E0B]"
+                            : "bg-[#141824] border-[#1E2A3B]",
+                    ].join(" ")}
+                >
+                    <div className="flex items-center gap-3 mb-2">
+                        {/* Custom checkbox circle */}
+                        <div className={[
+                            "w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                            agreed ? "bg-[#F59E0B] border-[#F59E0B]" : "border-[#334155]",
+                        ].join(" ")}>
+                            {agreed && (
+                                <svg viewBox="0 0 12 10" fill="none" className="w-3.5 h-3.5">
+                                    <path d="M1 5l3.5 3.5L11 1" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            )}
+                        </div>
+                        <span className={`text-sm font-semibold ${agreed ? "text-[#F59E0B]" : "text-[#64748B]"}`}>
+                            {agreed ? "Confirmado ✓" : "Toca aquí para confirmar"}
+                        </span>
+                    </div>
+                    <p className="text-[#94A3B8] text-xs leading-relaxed pl-9">
                         Entiendo que esta firma tiene <strong className="text-white">validez legal</strong> y que estoy firmando en mi calidad de{" "}
                         <strong className="text-white">{ROLE_LABELS[sigRequest?.signer_role ?? ""] ?? ""}</strong>{" "}
                         el documento de investigación del accidente de trabajo.
-                    </span>
-                </label>
+                    </p>
+                </button>
 
                 {/* Error */}
                 {error && (
