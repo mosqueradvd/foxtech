@@ -42,6 +42,11 @@ export default function InspectionPage() {
     }
 
     const onTemplateChange = (id: string) => {
+        if (evaluated.length > 0) {
+            if (!window.confirm("Al cambiar de tipo de inspección se perderán los datos ingresados actualmente. ¿Desea continuar?")) {
+                return;
+            }
+        }
         const t = INSPECTION_TEMPLATES.find((t) => t.id === id) ?? INSPECTION_TEMPLATES[0];
         setSelectedTemplate(t);
         setItems(buildItems(t));
@@ -110,6 +115,18 @@ export default function InspectionPage() {
         });
     }, [items, score, inspectionId, inspectorName, locationName, selectedTemplate, evaluated.length]);
 
+    // Prevent accidental tab close/reload
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (evaluated.length > 0 && !saved) {
+                e.preventDefault();
+                e.returnValue = "";
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [evaluated.length, saved]);
+
     const handleFinish = async () => {
         setSaved(true);
         syncPendingData().catch(console.warn);
@@ -152,7 +169,10 @@ export default function InspectionPage() {
         <div className="min-h-dvh bg-[#1A1F2E] flex flex-col" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* Header */}
             <header className="flex items-center gap-3 px-4 py-3 bg-[#1A1F2E] border-b border-[#334155] sticky top-0 z-40">
-                <button onClick={() => router.back()} className="min-w-[44px] min-h-[44px] flex items-center">
+                <button onClick={() => {
+                    if (evaluated.length > 0 && !window.confirm("¿Seguro que desea salir? Se perderán los datos de esta inspección.")) return;
+                    router.back();
+                }} className="min-w-[44px] min-h-[44px] flex items-center">
                     <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
                 <h1 className="text-white font-bold flex-1 truncate">{selectedTemplate.icon} {selectedTemplate.name}</h1>
