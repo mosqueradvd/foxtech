@@ -1,8 +1,9 @@
 /**
  * app/dashboard/events/[id]/investigation/page.tsx
  * Módulo 3 — Investigación del Accidente (Res. 1401/2007)
- * 3-tab form: Equipo/Narrativa | Árbol de Causas | Plan de Acción
- * Auto-save por tab. Estado persistido en Supabase tabla `investigations`.
+ * 4 tabs: Equipo/Narrativa | Árbol de Causas | Plan de Acción | Firmas
+ * Desktop-first con soporte móvil funcional.
+ * Auto-save + localStorage fallback offline.
  */
 "use client";
 
@@ -11,7 +12,7 @@ import { useRouter, useParams } from "next/navigation";
 import {
     ArrowLeft, Save, CheckCircle2, AlertTriangle, Users,
     Search, Zap, ClipboardList, Plus, Trash2, Loader2,
-    ChevronRight, Lock, Clock
+    ChevronRight, Lock, Clock, PenLine, Copy, Check, Share2, FileText
 } from "lucide-react";
 import {
     supabase,
@@ -20,15 +21,24 @@ import {
     type ImmediateCause,
     type BasicCause,
     type ActionItem,
+    type SignatureRequest,
+    type SignerRole,
 } from "@/lib/supabase";
 
-// ── Consts ────────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const TABS = [
-    { id: 0, label: "Equipo & Narrativa", icon: Users },
-    { id: 1, label: "Árbol de Causas", icon: Search },
-    { id: 2, label: "Plan de Acción", icon: ClipboardList },
+    { id: 0, label: "Equipo", icon: Users },
+    { id: 1, label: "Causas", icon: Zap },
+    { id: 2, label: "Acciones", icon: ClipboardList },
+    { id: 3, label: "Firmas", icon: PenLine },
 ] as const;
+
+const SIGNER_ROLES: { role: SignerRole; label: string; short: string }[] = [
+    { role: "COPASST", label: "Representante COPASST", short: "COPASST" },
+    { role: "SUPERVISOR", label: "Jefe Inmediato / Supervisor", short: "Supervisor" },
+    { role: "SST_PROFESSIONAL", label: "Profesional SST con Licencia", short: "SST" },
+];
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     en_proceso: { label: "En Proceso", color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/25" },
@@ -37,19 +47,22 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
     cerrado: { label: "Cerrado", color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/25" },
 };
 
-// ── Small reusable components ─────────────────────────────────────────────────
+// ── Reusable field components ─────────────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
     return <label className="block text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5">{children}</label>;
 }
 
-function Input({ value, onChange, placeholder, disabled }: {
+function FInput({ value, onChange, placeholder, disabled }: {
     value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean;
 }) {
+    const ref = useRef<HTMLInputElement>(null);
     return (
         <input
+            ref={ref}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onFocus={() => ref.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
             placeholder={placeholder}
             disabled={disabled}
             className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155] disabled:opacity-50"
@@ -57,13 +70,16 @@ function Input({ value, onChange, placeholder, disabled }: {
     );
 }
 
-function Textarea({ value, onChange, placeholder, rows = 4, disabled }: {
+function FTextarea({ value, onChange, placeholder, rows = 4, disabled }: {
     value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; disabled?: boolean;
 }) {
+    const ref = useRef<HTMLTextAreaElement>(null);
     return (
         <textarea
+            ref={ref}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onFocus={() => ref.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
             placeholder={placeholder}
             rows={rows}
             disabled={disabled}
@@ -81,38 +97,77 @@ function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; child
     );
 }
 
-// ── Primary investigation form page ──────────────────────────────────────────
+// ── Signature status badge ────────────────────────────────────────────────────
+
+function SigBadge({ status }: { status: string }) {
+    const cfg: Record<string, { label: string; cls: string }> = {
+        PENDING: { label: "Pendiente", cls: "bg-amber-400/10 text-amber-400 border-amber-400/25" },
+        SIGNED: { label: "Firmado ✓", cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/25" },
+        EXPIRED: { label: "Expirado", cls: "bg-red-400/10 text-red-400 border-red-400/25" },
+    };
+    const c = cfg[status] ?? cfg.PENDING;
+    return (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${c.cls}`}>
+            {c.label}
+        </span>
+    );
+}
+
+// ── Countdown ─────────────────────────────────────────────────────────────────
+
+function Countdown({ expiresAt }: { expiresAt: string }) {
+    const [remaining, setRemaining] = useState("");
+    useEffect(() => {
+        function update() {
+            const ms = new Date(expiresAt).getTime() - Date.now();
+            if (ms <= 0) { setRemaining("Expirado"); return; }
+            const h = Math.floor(ms / 3600000);
+            const m = Math.floor((ms % 3600000) / 60000);
+            setRemaining(`${h}h ${m}m restantes`);
+        }
+        update();
+        const t = setInterval(update, 60000);
+        return () => clearInterval(t);
+    }, [expiresAt]);
+    return <span className="text-[#64748B] text-xs">{remaining}</span>;
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function InvestigationPage() {
     const router = useRouter();
     const params = useParams();
     const incidentId = params.id as string;
 
-    // Data
     const [incident, setIncident] = useState<Event | null>(null);
-    const [investigation, setInvestigation] = useState<Investigation | null>(null);
+    const [investigation, setInv] = useState<Investigation | null>(null);
+    const [sigRequests, setSigReqs] = useState<SignatureRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
     const [closing, setClosing] = useState(false);
     const [creating, setCreating] = useState(false);
-
-    // UI
     const [activeTab, setActiveTab] = useState(0);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [genLoadingRole, setGenLoadingRole] = useState<SignerRole | null>(null);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // ── Form state (mirrors Investigation fields) ─────────────────────────────
+    // Form state
     const [team, setTeam] = useState({ sst: "", jefe: "", copasst: "", extra: "" });
     const [narrative, setNarrative] = useState("");
-    const [immediateCauses, setImmediateCauses] = useState<ImmediateCause[]>([]);
+    const [immCauses, setImmCauses] = useState<ImmediateCause[]>([]);
     const [basicCauses, setBasicCauses] = useState<BasicCause[]>([]);
-    const [controlFailures, setControlFailures] = useState("");
+    const [controlFails, setControlFails] = useState("");
     const [actionPlan, setActionPlan] = useState<ActionItem[]>([]);
     const [conclusions, setConclusions] = useState("");
+    const [signerNames, setSignerNames] = useState<Record<SignerRole, string>>({
+        COPASST: "", SUPERVISOR: "", SST_PROFESSIONAL: "",
+    });
 
     const isClosed = investigation?.status === "cerrado";
+    const allSigned = sigRequests.length === 3 && sigRequests.every((r) => r.status === "SIGNED");
 
-    // ── Load ─────────────────────────────────────────────────────────────────
+    // ── Load ────────────────────────────────────────────────────────────────
     const load = useCallback(async () => {
         setLoading(true);
         const [{ data: ev }, { data: invs }] = await Promise.all([
@@ -120,168 +175,170 @@ export default function InvestigationPage() {
             supabase.from("investigations").select("*").eq("incident_id", incidentId).maybeSingle(),
         ]);
         setIncident(ev as Event | null);
-
         const inv = invs as Investigation | null;
         if (inv) {
-            setInvestigation(inv);
-            setTeam({
-                sst: inv.investigator_sst ?? "",
-                jefe: inv.investigator_jefe ?? "",
-                copasst: inv.investigator_copasst ?? "",
-                extra: inv.investigators_extra ?? "",
-            });
+            setInv(inv);
+            setTeam({ sst: inv.investigator_sst ?? "", jefe: inv.investigator_jefe ?? "", copasst: inv.investigator_copasst ?? "", extra: inv.investigators_extra ?? "" });
             setNarrative(inv.event_narrative ?? "");
-            setImmediateCauses(inv.immediate_causes ?? []);
+            setImmCauses(inv.immediate_causes ?? []);
             setBasicCauses(inv.basic_causes ?? []);
-            setControlFailures(inv.control_failures ?? "");
+            setControlFails(inv.control_failures ?? "");
             setActionPlan(inv.action_plan ?? []);
             setConclusions(inv.conclusions ?? "");
+            // Load existing signature requests
+            const { data: sigs } = await supabase.from("signature_requests").select("*").eq("investigation_id", inv.id);
+            if (sigs) {
+                setSigReqs(sigs as SignatureRequest[]);
+                const names: Record<SignerRole, string> = { COPASST: "", SUPERVISOR: "", SST_PROFESSIONAL: "" };
+                sigs.forEach((s) => { if (s.signer_name) names[s.signer_role as SignerRole] = s.signer_name; });
+                setSignerNames(names);
+            }
         }
         setLoading(false);
     }, [incidentId]);
 
     useEffect(() => { load(); }, [load]);
 
-    // ── Create investigation ──────────────────────────────────────────────────
+    // ── Realtime subscription for signature updates ──────────────────────────
+    useEffect(() => {
+        if (!investigation?.id) return;
+        const channel = supabase
+            .channel(`investigation-sigs-${investigation.id}`)
+            .on("postgres_changes", {
+                event: "UPDATE",
+                schema: "public",
+                table: "signature_requests",
+                filter: `investigation_id=eq.${investigation.id}`,
+            }, (payload) => {
+                setSigReqs((prev) => prev.map((r) => r.id === payload.new.id ? payload.new as SignatureRequest : r));
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [investigation?.id]);
+
+    // ── Autosave to localStorage offline fallback ────────────────────────────
+    const persistLocal = useCallback(() => {
+        if (!investigation?.id) return;
+        try {
+            localStorage.setItem(`inv_draft_${investigation.id}`, JSON.stringify({
+                team, narrative, immCauses, basicCauses, controlFails, actionPlan, conclusions,
+            }));
+        } catch { /* quota exceeded ignored */ }
+    }, [investigation?.id, team, narrative, immCauses, basicCauses, controlFails, actionPlan, conclusions]);
+
+    // ── Create investigation ─────────────────────────────────────────────────
     const handleCreate = async () => {
         setCreating(true);
-        const { data, error } = await supabase
-            .from("investigations")
-            .insert({
-                incident_id: incidentId,
-                company_id: incident?.company_id ?? null,
-                status: "en_proceso",
-                immediate_causes: [],
-                basic_causes: [],
-                action_plan: [],
-            })
-            .select()
-            .single();
-        if (!error && data) {
-            setInvestigation(data as Investigation);
-        }
+        const { data, error } = await supabase.from("investigations").insert({
+            incident_id: incidentId,
+            company_id: incident?.company_id ?? null,
+            status: "en_proceso",
+            immediate_causes: [],
+            basic_causes: [],
+            action_plan: [],
+        }).select().single();
+        if (!error && data) setInv(data as Investigation);
         setCreating(false);
     };
 
-    // ── Save ──────────────────────────────────────────────────────────────────
+    // ── Save ─────────────────────────────────────────────────────────────────
     const save = useCallback(async (showFeedback = true) => {
         if (!investigation || isClosed) return;
         if (showFeedback) setSaving(true);
-
-        // Determine new status based on content
         let newStatus: Investigation["status"] = "en_proceso";
-        const hasTeam = team.sst || team.jefe || team.copasst;
-        const hasCauses = immediateCauses.length > 0 || basicCauses.length > 0;
-        const hasPlan = actionPlan.length > 0;
-        if (hasPlan) newStatus = "plan_accion_definido";
-        else if (hasTeam && hasCauses) newStatus = "en_proceso";
-
+        if (actionPlan.length > 0) newStatus = "plan_accion_definido";
         await supabase.from("investigations").update({
             investigator_sst: team.sst || null,
             investigator_jefe: team.jefe || null,
             investigator_copasst: team.copasst || null,
             investigators_extra: team.extra || null,
             event_narrative: narrative || null,
-            immediate_causes: immediateCauses,
+            immediate_causes: immCauses,
             basic_causes: basicCauses,
-            control_failures: controlFailures || null,
+            control_failures: controlFails || null,
             action_plan: actionPlan,
             conclusions: conclusions || null,
             status: newStatus,
             updated_at: new Date().toISOString(),
         }).eq("id", investigation.id);
+        setInv((prev) => prev ? { ...prev, status: newStatus } : prev);
+        persistLocal();
+        if (showFeedback) { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); }
+    }, [investigation, isClosed, team, narrative, immCauses, basicCauses, controlFails, actionPlan, conclusions, persistLocal]);
 
-        setInvestigation((prev) => prev ? { ...prev, status: newStatus } : prev);
-        if (showFeedback) {
-            setSaving(false);
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
-        }
-    }, [investigation, isClosed, team, narrative, immediateCauses, basicCauses, controlFailures, actionPlan, conclusions]);
-
-    // Auto-save after 3s of inactivity
     const scheduleSave = useCallback(() => {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => save(false), 3000);
     }, [save]);
 
-    // ── Close investigation ───────────────────────────────────────────────────
+    // ── Close ────────────────────────────────────────────────────────────────
     const handleClose = async () => {
         if (!investigation) return;
         setClosing(true);
         await save(false);
-        await supabase.from("investigations").update({
-            status: "cerrado",
-            closed_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        }).eq("id", investigation.id);
-
-        // Update incident to 'investigated'
-        await supabase.from("incidents").update({
-            classification_status: "investigated",
-            updated_at: new Date().toISOString(),
-        }).eq("id", incidentId);
-
-        setInvestigation((prev) => prev ? { ...prev, status: "cerrado" } : prev);
+        await supabase.from("investigations").update({ status: "cerrado", closed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", investigation.id);
+        await supabase.from("incidents").update({ classification_status: "investigated", updated_at: new Date().toISOString() }).eq("id", incidentId);
+        setInv((prev) => prev ? { ...prev, status: "cerrado" } : prev);
         setClosing(false);
     };
 
-    // ── Helpers for cause lists ───────────────────────────────────────────────
-    function addImmediateCause(type: ImmediateCause["type"]) {
-        const updated = [...immediateCauses, { type, description: "" }];
-        setImmediateCauses(updated);
-        scheduleSave();
-    }
-    function updateImmediateCause(i: number, desc: string) {
-        const updated = immediateCauses.map((c, idx) => idx === i ? { ...c, description: desc } : c);
-        setImmediateCauses(updated);
-        scheduleSave();
-    }
-    function removeImmediateCause(i: number) {
-        setImmediateCauses(immediateCauses.filter((_, idx) => idx !== i));
-        scheduleSave();
-    }
+    // ── Generate signature link ───────────────────────────────────────────────
+    const generateSignatureLink = async (role: SignerRole) => {
+        if (!investigation) return;
+        setGenLoadingRole(role);
+        // Delete any existing PENDING request for this role
+        await supabase.from("signature_requests").delete()
+            .eq("investigation_id", investigation.id)
+            .eq("signer_role", role)
+            .eq("status", "PENDING");
 
-    function addBasicCause(type: BasicCause["type"]) {
-        setBasicCauses([...basicCauses, { type, description: "" }]);
-        scheduleSave();
-    }
-    function updateBasicCause(i: number, desc: string) {
-        setBasicCauses(basicCauses.map((c, idx) => idx === i ? { ...c, description: desc } : c));
-        scheduleSave();
-    }
-    function removeBasicCause(i: number) {
-        setBasicCauses(basicCauses.filter((_, idx) => idx !== i));
-        scheduleSave();
-    }
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+        const { data } = await supabase.from("signature_requests").insert({
+            investigation_id: investigation.id,
+            signer_role: role,
+            signer_name: signerNames[role] || null,
+            token,
+            expires_at: expiresAt,
+            status: "PENDING",
+        }).select().single();
+        if (data) setSigReqs((prev) => {
+            const without = prev.filter((r) => !(r.signer_role === role && r.status === "PENDING"));
+            return [...without, data as SignatureRequest];
+        });
+        setGenLoadingRole(null);
+    };
 
-    function addAction() {
-        setActionPlan([...actionPlan, { action: "", responsible: "", deadline: "", status: "pendiente" }]);
-        scheduleSave();
-    }
-    function updateAction(i: number, patch: Partial<ActionItem>) {
-        setActionPlan(actionPlan.map((a, idx) => idx === i ? { ...a, ...patch } : a));
-        scheduleSave();
-    }
-    function removeAction(i: number) {
-        setActionPlan(actionPlan.filter((_, idx) => idx !== i));
-        scheduleSave();
-    }
+    // ── Copy to clipboard ────────────────────────────────────────────────────
+    const copyLink = async (token: string, id: string) => {
+        const url = `${window.location.origin}/sign/${token}`;
+        await navigator.clipboard.writeText(url);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
-    // ── Cause row ─────────────────────────────────────────────────────────────
-    function CauseRow({ label, value, onChange, onRemove }: {
-        label: string; value: string; onChange: (v: string) => void; onRemove: () => void;
-    }) {
+    const whatsappLink = (token: string, rolLabel: string) => {
+        const url = encodeURIComponent(`${window.location.origin}/sign/${token}`);
+        const msg = encodeURIComponent(`Hola, por favor firma como *${rolLabel}* el documento de investigación de accidente aquí: `);
+        return `https://wa.me/?text=${msg}${url}`;
+    };
+
+    // ── Cause helpers ────────────────────────────────────────────────────────
+    const addImmCause = (type: ImmediateCause["type"]) => { setImmCauses([...immCauses, { type, description: "" }]); scheduleSave(); };
+    const updImmCause = (i: number, d: string) => { setImmCauses(immCauses.map((c, idx) => idx === i ? { ...c, description: d } : c)); scheduleSave(); };
+    const rmImmCause = (i: number) => { setImmCauses(immCauses.filter((_, idx) => idx !== i)); scheduleSave(); };
+    const addBasicCause = (type: BasicCause["type"]) => { setBasicCauses([...basicCauses, { type, description: "" }]); scheduleSave(); };
+    const updBasicCause = (i: number, d: string) => { setBasicCauses(basicCauses.map((c, idx) => idx === i ? { ...c, description: d } : c)); scheduleSave(); };
+    const rmBasicCause = (i: number) => { setBasicCauses(basicCauses.filter((_, idx) => idx !== i)); scheduleSave(); };
+    const addAction = () => { setActionPlan([...actionPlan, { action: "", responsible: "", deadline: "", status: "pendiente" }]); scheduleSave(); };
+    const updAction = (i: number, p: Partial<ActionItem>) => { setActionPlan(actionPlan.map((a, idx) => idx === i ? { ...a, ...p } : a)); scheduleSave(); };
+    const rmAction = (i: number) => { setActionPlan(actionPlan.filter((_, idx) => idx !== i)); scheduleSave(); };
+
+    function CauseRow({ label, value, onChange, onRemove }: { label: string; value: string; onChange: (v: string) => void; onRemove: () => void; }) {
         return (
             <div className="flex items-start gap-2 mb-2">
                 <span className="mt-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider w-20 flex-shrink-0">{label}</span>
-                <input
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    disabled={isClosed}
-                    placeholder="Describe la causa..."
-                    className="flex-1 bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155] disabled:opacity-50"
-                />
+                <FInput value={value} onChange={onChange} placeholder="Describe la causa..." disabled={isClosed} />
                 {!isClosed && (
                     <button onClick={onRemove} className="mt-2 p-1.5 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all">
                         <Trash2 className="w-3.5 h-3.5" />
@@ -292,205 +349,161 @@ export default function InvestigationPage() {
     }
 
     // ── Render ────────────────────────────────────────────────────────────────
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-[#0F1420] flex items-center justify-center">
-                <Loader2 className="w-6 h-6 text-[#F59E0B] animate-spin" />
-            </div>
-        );
-    }
+    if (loading) return (
+        <div className="min-h-screen bg-[#0F1420] flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-[#F59E0B] animate-spin" />
+        </div>
+    );
 
     const statusCfg = STATUS_LABELS[investigation?.status ?? "en_proceso"];
 
     return (
         <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {/* ── HEADER ── */}
-            <header className="bg-[#141824] border-b border-[#1E2A3B] px-6 py-4 flex items-center gap-4 sticky top-0 z-30">
-                <button onClick={() => router.push(`/dashboard/events/${incidentId}`)} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all">
+            {/* HEADER */}
+            <header className="bg-[#141824] border-b border-[#1E2A3B] px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-30">
+                <button onClick={() => router.push(`/dashboard/events/${incidentId}`)} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                        <h1 className="text-white font-bold text-base leading-none">INVESTIGACIÓN DEL ACCIDENTE</h1>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h1 className="text-white font-bold text-sm sm:text-base leading-none">INVESTIGACIÓN</h1>
                         {investigation && (
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${statusCfg.bg} ${statusCfg.color}`}>
                                 {statusCfg.label}
                             </span>
                         )}
                     </div>
-                    <p className="text-[#64748B] text-xs mt-0.5">
+                    <p className="text-[#64748B] text-xs mt-0.5 truncate">
                         {incident?.worker_name ?? incident?.reported_by_name ?? "Evento"} — Res. 1401/2007
                     </p>
                 </div>
-
-                {/* Save / status indicators */}
                 <div className="flex items-center gap-2">
                     {saving && <Loader2 className="w-4 h-4 text-[#F59E0B] animate-spin" />}
-                    {saved && !saving && <span className="text-emerald-400 text-xs font-semibold">Guardado ✓</span>}
+                    {saved && !saving && <span className="text-emerald-400 text-xs font-semibold hidden sm:inline">Guardado ✓</span>}
                     {investigation && !isClosed && (
-                        <button
-                            onClick={() => save(true)}
-                            disabled={saving}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors"
-                        >
+                        <button onClick={() => save(true)} disabled={saving}
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors">
                             <Save className="w-3.5 h-3.5" />
-                            Guardar
+                            <span className="hidden sm:inline">Guardar</span>
                         </button>
                     )}
-                    {isClosed && <Lock className="w-4 h-4 text-emerald-400" />}
+                    {isClosed && <Lock className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
                 </div>
             </header>
 
-            {/* ── INCIDENT SUMMARY STRIP ── */}
+            {/* INCIDENT STRIP */}
             {incident && (
-                <div className="bg-[#141824]/60 border-b border-[#1E2A3B] px-6 py-2.5 flex items-center gap-6 text-xs text-[#64748B] flex-wrap">
+                <div className="bg-[#141824]/60 border-b border-[#1E2A3B] px-4 sm:px-6 py-2 flex items-center gap-4 text-xs text-[#64748B] flex-wrap">
                     <span className="flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
                         {incident.classification?.replace(/_/g, " ") ?? "Sin clasificar"}
                     </span>
                     <span className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5" />
-                        {incident.event_date ?? (incident.created_at ?? "").slice(0, 10)}
+                        <Clock className="w-3 h-3" /> {incident.event_date ?? (incident.created_at ?? "").slice(0, 10)}
                     </span>
                     {incident.event_city && <span>{incident.event_city}</span>}
-                    {incident.disability_days !== undefined && (
-                        <span>{incident.disability_days} días de incapacidad</span>
-                    )}
                 </div>
             )}
 
-            {/* ── NO INVESTIGATION YET ── */}
+            {/* NO INVESTIGATION YET */}
             {!investigation ? (
-                <div className="max-w-2xl mx-auto px-6 py-16 text-center">
+                <div className="max-w-2xl mx-auto px-4 sm:px-6 py-16 text-center">
                     <div className="w-16 h-16 bg-amber-400/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
                         <ClipboardList className="w-8 h-8 text-[#F59E0B]" />
                     </div>
                     <h2 className="text-white font-bold text-xl mb-2">Iniciar Investigación Formal</h2>
                     <p className="text-[#64748B] text-sm mb-2 max-w-md mx-auto">
-                        La investigación formal debe realizarse dentro de los <strong className="text-white">15 días hábiles</strong> siguientes al evento (Res. 1401/2007, Art. 4).
+                        Debe realizarse dentro de los <strong className="text-white">15 días hábiles</strong> siguientes (Res. 1401/2007, Art. 4).
                     </p>
                     <p className="text-[#334155] text-sm mb-8 max-w-md mx-auto">
-                        Al iniciarla, se crea un expediente de investigación vinculado a este evento. Podrás guardarlo y continuarlo en cualquier momento.
+                        Puedes guardarlo y continuarlo en cualquier momento.
                     </p>
-                    <button
-                        onClick={handleCreate}
-                        disabled={creating}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-[#F59E0B] text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-60"
-                    >
+                    <button onClick={handleCreate} disabled={creating}
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-[#F59E0B] text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-60">
                         {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                         Iniciar Investigación
                     </button>
                 </div>
             ) : (
-                <div className="max-w-4xl mx-auto px-6 py-6">
-                    {/* ── TABS ── */}
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+                    {/* TABS */}
                     <div className="flex gap-1 bg-[#141824] border border-[#1E2A3B] rounded-2xl p-1 mb-6">
                         {TABS.map((tab) => {
                             const Icon = tab.icon;
                             return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id)}
-                                    className={[
-                                        "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                                        activeTab === tab.id
-                                            ? "bg-[#F59E0B] text-black"
-                                            : "text-[#64748B] hover:text-white",
-                                    ].join(" ")}
-                                >
-                                    <Icon className="w-4 h-4" />
-                                    <span className="hidden sm:inline">{tab.label}</span>
+                                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                                    className={["flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
+                                        activeTab === tab.id ? "bg-[#F59E0B] text-black" : "text-[#64748B] hover:text-white"].join(" ")}>
+                                    <Icon className="w-4 h-4 flex-shrink-0" />
+                                    <span>{tab.label}</span>
                                 </button>
                             );
                         })}
                     </div>
 
-                    {/* ── TAB 1: EQUIPO & NARRATIVA ── */}
+                    {/* TAB 1: EQUIPO & NARRATIVA */}
                     {activeTab === 0 && (
                         <div className="space-y-6">
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-6">
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={Users}>Equipo Investigador</SectionTitle>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <FieldLabel>Responsable SST *</FieldLabel>
-                                        <Input value={team.sst} onChange={(v) => { setTeam((t) => ({ ...t, sst: v })); scheduleSave(); }} placeholder="Nombre del profesional SST" disabled={isClosed} />
+                                        <FInput value={team.sst} onChange={(v) => { setTeam((t) => ({ ...t, sst: v })); scheduleSave(); }} placeholder="Nombre del profesional SST" disabled={isClosed} />
                                     </div>
                                     <div>
                                         <FieldLabel>Jefe Inmediato *</FieldLabel>
-                                        <Input value={team.jefe} onChange={(v) => { setTeam((t) => ({ ...t, jefe: v })); scheduleSave(); }} placeholder="Nombre del jefe inmediato" disabled={isClosed} />
+                                        <FInput value={team.jefe} onChange={(v) => { setTeam((t) => ({ ...t, jefe: v })); scheduleSave(); }} placeholder="Nombre del jefe inmediato" disabled={isClosed} />
                                     </div>
                                     <div>
                                         <FieldLabel>Representante COPASST *</FieldLabel>
-                                        <Input value={team.copasst} onChange={(v) => { setTeam((t) => ({ ...t, copasst: v })); scheduleSave(); }} placeholder="Nombre del representante" disabled={isClosed} />
+                                        <FInput value={team.copasst} onChange={(v) => { setTeam((t) => ({ ...t, copasst: v })); scheduleSave(); }} placeholder="Nombre del representante" disabled={isClosed} />
                                     </div>
                                     <div>
                                         <FieldLabel>Otros participantes</FieldLabel>
-                                        <Input value={team.extra} onChange={(v) => { setTeam((t) => ({ ...t, extra: v })); scheduleSave(); }} placeholder="Otros investigadores" disabled={isClosed} />
+                                        <FInput value={team.extra} onChange={(v) => { setTeam((t) => ({ ...t, extra: v })); scheduleSave(); }} placeholder="Otros investigadores" disabled={isClosed} />
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-6">
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={AlertTriangle}>Narrativa Ampliada del Evento</SectionTitle>
-                                <p className="text-[#64748B] text-xs mb-3">Describe con detalle qué ocurrió, en qué secuencia, quiénes estaban presentes y cuáles fueron las circunstancias. Esta narrativa es el sustento de las causas.</p>
-                                <Textarea
-                                    value={narrative}
-                                    onChange={(v) => { setNarrative(v); scheduleSave(); }}
-                                    placeholder="El día [fecha] a las [hora], el trabajador [nombre] se encontraba [actividad] cuando..."
-                                    rows={8}
-                                    disabled={isClosed}
-                                />
+                                <p className="text-[#64748B] text-xs mb-3">Describe qué ocurrió, en qué secuencia, y cuáles fueron las circunstancias. Es el sustento de las causas.</p>
+                                <FTextarea value={narrative} onChange={(v) => { setNarrative(v); scheduleSave(); }}
+                                    placeholder="El día [fecha] a las [hora], el trabajador [nombre] se encontraba [actividad] cuando..." rows={8} disabled={isClosed} />
                             </div>
                         </div>
                     )}
 
-                    {/* ── TAB 2: ÁRBOL DE CAUSAS ── */}
+                    {/* TAB 2: CAUSAS */}
                     {activeTab === 1 && (
                         <div className="space-y-6">
-                            {/* Immediate causes */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-6">
-                                <SectionTitle icon={Zap}>Causas Inmediatas (§5.2 Res. 1401)</SectionTitle>
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <SectionTitle icon={Zap}>Causas Inmediatas (§5.2)</SectionTitle>
                                 <p className="text-[#64748B] text-xs mb-4">Condiciones o actos que directamente causaron el evento.</p>
-
-                                {immediateCauses.map((c, i) => (
-                                    <CauseRow
-                                        key={i}
-                                        label={c.type === "acto" ? "Acto" : "Condición"}
-                                        value={c.description}
-                                        onChange={(v) => updateImmediateCause(i, v)}
-                                        onRemove={() => removeImmediateCause(i)}
-                                    />
+                                {immCauses.map((c, i) => (
+                                    <CauseRow key={i} label={c.type === "acto" ? "Acto" : "Condición"} value={c.description}
+                                        onChange={(v) => updImmCause(i, v)} onRemove={() => rmImmCause(i)} />
                                 ))}
-
                                 {!isClosed && (
-                                    <div className="flex gap-2 mt-4">
-                                        <button onClick={() => addImmediateCause("acto")} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded-lg text-xs font-semibold hover:bg-amber-400/20 transition-colors">
+                                    <div className="flex flex-wrap gap-2 mt-4">
+                                        <button onClick={() => addImmCause("acto")} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded-lg text-xs font-semibold hover:bg-amber-400/20 transition-colors">
                                             <Plus className="w-3 h-3" /> Acto subestándar
                                         </button>
-                                        <button onClick={() => addImmediateCause("condicion")} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-400/10 text-orange-400 border border-orange-400/20 rounded-lg text-xs font-semibold hover:bg-orange-400/20 transition-colors">
+                                        <button onClick={() => addImmCause("condicion")} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-400/10 text-orange-400 border border-orange-400/20 rounded-lg text-xs font-semibold hover:bg-orange-400/20 transition-colors">
                                             <Plus className="w-3 h-3" /> Condición subestándar
                                         </button>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Basic/root causes */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-6">
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={Search}>Causas Básicas (§5.3)</SectionTitle>
                                 <p className="text-[#64748B] text-xs mb-4">Factores personales o del trabajo que generaron las causas inmediatas.</p>
-
                                 {basicCauses.map((c, i) => (
-                                    <CauseRow
-                                        key={i}
-                                        label={c.type === "personal" ? "Personal" : "Trabajo"}
-                                        value={c.description}
-                                        onChange={(v) => updateBasicCause(i, v)}
-                                        onRemove={() => removeBasicCause(i)}
-                                    />
+                                    <CauseRow key={i} label={c.type === "personal" ? "Personal" : "Trabajo"} value={c.description}
+                                        onChange={(v) => updBasicCause(i, v)} onRemove={() => rmBasicCause(i)} />
                                 ))}
-
                                 {!isClosed && (
-                                    <div className="flex gap-2 mt-4">
+                                    <div className="flex flex-wrap gap-2 mt-4">
                                         <button onClick={() => addBasicCause("personal")} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-400/10 text-blue-400 border border-blue-400/20 rounded-lg text-xs font-semibold hover:bg-blue-400/20 transition-colors">
                                             <Plus className="w-3 h-3" /> Factor personal
                                         </button>
@@ -500,41 +513,30 @@ export default function InvestigationPage() {
                                     </div>
                                 )}
                             </div>
-
-                            {/* Control failures */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-6">
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={AlertTriangle}>Fallas en el Control Administrativo (§5.4)</SectionTitle>
-                                <p className="text-[#64748B] text-xs mb-3">Deficiencias del sistema de gestión que permitieron que las causas básicas existieran.</p>
-                                <Textarea
-                                    value={controlFailures}
-                                    onChange={(v) => { setControlFailures(v); scheduleSave(); }}
-                                    placeholder="Ej.: No existía procedimiento de trabajo seguro para esta actividad. Los EPP no eran inspeccionados periódicamente..."
-                                    rows={4}
-                                    disabled={isClosed}
-                                />
+                                <FTextarea value={controlFails} onChange={(v) => { setControlFails(v); scheduleSave(); }}
+                                    placeholder="Deficiencias del sistema de gestión que permitieron que las causas básicas existieran..." rows={4} disabled={isClosed} />
                             </div>
                         </div>
                     )}
 
-                    {/* ── TAB 3: PLAN DE ACCIÓN ── */}
+                    {/* TAB 3: PLAN DE ACCIÓN */}
                     {activeTab === 2 && (
                         <div className="space-y-6">
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-6">
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={ClipboardList}>Plan de Acción Correctiva</SectionTitle>
-                                <p className="text-[#64748B] text-xs mb-4">Define las acciones para eliminar o controlar las causas identificadas.</p>
-
                                 {actionPlan.length === 0 && !isClosed && (
                                     <div className="text-center py-6 text-[#334155] text-sm border border-dashed border-[#1E2A3B] rounded-xl mb-4">
-                                        Sin acciones definidas, agrega la primera
+                                        Sin acciones definidas
                                     </div>
                                 )}
-
                                 {actionPlan.map((item, i) => (
                                     <div key={i} className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl p-4 mb-3">
-                                        <div className="flex items-start justify-between gap-2 mb-3">
+                                        <div className="flex items-center justify-between mb-3">
                                             <span className="text-[#F59E0B] text-xs font-bold">Acción #{i + 1}</span>
                                             {!isClosed && (
-                                                <button onClick={() => removeAction(i)} className="p-1 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all">
+                                                <button onClick={() => rmAction(i)} className="p-1 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all">
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
                                             )}
@@ -542,30 +544,21 @@ export default function InvestigationPage() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div className="sm:col-span-2">
                                                 <FieldLabel>Acción correctiva *</FieldLabel>
-                                                <Input value={item.action} onChange={(v) => updateAction(i, { action: v })} placeholder="Describir la acción a tomar..." disabled={isClosed} />
+                                                <FInput value={item.action} onChange={(v) => updAction(i, { action: v })} placeholder="Describir la acción..." disabled={isClosed} />
                                             </div>
                                             <div>
                                                 <FieldLabel>Responsable *</FieldLabel>
-                                                <Input value={item.responsible} onChange={(v) => updateAction(i, { responsible: v })} placeholder="Nombre y cargo" disabled={isClosed} />
+                                                <FInput value={item.responsible} onChange={(v) => updAction(i, { responsible: v })} placeholder="Nombre y cargo" disabled={isClosed} />
                                             </div>
                                             <div>
                                                 <FieldLabel>Fecha límite *</FieldLabel>
-                                                <input
-                                                    type="date"
-                                                    value={item.deadline}
-                                                    onChange={(e) => updateAction(i, { deadline: e.target.value })}
-                                                    disabled={isClosed}
-                                                    className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50"
-                                                />
+                                                <input type="date" value={item.deadline} onChange={(e) => updAction(i, { deadline: e.target.value })} disabled={isClosed}
+                                                    className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50" />
                                             </div>
                                             <div>
                                                 <FieldLabel>Estado</FieldLabel>
-                                                <select
-                                                    value={item.status}
-                                                    onChange={(e) => updateAction(i, { status: e.target.value as ActionItem["status"] })}
-                                                    disabled={isClosed}
-                                                    className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50"
-                                                >
+                                                <select value={item.status} onChange={(e) => updAction(i, { status: e.target.value as ActionItem["status"] })} disabled={isClosed}
+                                                    className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50">
                                                     <option value="pendiente">Pendiente</option>
                                                     <option value="en_curso">En Curso</option>
                                                     <option value="cerrado">Cerrado</option>
@@ -574,54 +567,135 @@ export default function InvestigationPage() {
                                         </div>
                                     </div>
                                 ))}
-
                                 {!isClosed && (
                                     <button onClick={addAction} className="flex items-center gap-2 px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors mt-2">
                                         <Plus className="w-4 h-4" /> Agregar acción
                                     </button>
                                 )}
                             </div>
-
-                            {/* Conclusions */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-6">
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={ChevronRight}>Conclusiones</SectionTitle>
-                                <Textarea
-                                    value={conclusions}
-                                    onChange={(v) => { setConclusions(v); scheduleSave(); }}
-                                    placeholder="Resumen de las causas determinadas, lecciones aprendidas y compromisos de la empresa..."
-                                    rows={5}
-                                    disabled={isClosed}
-                                />
+                                <FTextarea value={conclusions} onChange={(v) => { setConclusions(v); scheduleSave(); }}
+                                    placeholder="Resumen de causas determinadas, lecciones aprendidas y compromisos de la empresa..." rows={5} disabled={isClosed} />
                             </div>
-
-                            {/* Close button */}
+                            {/* Close */}
                             {!isClosed ? (
-                                <div className="bg-[#141824] border border-red-500/20 rounded-2xl p-6">
+                                <div className="bg-[#141824] border border-red-500/20 rounded-2xl p-4 sm:p-6">
                                     <h3 className="text-white font-semibold text-sm mb-1">Cierre de la Investigación</h3>
-                                    <p className="text-[#64748B] text-xs mb-4">
-                                        Al cerrar, el evento queda marcado como <strong className="text-white">"Investigado"</strong> y la investigación queda bloqueada. Asegúrate de haber llenado las causas y definido el plan de acción.
-                                    </p>
-                                    <button
-                                        onClick={handleClose}
-                                        disabled={closing || actionPlan.length === 0}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
+                                    <p className="text-[#64748B] text-xs mb-4">Al cerrar, el evento queda como <strong className="text-white">"Investigado"</strong> y se bloquea la edición.</p>
+                                    <button onClick={handleClose} disabled={closing || actionPlan.length === 0}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                                         {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                                         Cerrar Investigación
                                     </button>
-                                    {actionPlan.length === 0 && (
-                                        <p className="text-amber-400 text-xs mt-2">⚠ Define al menos una acción correctiva antes de cerrar.</p>
-                                    )}
+                                    {actionPlan.length === 0 && <p className="text-amber-400 text-xs mt-2">⚠ Define al menos una acción correctiva antes de cerrar.</p>}
                                 </div>
                             ) : (
-                                <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-6 flex items-center gap-3">
+                                <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 sm:p-6 flex items-center gap-3">
                                     <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0" />
                                     <div>
                                         <p className="text-emerald-400 font-semibold">Investigación cerrada</p>
-                                        <p className="text-emerald-400/60 text-xs">El evento fue marcado como "Investigado" en el sistema.</p>
+                                        <p className="text-emerald-400/60 text-xs">El evento fue marcado como "Investigado".</p>
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* TAB 4: FIRMAS */}
+                    {activeTab === 3 && (
+                        <div className="space-y-4">
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <SectionTitle icon={PenLine}>Firmas Digitales</SectionTitle>
+                                <p className="text-[#64748B] text-xs mb-5">
+                                    Genera un enlace único por firmante. Se envía por WhatsApp o copias el link.
+                                    El firmante firma desde su celular. Las firmas tienen validez de 72 horas.
+                                </p>
+
+                                <div className="space-y-4">
+                                    {SIGNER_ROLES.map(({ role, label, short }) => {
+                                        const existing = sigRequests.find((r) => r.signer_role === role && (r.status === "PENDING" || r.status === "SIGNED"));
+                                        const isSigned = existing?.status === "SIGNED";
+                                        const isLoading = genLoadingRole === role;
+
+                                        return (
+                                            <div key={role} className={`border rounded-2xl p-4 transition-colors ${isSigned ? "bg-emerald-400/5 border-emerald-400/20" : "bg-[#0F1420] border-[#1E2A3B]"
+                                                }`}>
+                                                <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                                                    <div>
+                                                        <p className="text-white font-semibold text-sm">{label}</p>
+                                                        {existing && <Countdown expiresAt={existing.expires_at} />}
+                                                    </div>
+                                                    {existing && <SigBadge status={existing.status} />}
+                                                </div>
+
+                                                {/* Name input */}
+                                                {!isSigned && (
+                                                    <div className="mb-3">
+                                                        <FieldLabel>Nombre del firmante</FieldLabel>
+                                                        <FInput
+                                                            value={signerNames[role]}
+                                                            onChange={(v) => setSignerNames((n) => ({ ...n, [role]: v }))}
+                                                            placeholder={`Nombre del ${short}`}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {isSigned ? (
+                                                    <div className="text-xs text-[#64748B] space-y-0.5">
+                                                        {existing.signer_name && <p>Firmante: <span className="text-white">{existing.signer_name}</span></p>}
+                                                        {existing.signed_at && <p>Firmado: <span className="text-white">{new Date(existing.signed_at).toLocaleString("es-CO")}</span></p>}
+                                                        {existing.gps_lat && <p>GPS: <span className="text-white">{existing.gps_lat.toFixed(4)}, {existing.gps_lng?.toFixed(4)}</span></p>}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button onClick={() => generateSignatureLink(role)} disabled={isLoading}
+                                                            className="flex items-center gap-1.5 px-3 py-2 bg-[#F59E0B] text-black text-xs font-bold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-60">
+                                                            {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PenLine className="w-3.5 h-3.5" />}
+                                                            {existing ? "Regenerar enlace" : "Generar enlace"}
+                                                        </button>
+
+                                                        {existing && (
+                                                            <>
+                                                                <button onClick={() => copyLink(existing.token, existing.id)}
+                                                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white text-xs font-semibold rounded-lg transition-colors">
+                                                                    {copiedId === existing.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                                                    {copiedId === existing.id ? "¡Copiado!" : "Copiar enlace"}
+                                                                </button>
+                                                                <a href={whatsappLink(existing.token, label)} target="_blank" rel="noopener noreferrer"
+                                                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/25 text-xs font-semibold rounded-lg hover:bg-[#25D366]/25 transition-colors">
+                                                                    <Share2 className="w-3.5 h-3.5" />
+                                                                    WhatsApp
+                                                                </a>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* PDF Final */}
+                            <div className={`border rounded-2xl p-4 sm:p-6 ${allSigned ? "bg-[#141824] border-[#1E2A3B]" : "bg-[#0F1420] border-[#1E2A3B] opacity-60"}`}>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <FileText className="w-4 h-4 text-[#F59E0B]" />
+                                    <h3 className="text-white font-semibold text-sm">PDF Final de Investigación</h3>
+                                </div>
+                                <p className="text-[#64748B] text-xs mb-4">
+                                    {allSigned
+                                        ? "Las 3 firmas están completas. Puedes generar el PDF final."
+                                        : `Faltan ${3 - sigRequests.filter((r) => r.status === "SIGNED").length} firma(s) para habilitar el PDF.`}
+                                </p>
+                                <button
+                                    disabled={!allSigned}
+                                    onClick={() => alert("PDF generation coming — implement with @react-pdf/renderer")}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-[#F59E0B] text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                                    <FileText className="w-4 h-4" />
+                                    Generar PDF Final
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
