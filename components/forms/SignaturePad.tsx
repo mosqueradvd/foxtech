@@ -56,8 +56,8 @@ export function SignaturePad({ onChange, error }: SignaturePadProps) {
                     penColor="#F59E0B"
                     onEnd={handleEnd}
                     canvasProps={{
-                        className: "w-full",
-                        style: { height: 160, display: "block" },
+                        className: "w-full cursor-crosshair",
+                        style: { height: 240, display: "block" },
                     }}
                     backgroundColor="transparent"
                 />
