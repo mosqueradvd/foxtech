@@ -21,6 +21,7 @@ import {
     RefreshCw,
     User,
     Download,
+    BarChart2,
 } from "lucide-react";
 
 import { supabase, type Incident, type Company } from "@/lib/supabase";
@@ -103,6 +104,7 @@ export default function DashboardPage() {
         { id: "incidents", label: "Incidentes", icon: AlertTriangle, badge: totalIncidents || undefined, href: "/dashboard" },
         { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard" },
         { id: "companies", label: "Empresas", icon: Building2, href: "/dashboard" },
+        { id: "stats", label: "Estadísticas", icon: BarChart2, href: "/dashboard/stats" },
         { id: "notifications", label: "Notificaciones", icon: Bell, href: "/dashboard/notifications" },
         { id: "exports", label: "Exportaciones", icon: Download, href: "/dashboard/exports" },
         { id: "reports", label: "Reportes PDF", icon: FileText, href: "/dashboard" },
