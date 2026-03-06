@@ -13,11 +13,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, AlertTriangle, Briefcase, ShieldAlert, WifiOff } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Briefcase, ShieldAlert, WifiOff, UserPlus, Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { FormStep } from "@/components/forms/FormStep";
 import { PhotoCapture } from "@/components/forms/PhotoCapture";
 import { SignaturePad } from "@/components/forms/SignaturePad";
 import { Input } from "@/components/ui/Input";
+import { VoiceNarration, type VoiceNarrationValue } from "@/components/forms/VoiceNarration";
 import { createIncidentDraft, saveIncidentDraft } from "@/lib/db";
 import { syncPendingData } from "@/lib/sync";
 
@@ -68,6 +69,13 @@ export default function ReportPage() {
         lng?: number;
         timestamp: string;
     } | null>(null);
+    // Step 2 — Relato de los hechos
+    const [reporterNarrative, setReporterNarrative] = useState<VoiceNarrationValue>({ text: "" });
+    const [witnessName, setWitnessName] = useState("");
+    const [witnessNarrative, setWitnessNarrative] = useState<VoiceNarrationValue>({ text: "" });
+    const [showWitness, setShowWitness] = useState(false);
+    const [showPhoto, setShowPhoto] = useState(false);
+    // Step 3
     const [name, setName] = useState("");
     const [role, setRole] = useState("");
     const [signature, setSignature] = useState<string | null>(null);
@@ -132,6 +140,11 @@ export default function ReportPage() {
                 reported_by_name: name.trim(),
                 reported_by_role: role.trim(),
                 signature_blob: signature ?? undefined,
+                reporter_description: reporterNarrative.text || undefined,
+                reporter_voice_blob: reporterNarrative.audioBlob,
+                witness_name: witnessName.trim() || undefined,
+                witness_description: witnessNarrative.text || undefined,
+                witness_voice_blob: witnessNarrative.audioBlob,
                 sync_status: "pending",
             });
         }
@@ -173,6 +186,11 @@ export default function ReportPage() {
                             setStep(1);
                             setSelectedType(null);
                             setPhotoData(null);
+                            setReporterNarrative({ text: "" });
+                            setWitnessName("");
+                            setWitnessNarrative({ text: "" });
+                            setShowWitness(false);
+                            setShowPhoto(false);
                             setName("");
                             setRole("");
                             setSignature(null);
@@ -250,27 +268,113 @@ export default function ReportPage() {
                 </FormStep>
             )}
 
-            {/* ── STEP 2: Photo + GPS ── */}
+            {/* ── STEP 2: Relato de los Hechos ── */}
             {step === 2 && (
                 <FormStep
                     step={2}
-                    title="Evidencia fotográfica"
+                    title="Relato de los Hechos"
+                    subtitle="Describe lo que ocurrió. Puedes usar voz o escribir directamente."
                     direction={direction}
                     onBack={goBack}
                     onNext={goNext}
                 >
-                    <PhotoCapture
-                        capturedPhoto={photoData?.photoBase64}
-                        onCapture={(data) => {
-                            setPhotoData(data);
-                            autosave({
-                                photo_blob: data.photoBase64,
-                                photo_lat: data.lat,
-                                photo_lng: data.lng,
-                                photo_timestamp: data.timestamp,
-                            });
-                        }}
-                    />
+                    <div className="space-y-5">
+                        {/* Reporter narration */}
+                        <VoiceNarration
+                            label="Tu relato (quien reporta)"
+                            placeholder="Describe con tus palabras qué pasó, cuándo, cómo y dónde…"
+                            value={reporterNarrative}
+                            onChange={(v) => {
+                                setReporterNarrative(v);
+                                autosave({ reporter_description: v.text, reporter_voice_blob: v.audioBlob });
+                            }}
+                        />
+
+                        {/* Witness section */}
+                        <div className="border border-[#1E2A3B] rounded-2xl overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setShowWitness((v) => !v)}
+                                className="w-full flex items-center justify-between px-4 py-3 bg-[#141824] hover:bg-[#1E2A3B]/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <UserPlus className="w-4 h-4 text-[#F59E0B]" />
+                                    <span className="text-white text-sm font-semibold">
+                                        {showWitness ? "Testigo" : "¿Hay testigo? (opcional)"}
+                                    </span>
+                                    {witnessName && (
+                                        <span className="text-[#64748B] text-xs">— {witnessName}</span>
+                                    )}
+                                </div>
+                                {showWitness
+                                    ? <ChevronUp className="w-4 h-4 text-[#64748B]" />
+                                    : <ChevronDown className="w-4 h-4 text-[#64748B]" />}
+                            </button>
+
+                            {showWitness && (
+                                <div className="px-4 pb-4 pt-3 space-y-4 bg-[#0F1420]">
+                                    <div>
+                                        <label className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider block mb-1.5">Nombre del testigo</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Nombre completo del testigo"
+                                            value={witnessName}
+                                            onChange={(e) => {
+                                                setWitnessName(e.target.value);
+                                                autosave({ witness_name: e.target.value });
+                                            }}
+                                            className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-sm placeholder:text-[#334155] outline-none focus:border-[#F59E0B]/50 min-h-[48px]"
+                                        />
+                                    </div>
+                                    <VoiceNarration
+                                        label="Declaración del testigo"
+                                        placeholder="Relato del testigo sobre lo que presenció…"
+                                        value={witnessNarrative}
+                                        onChange={(v) => {
+                                            setWitnessNarrative(v);
+                                            autosave({ witness_description: v.text, witness_voice_blob: v.audioBlob });
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Photo — collapsible */}
+                        <div className="border border-[#1E2A3B] rounded-2xl overflow-hidden">
+                            <button
+                                type="button"
+                                onClick={() => setShowPhoto((v) => !v)}
+                                className="w-full flex items-center justify-between px-4 py-3 bg-[#141824] hover:bg-[#1E2A3B]/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Camera className="w-4 h-4 text-[#F59E0B]" />
+                                    <span className="text-white text-sm font-semibold">Evidencia fotográfica</span>
+                                    {photoData && (
+                                        <span className="text-emerald-400 text-xs">✓ Capturada</span>
+                                    )}
+                                </div>
+                                {showPhoto
+                                    ? <ChevronUp className="w-4 h-4 text-[#64748B]" />
+                                    : <ChevronDown className="w-4 h-4 text-[#64748B]" />}
+                            </button>
+                            {showPhoto && (
+                                <div className="px-4 pb-4 pt-3 bg-[#0F1420]">
+                                    <PhotoCapture
+                                        capturedPhoto={photoData?.photoBase64}
+                                        onCapture={(data) => {
+                                            setPhotoData(data);
+                                            autosave({
+                                                photo_blob: data.photoBase64,
+                                                photo_lat: data.lat,
+                                                photo_lng: data.lng,
+                                                photo_timestamp: data.timestamp,
+                                            });
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </FormStep>
             )}
 

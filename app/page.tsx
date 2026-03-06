@@ -159,7 +159,7 @@ export default function HomePage() {
             </div>
             <div className="text-left z-10">
               <h2 className="text-slate-900 text-3xl font-black leading-none tracking-tight">
-                REPORTAR<br />INCIDENTE
+                REPORTAR<br />INCIDENTE / ACCIDENTE /<br />ENFERMEDAD LABORAL
               </h2>
               <p className="text-slate-900/70 text-sm font-medium mt-1">
                 Registrar nuevo evento de seguridad

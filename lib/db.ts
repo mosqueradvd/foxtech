@@ -79,6 +79,18 @@ export interface LocalIncident {
      * See lib/constants/ansi-charged-days.ts
      */
     charged_day_entries?: string[];
+
+    // ─── Module 1+: Relato de los Hechos (narrative step) ────────────────────
+    /** Written or transcribed description of the event by the reporter */
+    reporter_description?: string;
+    /** base64 webm/ogg audio recorded by the reporter */
+    reporter_voice_blob?: string;
+    /** Witness name (optional) */
+    witness_name?: string;
+    /** Witness description of what they saw */
+    witness_description?: string;
+    /** base64 webm/ogg audio recorded by the witness */
+    witness_voice_blob?: string;
 }
 
 export interface LocalInspection {
