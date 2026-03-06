@@ -105,15 +105,33 @@ export type Event = {
 /** Backward-compatible alias — existing code can keep using Incident */
 export type Incident = Event;
 
+export type InspectionStatus = "abierta" | "cerrada";
+
+export type InspectionActionItem = {
+    id: string;
+    finding_id: string;   // references InspectionItem.id
+    finding_label: string;
+    action: string;
+    responsible: string;
+    deadline: string;
+    status: "pendiente" | "en_curso" | "cerrado";
+    effective?: boolean | null; // evaluación de eficacia
+};
+
 export type Inspection = {
     id: string;
     company_id?: string;
     inspector_name?: string;
     template_name?: string;
+    template_id?: string;
     score_percent?: number;
     items?: InspectionItem[];
     location_name?: string;
+    notes?: string;
+    status?: InspectionStatus;
+    action_plan?: InspectionActionItem[];
     created_at?: string;
+    updated_at?: string;
 };
 
 export type InspectionItem = {
@@ -121,6 +139,8 @@ export type InspectionItem = {
     label: string;
     required: boolean;
     checked: boolean | null; // null = not evaluated
+    observation?: string;    // note on negative findings
+    norm?: string;           // legal reference
 };
 
 // ── Módulo 3 — Investigación del Accidente ────────────────────────────────
