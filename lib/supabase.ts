@@ -179,3 +179,24 @@ export type Investigation = {
     created_at?: string;
     updated_at?: string;
 };
+
+// ── Sistema de Firmas Digitales ────────────────────────────────────────────────
+
+export type SignerRole = "COPASST" | "SUPERVISOR" | "SST_PROFESSIONAL";
+export type SignatureStatus = "PENDING" | "SIGNED" | "EXPIRED";
+
+export type SignatureRequest = {
+    id: string;
+    investigation_id: string;
+    signer_role: SignerRole;
+    signer_name?: string;
+    token: string;
+    expires_at: string;
+    signed_at?: string;
+    signature_url?: string;
+    ip_address?: string;
+    gps_lat?: number;
+    gps_lng?: number;
+    status: SignatureStatus;
+    created_at?: string;
+};
