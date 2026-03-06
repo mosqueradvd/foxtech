@@ -131,14 +131,17 @@ export default function InspectionPage() {
             <div className="px-4 pt-4 space-y-3">
                 <div className="relative">
                     <select value={selectedTemplate.id} onChange={(e) => onTemplateChange(e.target.value)}
-                        className="w-full appearance-none bg-[#252B3B] border border-[#334155] rounded-xl px-4 py-3 text-white text-sm min-h-[48px] outline-none focus:border-[#F59E0B] pr-10">
+                        className="w-full appearance-none bg-[#252B3B] border border-[#334155] rounded-xl px-4 py-3 text-white font-medium text-sm min-h-[48px] outline-none focus:border-[#F59E0B] pr-10">
                         {INSPECTION_TEMPLATES.map((t) => (
-                            <option key={t.id} value={t.id}>{t.icon} {t.name} — {t.norm}</option>
+                            <option key={t.id} value={t.id}>{t.icon} {t.name}</option>
                         ))}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                 </div>
-                <p className="text-[#64748B] text-xs">{selectedTemplate.description}</p>
+                <div className="space-y-1 px-1">
+                    <p className="text-[#F59E0B] text-xs font-bold tracking-wide">Marco Legal: {selectedTemplate.norm}</p>
+                    <p className="text-[#64748B] text-xs leading-relaxed">{selectedTemplate.description}</p>
+                </div>
             </div>
 
             {/* Inspector info */}
