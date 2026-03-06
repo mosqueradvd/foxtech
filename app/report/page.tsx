@@ -150,6 +150,7 @@ export default function ReportPage() {
     const handleSubmit = async () => {
         const newErrors: Record<string, string> = {};
         if (!name.trim()) newErrors.name = "El nombre es requerido";
+        if (!role.trim()) newErrors.role = "El cargo es requerido";
         if (!signature) newErrors.signature = "La firma es requerida";
         if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
@@ -298,6 +299,7 @@ export default function ReportPage() {
                     direction={direction}
                     onBack={goBack}
                     onNext={goNext}
+                    nextDisabled={!(reporterNarrative.text.trim() || reporterNarrative.audioBlob) || !photoData}
                 >
                     <div className="space-y-5">
                         {/* Reporter narration */}
@@ -409,7 +411,7 @@ export default function ReportPage() {
                     onBack={goBack}
                     onNext={handleSubmit}
                     nextLabel="ENVIAR REPORTE"
-                    nextDisabled={submitting}
+                    nextDisabled={submitting || !name.trim() || !role.trim() || !signature}
                 >
                     <div className="space-y-5">
                         <Input
@@ -430,6 +432,7 @@ export default function ReportPage() {
                                 setRole(e.target.value);
                                 autosave({ reported_by_role: e.target.value });
                             }}
+                            error={errors.role}
                         />
                         <SignaturePad
                             onChange={(dataUrl) => {
