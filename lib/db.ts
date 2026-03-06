@@ -30,7 +30,7 @@ export interface LocalIncident {
     company_id?: string;
     reported_by_name?: string;
     reported_by_role?: string;
-    event_type?: "casi_accidente" | "accidente" | "condicion_insegura";
+    event_type?: "casi_accidente" | "accidente_trabajo" | "enfermedad_laboral" | "condicion_insegura" | "impacto_ambiental" | "dano_propiedad" | "accidente";
     description?: string;
     /** base64 JPEG with GPS EXIF embedded — stored locally before upload */
     photo_blob?: string;

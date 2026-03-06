@@ -12,8 +12,12 @@ import { db, type LocalIncident } from "@/lib/db";
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
     casi_accidente: { label: "Casi-Accidente", color: "text-blue-400" },
-    accidente: { label: "Accidente / Lesión", color: "text-red-400" },
+    accidente_trabajo: { label: "Accidente de Trabajo", color: "text-red-400" },
+    enfermedad_laboral: { label: "Enfermedad Laboral", color: "text-purple-400" },
     condicion_insegura: { label: "Condición Insegura", color: "text-amber-400" },
+    impacto_ambiental: { label: "Impacto Ambiental", color: "text-emerald-400" },
+    dano_propiedad: { label: "Daño a la Propiedad", color: "text-orange-400" },
+    accidente: { label: "Accidente de Trabajo", color: "text-red-400" }, // legacy
 };
 
 export default function ReportsListPage() {

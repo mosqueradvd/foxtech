@@ -16,8 +16,12 @@ import { syncPendingData } from "@/lib/sync";
 
 const TYPE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     casi_accidente: { label: "Casi-Accidente", color: "text-blue-400", bg: "bg-blue-900/20 border-blue-700/30" },
-    accidente: { label: "Accidente / Lesión", color: "text-red-400", bg: "bg-red-900/20 border-red-700/30" },
+    accidente_trabajo: { label: "Accidente de Trabajo", color: "text-red-400", bg: "bg-red-900/20 border-red-700/30" },
+    enfermedad_laboral: { label: "Enfermedad Laboral", color: "text-purple-400", bg: "bg-purple-900/20 border-purple-700/30" },
     condicion_insegura: { label: "Condición Insegura", color: "text-amber-400", bg: "bg-amber-900/20 border-amber-700/30" },
+    impacto_ambiental: { label: "Impacto Ambiental", color: "text-emerald-400", bg: "bg-emerald-900/20 border-emerald-700/30" },
+    dano_propiedad: { label: "Daño a la Propiedad", color: "text-orange-400", bg: "bg-orange-900/20 border-orange-700/30" },
+    accidente: { label: "Accidente de Trabajo", color: "text-red-400", bg: "bg-red-900/20 border-red-700/30" }, // legacy
 };
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value?: string }) {

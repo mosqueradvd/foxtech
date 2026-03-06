@@ -22,7 +22,7 @@ import { VoiceNarration, type VoiceNarrationValue } from "@/components/forms/Voi
 import { createIncidentDraft, saveIncidentDraft } from "@/lib/db";
 import { syncPendingData } from "@/lib/sync";
 
-type EventType = "casi_accidente" | "accidente" | "condicion_insegura";
+type EventType = "casi_accidente" | "accidente_trabajo" | "enfermedad_laboral" | "condicion_insegura" | "impacto_ambiental" | "dano_propiedad";
 type Step = 1 | 2 | 3;
 
 const eventTypes: {
@@ -40,11 +40,18 @@ const eventTypes: {
             iconBg: "bg-blue-900/50",
         },
         {
-            id: "accidente",
-            title: "Accidente / Lesión",
-            subtitle: "Daño físico o lesiones personales",
+            id: "accidente_trabajo",
+            title: "Accidente de Trabajo",
+            subtitle: "Ocurrió una lesión o daño físico",
             icon: <Briefcase className="w-5 h-5 text-red-400" />,
             iconBg: "bg-red-900/50",
+        },
+        {
+            id: "enfermedad_laboral",
+            title: "Enfermedad Laboral",
+            subtitle: "Síntoma o diagnóstico por causa del trabajo",
+            icon: <ShieldAlert className="w-5 h-5 text-purple-400" />,
+            iconBg: "bg-purple-900/40",
         },
         {
             id: "condicion_insegura",
@@ -52,6 +59,20 @@ const eventTypes: {
             subtitle: "Riesgo potencial en el área",
             icon: <ShieldAlert className="w-5 h-5 text-amber-400" />,
             iconBg: "bg-amber-900/40",
+        },
+        {
+            id: "impacto_ambiental",
+            title: "Impacto Ambiental",
+            subtitle: "Derrame, contaminación o daño al entorno",
+            icon: <ShieldAlert className="w-5 h-5 text-emerald-400" />,
+            iconBg: "bg-emerald-900/40",
+        },
+        {
+            id: "dano_propiedad",
+            title: "Daño a la Propiedad",
+            subtitle: "Daño a equipos, vehículos o instalaciones",
+            icon: <Briefcase className="w-5 h-5 text-orange-400" />,
+            iconBg: "bg-orange-900/40",
         },
     ];
 

@@ -100,7 +100,7 @@ export default function HomePage() {
   const activity = [
     ...incidents.map((inc) => ({
       id: inc.id,
-      title: ({ casi_accidente: "Casi-Accidente", accidente: "Accidente / Lesión", condicion_insegura: "Condición Insegura" } as Record<string, string>)[inc.event_type ?? ""] ?? "Incidente",
+      title: ({ casi_accidente: "Casi-Accidente", accidente_trabajo: "Accidente de Trabajo", enfermedad_laboral: "Enfermedad Laboral", condicion_insegura: "Condición Insegura", impacto_ambiental: "Impacto Ambiental", dano_propiedad: "Daño a la Propiedad", accidente: "Accidente de Trabajo" } as Record<string, string>)[inc.event_type ?? ""] ?? "Incidente",
       subtitle: inc.description?.slice(0, 40) || inc.reporter_description?.slice(0, 40) || undefined,
       status: inc.sync_status,
       icon: "warning" as const,
