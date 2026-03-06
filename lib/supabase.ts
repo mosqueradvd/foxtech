@@ -122,3 +122,60 @@ export type InspectionItem = {
     required: boolean;
     checked: boolean | null; // null = not evaluated
 };
+
+// ── Módulo 3 — Investigación del Accidente ────────────────────────────────
+
+export interface ImmediateCause {
+    type: "acto" | "condicion";
+    description: string;
+}
+
+export interface BasicCause {
+    type: "personal" | "trabajo";
+    description: string;
+}
+
+export interface ActionItem {
+    action: string;
+    responsible: string;
+    deadline: string;   // ISO date string YYYY-MM-DD
+    status: "pendiente" | "en_curso" | "cerrado";
+}
+
+export type InvestigationStatus =
+    | "en_proceso"
+    | "plan_accion_definido"
+    | "en_seguimiento"
+    | "cerrado";
+
+export type Investigation = {
+    id: string;
+    incident_id: string;
+    company_id?: string;
+    status: InvestigationStatus;
+
+    // Team
+    investigator_sst?: string;
+    investigator_jefe?: string;
+    investigator_copasst?: string;
+    investigators_extra?: string;
+
+    // Narrative
+    event_narrative?: string;
+
+    // Causes (Res. 1401/2007)
+    immediate_causes: ImmediateCause[];
+    basic_causes: BasicCause[];
+    control_failures?: string;
+
+    // Action plan
+    action_plan: ActionItem[];
+
+    // Closure
+    conclusions?: string;
+    closed_by?: string;
+    closed_at?: string;
+
+    created_at?: string;
+    updated_at?: string;
+};

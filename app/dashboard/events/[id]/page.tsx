@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
     ArrowLeft, ArrowRight, Check, Save, User, MapPin, Activity,
-    AlertTriangle, Image as ImageIcon, FileText, Loader2, ChevronRight
+    AlertTriangle, Image as ImageIcon, FileText, Loader2, ChevronRight, ClipboardList
 } from "lucide-react";
 import { supabase, type Event, type Worker } from "@/lib/supabase";
 import { WorkerSelector } from "@/components/module2/WorkerSelector";
@@ -679,6 +679,45 @@ export default function EventCharacterizationPage() {
                             </div>
                         ))}
                     </div>
+
+                    {/* Investigation entry point — only when classified */}
+                    {event.classification_status === "classified" || event.classification_status === "investigated" ? (
+                        <div className={`border rounded-2xl p-4 space-y-3 ${event.classification_status === "investigated"
+                                ? "bg-emerald-900/20 border-emerald-700/30"
+                                : "bg-[#252B3B] border-[#334155]"
+                            }`}>
+                            <div className="flex items-center gap-2">
+                                <ClipboardList className={`w-4 h-4 ${event.classification_status === "investigated" ? "text-emerald-400" : "text-[#F59E0B]"
+                                    }`} />
+                                <p className="text-white font-bold text-xs uppercase tracking-wider">
+                                    Investigación del Accidente
+                                </p>
+                            </div>
+                            {event.classification_status === "investigated" ? (
+                                <>
+                                    <p className="text-emerald-400 text-xs">✓ Investigación completada</p>
+                                    <button
+                                        onClick={() => router.push(`/dashboard/events/${eventId}/investigation`)}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-900/30 border border-emerald-700/30 text-emerald-400 rounded-xl text-sm font-semibold hover:bg-emerald-900/50 transition-colors"
+                                    >
+                                        Ver Investigación
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-[#64748B] text-xs">Res. 1401/2007 — plazo 15 días hábiles desde el evento.</p>
+                                    <button
+                                        onClick={() => router.push(`/dashboard/events/${eventId}/investigation`)}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-[#F59E0B] text-black rounded-xl text-sm font-bold hover:bg-amber-400 transition-colors"
+                                    >
+                                        <ClipboardList className="w-4 h-4" />
+                                        Iniciar Investigación
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>
