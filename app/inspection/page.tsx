@@ -8,16 +8,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, ChevronDown, MinusCircle } from "lucide-react";
 import { db, generateId } from "@/lib/db";
 import { syncPendingData } from "@/lib/sync";
-import { INSPECTION_TEMPLATES, type InspectionTemplate, type TemplateItem } from "@/lib/inspection-templates";
-
-type CheckState = boolean | null;
+import { INSPECTION_TEMPLATES, type InspectionTemplate, type TemplateItem, type CheckState } from "@/lib/inspection-templates";
+import { PhotoCapture } from "@/components/forms/PhotoCapture";
 
 interface CheckItem extends TemplateItem {
     checked: CheckState;
     observation: string;
+    photo_blob?: string;
+    action_plan?: {
+        description: string;
+        responsible_name: string;
+        deadline: string;
+    };
 }
 
 export default function InspectionPage() {
@@ -41,11 +46,12 @@ export default function InspectionPage() {
     };
 
     // Score calculation
+    const applicableItems = items.filter((i) => i.checked !== "na");
     const evaluated = items.filter((i) => i.checked !== null);
     const passed = items.filter((i) => i.checked === true);
-    const score = evaluated.length > 0 ? Math.round((passed.length / items.length) * 100) : 0;
+    const score = applicableItems.length > 0 ? Math.round((passed.length / applicableItems.length) * 100) : 0;
 
-    const toggle = (id: string, value: boolean) => {
+    const toggle = (id: string, value: CheckState) => {
         setItems((prev) =>
             prev.map((item) =>
                 item.id === id ? { ...item, checked: item.checked === value ? null : value } : item
@@ -57,6 +63,22 @@ export default function InspectionPage() {
         setItems((prev) => prev.map((item) => item.id === id ? { ...item, observation: text } : item));
     };
 
+    const updateActionPlan = (id: string, field: 'description' | 'responsible_name' | 'deadline', value: string) => {
+        setItems((prev) => prev.map((item) => {
+            if (item.id === id) {
+                const action_plan = item.action_plan || { description: '', responsible_name: '', deadline: '' };
+                return { ...item, action_plan: { ...action_plan, [field]: value } };
+            }
+            return item;
+        }));
+    };
+
+    const updatePhoto = (id: string, photo_blob: string | null) => {
+        setItems((prev) => prev.map((item) =>
+            item.id === id ? { ...item, photo_blob: photo_blob || undefined } : item
+        ));
+    };
+
     // Auto-save to Dexie on every change
     useEffect(() => {
         if (evaluated.length === 0) return;
@@ -66,8 +88,8 @@ export default function InspectionPage() {
             template_name: selectedTemplate.name,
             template_id: selectedTemplate.id,
             score_percent: score,
-            items: items.map(({ id, label, required, checked, observation, norm }) => ({
-                id, label, required, checked, observation, norm,
+            items: items.map(({ id, label, required, checked, observation, norm, photo_blob, action_plan }) => ({
+                id, label, required, checked, observation, norm, photo_blob, action_plan
             })),
             location_name: locationName || undefined,
             sync_status: "pending",
@@ -163,7 +185,7 @@ export default function InspectionPage() {
                     <div key={item.id}
                         className={[
                             "bg-[#252B3B] border rounded-xl overflow-hidden",
-                            item.checked === true ? "border-green-700/50" : item.checked === false ? "border-red-700/50" : "border-[#334155]",
+                            item.checked === true ? "border-green-700/50" : item.checked === false ? "border-red-700/50" : item.checked === "na" ? "border-gray-600/50" : "border-[#334155]",
                         ].join(" ")}
                     >
                         <div className="flex items-center gap-3 px-4 py-3">
@@ -183,20 +205,55 @@ export default function InspectionPage() {
                                     className={`min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-all ${item.checked === false ? "bg-red-900/50 border border-red-700" : "bg-[#2E3547] border border-[#334155]"}`}>
                                     <XCircle className={`w-5 h-5 ${item.checked === false ? "text-red-400" : "text-[#64748B]"}`} />
                                 </button>
+                                <button onClick={() => toggle(item.id, "na")}
+                                    className={`min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-all ${item.checked === "na" ? "bg-gray-700/50 border border-gray-500" : "bg-[#2E3547] border border-[#334155]"}`}>
+                                    <MinusCircle className={`w-5 h-5 ${item.checked === "na" ? "text-gray-300" : "text-[#64748B]"}`} />
+                                </button>
                             </div>
                         </div>
-                        {/* Observation field — only visible on negative findings */}
+                        {/* Observation field, Photo & Action Plan — only visible on negative findings */}
                         {item.checked === false && (
-                            <div className="px-4 pb-3">
-                                <textarea
-                                    ref={(el) => { obsRefs.current[item.id] = el; }}
-                                    rows={2}
-                                    placeholder="Observación (hallazgo)..."
-                                    value={item.observation}
-                                    onChange={(e) => setObs(item.id, e.target.value)}
-                                    onFocus={() => obsRefs.current[item.id]?.scrollIntoView({ behavior: "smooth", block: "center" })}
-                                    className="w-full bg-[#1A1F2E] border border-[#334155] rounded-lg px-3 py-2 text-white text-xs placeholder:text-[#334155] outline-none focus:border-[#F59E0B] resize-none"
-                                />
+                            <div className="px-4 pb-4 space-y-4">
+                                <div>
+                                    <label className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider block mb-1.5">Observación del Hallazgo</label>
+                                    <textarea
+                                        ref={(el) => { obsRefs.current[item.id] = el; }}
+                                        rows={2}
+                                        placeholder="Describa la desviación encontrada..."
+                                        value={item.observation}
+                                        onChange={(e) => setObs(item.id, e.target.value)}
+                                        onFocus={() => obsRefs.current[item.id]?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                                        className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-xs placeholder:text-[#334155] outline-none focus:border-[#F59E0B] resize-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider block mb-1.5">Evidencia Fotográfica</label>
+                                    <div className="border border-[#1E2A3B] bg-[#0F1420] rounded-xl overflow-hidden p-3">
+                                        <PhotoCapture
+                                            capturedPhoto={item.photo_blob}
+                                            onCapture={(data) => updatePhoto(item.id, data.photoBase64)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="p-3 bg-[#141824] rounded-xl border border-[#334155] space-y-3">
+                                    <p className="text-xs font-bold text-[#F59E0B] flex items-center gap-1.5">— Plan de Acción <span>(Opcional)</span></p>
+                                    <input type="text" placeholder="¿Qué acción correctiva se va a tomar?"
+                                        value={item.action_plan?.description || ''}
+                                        onChange={(e) => updateActionPlan(item.id, 'description', e.target.value)}
+                                        className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] outline-none focus:border-[#F59E0B] min-h-[44px]" />
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="Responsable"
+                                            value={item.action_plan?.responsible_name || ''}
+                                            onChange={(e) => updateActionPlan(item.id, 'responsible_name', e.target.value)}
+                                            className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] outline-none focus:border-[#F59E0B] min-h-[44px]" />
+                                        <input type="date"
+                                            value={item.action_plan?.deadline || ''}
+                                            onChange={(e) => updateActionPlan(item.id, 'deadline', e.target.value)}
+                                            className="w-[140px] flex-shrink-0 bg-[#1A1F2E] border border-[#334155] rounded-xl px-3 py-2 text-white text-sm placeholder:text-[#334155] appearance-none outline-none focus:border-[#F59E0B] min-h-[44px]" />
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

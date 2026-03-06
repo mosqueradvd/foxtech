@@ -141,6 +141,44 @@ async function syncInspections(): Promise<void> {
 
     for (const inspection of pending) {
         try {
+            // Upload photos for failed items
+            let itemsUpdated = false;
+            const syncedItems = await Promise.all(
+                (inspection.items || []).map(async (item) => {
+                    if (item.photo_blob && !item.photo_url) {
+                        try {
+                            const res = await fetch(item.photo_blob);
+                            const blob = await res.blob();
+                            const fileName = `inspections/${inspection.id}/${item.id}.jpg`;
+
+                            const { error } = await supabase.storage
+                                .from("incident-photos")
+                                .upload(fileName, blob, { contentType: "image/jpeg", upsert: true });
+
+                            if (!error) {
+                                const { data } = supabase.storage.from("incident-photos").getPublicUrl(fileName);
+                                itemsUpdated = true;
+                                return { ...item, photo_url: data.publicUrl };
+                            }
+                        } catch (err) {
+                            console.warn("[FOXTECH] Inspection photo upload failed:", err);
+                        }
+                    }
+                    return item;
+                })
+            );
+
+            // Write back URLs to Dexie immediately
+            if (itemsUpdated) {
+                await db.inspections.update(inspection.id, { items: syncedItems });
+            }
+
+            // Strip the base64 photo_blob so we don't send mega-strings to Postgres
+            const dbItems = syncedItems.map((item) => {
+                const { photo_blob, ...rest } = item;
+                return rest;
+            });
+
             const { error } = await supabase.from("inspections").upsert(
                 {
                     id: inspection.id,
@@ -148,7 +186,7 @@ async function syncInspections(): Promise<void> {
                     inspector_name: inspection.inspector_name || null,
                     template_name: inspection.template_name || null,
                     score_percent: inspection.score_percent ?? null,
-                    items: inspection.items || [],
+                    items: dbItems,
                     location_name: inspection.location_name || null,
                     created_at: inspection.created_at,
                 },

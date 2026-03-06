@@ -104,9 +104,16 @@ export interface LocalInspection {
         id: string;
         label: string;
         required: boolean;
-        checked: boolean | null;
+        checked: boolean | 'na' | null;
         observation?: string;    // NEW: inspector note on negative finding
         norm?: string;           // NEW: legal reference
+        photo_blob?: string;     // local base64 photo
+        photo_url?: string;      // remote storage URL
+        action_plan?: {
+            description: string;
+            responsible_name: string;
+            deadline: string;
+        };
     }>;
     location_name?: string;
     sync_status: "pending" | "synced" | "error";

@@ -4,7 +4,7 @@
  * Each template maps to a legal framework and has specific checklist items.
  */
 
-export type CheckState = boolean | null;
+export type CheckState = boolean | 'na' | null;
 
 export interface TemplateItem {
     id: string;
