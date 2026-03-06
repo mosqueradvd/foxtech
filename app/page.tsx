@@ -100,10 +100,8 @@ export default function HomePage() {
   const activity = [
     ...incidents.map((inc) => ({
       id: inc.id,
-      title: inc.event_type
-        ? { casi_accidente: "Casi-Accidente", accidente: "Accidente/Lesión", condicion_insegura: "Condición Insegura" }[inc.event_type] ?? "Incidente"
-        : "Reporte Pendiente",
-      subtitle: inc.description?.slice(0, 40) ?? "Sin descripción",
+      title: ({ casi_accidente: "Casi-Accidente", accidente: "Accidente / Lesión", condicion_insegura: "Condición Insegura" } as Record<string, string>)[inc.event_type ?? ""] ?? "Incidente",
+      subtitle: inc.description?.slice(0, 40) || inc.reporter_description?.slice(0, 40) || undefined,
       status: inc.sync_status,
       icon: "warning" as const,
     })),
@@ -158,7 +156,7 @@ export default function HomePage() {
               <Zap className="w-7 h-7 text-white fill-white" />
             </div>
             <div className="text-left z-10">
-              <h2 className="text-slate-900 text-3xl font-black leading-none tracking-tight">
+              <h2 className="text-slate-900 font-black leading-tight tracking-tight" style={{ fontSize: 'clamp(1rem, 5.5vw, 1.875rem)' }}>
                 REPORTAR<br />INCIDENTE / ACCIDENTE /<br />ENFERMEDAD LABORAL
               </h2>
               <p className="text-slate-900/70 text-sm font-medium mt-1">
@@ -207,7 +205,7 @@ export default function HomePage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-bold text-lg">Actividad Reciente</h3>
-            <button className="text-[#F59E0B] text-sm font-semibold" onClick={() => router.push("/report")}>
+            <button className="text-[#F59E0B] text-sm font-semibold" onClick={() => router.push("/reports")}>
               Ver todo
             </button>
           </div>
@@ -215,20 +213,23 @@ export default function HomePage() {
           {/* Static sample items for demo — will be replaced by live data once user creates records */}
           {activity.length > 0 ? (
             activity.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 bg-[#252B3B] border border-[#334155] rounded-xl p-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${item.icon === "check" ? "bg-slate-700" : "bg-amber-900/40"}`}>
-                  {item.icon === "check" ? <CheckCircle className="w-5 h-5 text-slate-400" /> : <AlertTriangle className="w-5 h-5 text-amber-500" />}
+              <button key={item.id} onClick={() => router.push(`/reports/${item.id}`)}
+                className="w-full text-left flex items-center gap-4 bg-[#252B3B] border border-[#334155] rounded-xl p-4 active:scale-[0.99] hover:border-[#F59E0B]/20 transition-all">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${item.icon === "check" ? "bg-slate-700" : item.status === "pending" ? "bg-amber-900/40" : "bg-slate-700"}`}>
+                  {item.icon === "check" ? <CheckCircle className="w-5 h-5 text-slate-400" /> : <AlertTriangle className={`w-5 h-5 ${item.status === "pending" ? "text-amber-500" : "text-slate-400"}`} />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center gap-2">
                     <p className="text-white font-semibold text-sm truncate">{item.title}</p>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${item.status === "synced" ? "bg-green-900/40 text-green-400" : "bg-amber-900/40 text-amber-400"}`}>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded flex-shrink-0 ${item.status === "synced" ? "bg-green-900/40 text-green-400" : "bg-amber-900/40 text-amber-400"}`}>
                       {item.status === "synced" ? "SINCRONIZADO" : "PENDIENTE"}
                     </span>
                   </div>
-                  <p className="text-[#64748B] text-xs truncate mt-0.5">{item.subtitle}</p>
+                  {item.subtitle && (
+                    <p className="text-[#64748B] text-xs truncate mt-0.5">{item.subtitle}</p>
+                  )}
                 </div>
-              </div>
+              </button>
             ))
           ) : (
             // Static demo items matching Stitch design
