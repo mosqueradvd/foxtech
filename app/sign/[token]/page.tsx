@@ -29,6 +29,7 @@ export default function SignPage() {
     const [companyName, setCompanyName] = useState<string>("");
     const [agreed, setAgreed] = useState(false);
     const [isEmpty, setIsEmpty] = useState(true);
+    const [showEmptyWarning, setShowEmptyWarning] = useState(false);
     const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
     const [error, setError] = useState<string>("");
 
@@ -92,7 +93,13 @@ export default function SignPage() {
 
     // ── Submit signature ────────────────────────────────────────────────────
     const handleSubmit = useCallback(async () => {
-        if (!sigRequest || isEmpty || !agreed) return;
+        // Double-check: validate directly from canvas ref, not just React state
+        const canvasEmpty = sigRef.current?.isEmpty() ?? true;
+        if (!sigRequest || canvasEmpty || !agreed) {
+            if (canvasEmpty) setShowEmptyWarning(true);
+            return;
+        }
+        setShowEmptyWarning(false);
         setState("submitting");
         setError("");
 
@@ -212,7 +219,12 @@ export default function SignPage() {
                             <RotateCcw className="w-3 h-3" /> Limpiar
                         </button>
                     </div>
-                    <div className="bg-white rounded-2xl overflow-hidden touch-none" style={{ minHeight: 300 }}>
+                    <div
+                        className={["bg-white rounded-2xl overflow-hidden touch-none border-2 transition-colors",
+                            showEmptyWarning ? "border-red-400" : "border-transparent",
+                        ].join(" ")}
+                        style={{ minHeight: 300 }}
+                    >
                         <SignatureCanvas
                             ref={sigRef}
                             canvasProps={{
@@ -222,11 +234,18 @@ export default function SignPage() {
                             minWidth={2}
                             maxWidth={4}
                             velocityFilterWeight={0.7}
-                            onEnd={() => setIsEmpty(sigRef.current?.isEmpty() ?? true)}
+                            onEnd={() => {
+                                setIsEmpty(sigRef.current?.isEmpty() ?? true);
+                                setShowEmptyWarning(false);
+                            }}
                         />
                     </div>
-                    {isEmpty && (
+                    {showEmptyWarning ? (
+                        <p className="text-red-400 text-xs text-center mt-2 font-semibold">✏️ Dibuja tu firma antes de confirmar</p>
+                    ) : isEmpty ? (
                         <p className="text-[#64748B] text-xs text-center mt-2">👆 Dibuja tu firma con el dedo o aguja</p>
+                    ) : (
+                        <p className="text-emerald-400 text-xs text-center mt-2">✓ Firma lista</p>
                     )}
                 </div>
 
@@ -279,7 +298,7 @@ export default function SignPage() {
                 {/* Submit button */}
                 <button
                     onClick={handleSubmit}
-                    disabled={isEmpty || !agreed || state === "submitting"}
+                    disabled={state === "submitting"}
                     className="w-full py-4 bg-[#F59E0B] text-black font-bold text-base rounded-2xl hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                     {state === "submitting" ? (
