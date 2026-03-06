@@ -116,6 +116,7 @@ export type InspectionActionItem = {
     deadline: string;
     status: "pendiente" | "en_curso" | "cerrado";
     effective?: boolean | null; // evaluación de eficacia
+    voice_url?: string; // audio memo url
 };
 
 export type Inspection = {
@@ -141,6 +142,13 @@ export type InspectionItem = {
     checked: boolean | null; // null = not evaluated
     observation?: string;    // note on negative findings
     norm?: string;           // legal reference
+    photo_url?: string;
+    action_plan?: {
+        description: string;
+        responsible_name: string;
+        deadline: string;
+        voice_url?: string;
+    };
 };
 
 // ── Módulo 3 — Investigación del Accidente ────────────────────────────────

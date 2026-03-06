@@ -81,7 +81,37 @@ export default function InspectionDetailPage() {
         if (data) {
             const insp = data as Inspection;
             setInspection(insp);
-            setActionPlan(insp.action_plan ?? []);
+
+            let loadedActions = insp.action_plan ?? [];
+            let needsSave = false;
+
+            // Seed missing action plans from the item-level action_plan (mobile app format)
+            if (insp.items) {
+                insp.items.forEach(item => {
+                    if (item.checked === false && item.action_plan && !loadedActions.some(a => a.finding_id === item.id)) {
+                        loadedActions.push({
+                            id: crypto.randomUUID(),
+                            finding_id: item.id,
+                            finding_label: item.label,
+                            action: item.action_plan.description,
+                            responsible: item.action_plan.responsible_name,
+                            deadline: item.action_plan.deadline,
+                            status: "pendiente",
+                            effective: null,
+                            voice_url: item.action_plan.voice_url
+                        });
+                        needsSave = true;
+                    }
+                });
+            }
+
+            setActionPlan(loadedActions);
+
+            if (needsSave && insp.status !== "cerrada") {
+                // Ensure the db correctly knows about the migrated items so they persist
+                supabase.from("inspections").update({ action_plan: loadedActions }).eq("id", id).then(({ error }) => { if (error) console.warn(error); });
+            }
+
             if (insp.company_id) {
                 const { data: co } = await supabase.from("companies").select("*").eq("id", insp.company_id).maybeSingle();
                 if (co) setCompany(co as Company);
@@ -251,8 +281,13 @@ export default function InspectionDetailPage() {
                                                 {item.observation && (
                                                     <p className="text-[#64748B] text-xs mt-1 italic">"{item.observation}"</p>
                                                 )}
+                                                {item.photo_url && (
+                                                    <a href={item.photo_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-2">
+                                                        <img src={item.photo_url} alt="Evidencia" className="h-16 w-16 object-cover rounded-lg border border-[#1E2A3B] hover:opacity-80 transition-opacity" />
+                                                    </a>
+                                                )}
                                                 {item.norm && (
-                                                    <p className="text-[#334155] text-xs mt-0.5">{item.norm}</p>
+                                                    <p className="text-[#334155] text-xs mt-1.5">{item.norm}</p>
                                                 )}
                                             </div>
                                             {action ? (
@@ -277,7 +312,12 @@ export default function InspectionDetailPage() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <div className="sm:col-span-2">
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Acción correctiva *</label>
-                                                        <FInput value={action.action} onChange={(v) => updateAction(action.id, { action: v })} placeholder="Describe la acción a tomar..." disabled={isClosed} />
+                                                        <div className="space-y-2">
+                                                            <FInput value={action.action} onChange={(v) => updateAction(action.id, { action: v })} placeholder="Describe la acción a tomar..." disabled={isClosed} />
+                                                            {action.voice_url && (
+                                                                <audio src={action.voice_url} controls className="h-8 max-w-full" />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Responsable *</label>
