@@ -102,7 +102,7 @@ export default function DashboardPage() {
     const navItems = [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
         { id: "incidents", label: "Incidentes", icon: AlertTriangle, badge: totalIncidents || undefined, href: "/dashboard" },
-        { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard" },
+        { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard/inspections" },
         { id: "companies", label: "Empresas", icon: Building2, href: "/dashboard" },
         { id: "investigations", label: "Investigaciones", icon: Search, href: "/dashboard/investigations" },
         { id: "stats", label: "Estadísticas", icon: BarChart2, href: "/dashboard/stats" },

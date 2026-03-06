@@ -86,12 +86,15 @@ export interface LocalInspection {
     company_id?: string;
     inspector_name?: string;
     template_name?: string;
+    template_id?: string;        // NEW: normative template key
     score_percent?: number;
     items?: Array<{
         id: string;
         label: string;
         required: boolean;
         checked: boolean | null;
+        observation?: string;    // NEW: inspector note on negative finding
+        norm?: string;           // NEW: legal reference
     }>;
     location_name?: string;
     sync_status: "pending" | "synced" | "error";
