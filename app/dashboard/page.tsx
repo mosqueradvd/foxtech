@@ -29,6 +29,12 @@ import { KPICard } from "@/components/dashboard/KPICard";
 import { IncidentRow } from "@/components/dashboard/IncidentRow";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StatusVariant } from "@/components/ui/StatusBadge";
+import dynamic from "next/dynamic";
+
+const IncidentMap = dynamic(() => import("@/components/dashboard/IncidentMap"), {
+    ssr: false,
+    loading: () => <div className="flex-1 flex items-center justify-center bg-[#1A2538] text-[#64748B] text-xs">Cargando mapa...</div>
+});
 
 // Enriched incident with company info for display
 type EnrichedIncident = Incident & {
@@ -111,7 +117,19 @@ export default function DashboardPage() {
         { id: "reports", label: "Reportes PDF", icon: FileText, href: "/dashboard" },
     ];
 
-
+    const mapIncidents = (filtered.length > 0 ? filtered : demoRows).map(inc => {
+        // Enforce fallback location in Colombia if missing GPS
+        const incAny = inc as any;
+        const lat = incAny.photo_lat || incAny.lat || (4.0 + Math.random() * 6);
+        const lng = incAny.photo_lng || incAny.lng || (-76.0 + Math.random() * 4);
+        return {
+            id: incAny.id || String(Math.random()),
+            lat,
+            lng,
+            type: incAny.event_type || incAny.type || "Desconocido",
+            company: incAny.company_name || incAny.company || "Duflo",
+        };
+    });
 
     return (
         <div className="flex h-screen bg-[#1A1F2E] overflow-hidden">
@@ -328,26 +346,9 @@ export default function DashboardPage() {
                                 </div>
                             </div>
 
-                            {/* Map placeholder with incident dots */}
-                            <div className="flex-1 relative bg-[#1A2538] min-h-[260px] overflow-hidden">
-                                {/* Grid lines for visual depth */}
-                                <svg className="absolute inset-0 w-full h-full opacity-10" xmlns="http://www.w3.org/2000/svg">
-                                    <defs>
-                                        <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
-                                            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#64748B" strokeWidth="0.5" />
-                                        </pattern>
-                                    </defs>
-                                    <rect width="100%" height="100%" fill="url(#grid)" />
-                                </svg>
-
-                                {/* Incident dots — matching Stitch design */}
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-[#334155] text-xs font-mono">Colombia — Bogotá</span>
-                                </div>
-                                {/* Dot positions */}
-                                <div className="absolute w-3 h-3 rounded-full bg-amber-400 border-2 border-amber-300 shadow-lg shadow-amber-400/50" style={{ top: "38%", left: "65%" }} title="Casi Accidente" />
-                                <div className="absolute w-3 h-3 rounded-full bg-slate-400 border-2 border-slate-300 shadow-lg" style={{ top: "60%", left: "45%" }} title="Condición Insegura" />
-                                <div className="absolute w-3 h-3 rounded-full bg-red-500 border-2 border-red-400 shadow-lg shadow-red-500/50" style={{ top: "72%", left: "72%" }} title="Accidente" />
+                            {/* Interactive Map from react-leaflet */}
+                            <div className="flex-1 relative bg-[#1A2538] min-h-[260px] overflow-hidden" style={{ zIndex: 0 }}>
+                                <IncidentMap incidents={mapIncidents} />
                             </div>
 
                             {/* Legend */}
@@ -371,11 +372,11 @@ export default function DashboardPage() {
     );
 }
 
-// Demo rows for empty state (matching Stitch design exactly)
+// Demo rows for empty state (matching Stitch design exactly), enriched with lat/lang
 const demoRows = [
-    { company: "Acero Norte S.A.", location: "Planta B - Zona Carga", type: "casi_accidente", time: "10:30 AM", status: "synced" },
-    { company: "Logística FastTrack", location: "Almacén Central", type: "condicion_insegura", time: "09:15 AM", status: "pending" },
-    { company: "Constructora Vía", location: "Obra #452", type: "accidente", time: "Ayer", status: "synced" },
-    { company: "Minera El Roble", location: "Túnel Sector 4", type: "casi_accidente", time: "Ayer", status: "synced" },
-    { company: "Plásticos del Sur", location: "Planta Extrusión", type: "condicion_insegura", time: "2 días", status: "error" },
+    { company: "Acero Norte S.A.", location: "Planta B - Zona Carga", type: "casi_accidente", time: "10:30 AM", status: "synced", lat: 4.6097, lng: -74.0817 }, // Bogota
+    { company: "Logística FastTrack", location: "Almacén Central", type: "condicion_insegura", time: "09:15 AM", status: "pending", lat: 6.2442, lng: -75.5812 }, // Medellin
+    { company: "Constructora Vía", location: "Obra #452", type: "accidente", time: "Ayer", status: "synced", lat: 3.4516, lng: -76.5320 }, // Cali
+    { company: "Minera El Roble", location: "Túnel Sector 4", type: "casi_accidente", time: "Ayer", status: "synced", lat: 5.0689, lng: -75.5174 }, // Manizales
+    { company: "Plásticos del Sur", location: "Planta Extrusión", type: "condicion_insegura", time: "2 días", status: "error", lat: 10.9685, lng: -74.7813 }, // Barranquilla
 ];
