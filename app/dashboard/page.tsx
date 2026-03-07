@@ -65,7 +65,7 @@ export default function DashboardPage() {
         const companiesMap = Object.fromEntries((compData ?? []).map((c) => [c.id, c]));
         const enriched = (incData ?? []).map((inc: Incident) => ({
             ...inc,
-            company_name: companiesMap[inc.company_id ?? ""]?.name ?? "—",
+            company_name: companiesMap[inc.company_id ?? ""]?.name ?? "Duflo",
             company_location: companiesMap[inc.company_id ?? ""]?.location ?? "",
         }));
 
