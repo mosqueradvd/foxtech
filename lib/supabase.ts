@@ -29,6 +29,7 @@ export type Worker = {
     full_name: string;
     cedula?: string;
     eps?: string;
+    arl?: string;
     birth_date?: string;
     sex?: "M" | "F" | "Otro";
     education_level?: string;

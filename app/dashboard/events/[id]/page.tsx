@@ -487,7 +487,7 @@ export default function EventCharacterizationPage() {
                 worker_birth_date: worker.birth_date,
                 worker_sex: worker.sex,
                 worker_eps: worker.eps,
-                worker_arl: undefined, // ARL is from company, not worker
+                worker_arl: worker.arl, // ARL can be from worker directly if they are a contractor
                 worker_job_title: worker.job_title,
                 worker_employment_type: worker.employment_type,
                 worker_education_level: worker.education_level,

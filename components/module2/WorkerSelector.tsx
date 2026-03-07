@@ -212,6 +212,18 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                         </div>
 
                         <div>
+                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">ARL</label>
+                            <select
+                                value={newWorker.arl ?? ""}
+                                onChange={(e) => setNewWorker((p) => ({ ...p, arl: e.target.value }))}
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                            >
+                                <option value="">Seleccionar ARL</option>
+                                {ARL_LIST.map((arl) => <option key={arl} value={arl}>{arl}</option>)}
+                            </select>
+                        </div>
+
+                        <div>
                             <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Tipo de contrato</label>
                             <select
                                 value={newWorker.employment_type ?? "Indefinido"}
