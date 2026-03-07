@@ -13,6 +13,7 @@ import {
     View,
     StyleSheet,
     Font,
+    Image,
     pdf,
 } from "@react-pdf/renderer";
 import type { LocalIncident } from "../db";
@@ -28,6 +29,7 @@ export interface CompanyProfile {
     ciiu: string;
     address: string;
     city: string;
+    consultantName?: string;
 }
 
 // ── Colombian legal date format DD/MM/YYYY ────────────────────────────────
@@ -255,9 +257,37 @@ function EventReportDocument({
             <Page size="LETTER" style={styles.page}>
                 {/* ── Header ── */}
                 <View style={styles.header}>
-                    <Text style={styles.headerTitle}>REPORTE DE EVENTO LABORAL</Text>
-                    <Text style={styles.headerSubtitle}>
-                        FOXTECH SST — Generado el {formatDateLongCO(generatedAt)} — N.° {incident.id.slice(0, 8).toUpperCase()}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.headerTitle}>REPORTE DE EVENTO LABORAL</Text>
+                            <Text style={styles.headerSubtitle}>
+                                {company.consultantName || "FOXTECH SST"} — Generado el {formatDateLongCO(generatedAt)}
+                            </Text>
+                        </View>
+                        <View style={{ width: 100, alignItems: "flex-end" }}>
+                            <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#1e3a5f" }}>
+                                N.° {incident.id.slice(0, 8).toUpperCase()}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* ── Status Banner (Preliminary vs Classified) ── */}
+                <View style={{
+                    backgroundColor: incident.classification_status === "classified" ? "#dcfce7" : "#ffedd5",
+                    padding: 6,
+                    marginBottom: 10,
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderColor: incident.classification_status === "classified" ? "#86efac" : "#fdba74"
+                }}>
+                    <Text style={{
+                        fontSize: 12,
+                        fontFamily: "Helvetica-Bold",
+                        color: incident.classification_status === "classified" ? "#166534" : "#9a3412",
+                        letterSpacing: 2
+                    }}>
+                        {incident.classification_status === "classified" ? "CLASIFICADO" : "REPORTE PRELIMINAR"}
                     </Text>
                 </View>
 
@@ -337,6 +367,36 @@ function EventReportDocument({
                     <View style={styles.descriptionBlock}>
                         <Text style={{ fontSize: 9 }}>{incident.description ?? "Sin descripción."}</Text>
                     </View>
+
+                    {/* Photo with GPS */}
+                    {(incident.photo_url || incident.photo_blob) && (
+                        <View style={{ marginTop: 8 }}>
+                            <Text style={styles.fieldLabel}>Evidencia Fotográfica</Text>
+                            <Image
+                                src={incident.photo_url || incident.photo_blob}
+                                style={{ width: 200, height: 150, objectFit: "cover", borderRadius: 4, marginTop: 4, borderWidth: 0.5, borderColor: "#d1d5db" }}
+                            />
+                            {incident.photo_lat && incident.photo_lng && (
+                                <Text style={{ fontSize: 7, color: "#6b7280", marginTop: 4 }}>
+                                    📍 Coordenadas GPS: {incident.photo_lat}, {incident.photo_lng} ({incident.photo_timestamp ? formatDateCO(incident.photo_timestamp) : "Sin fecha"})
+                                </Text>
+                            )}
+                        </View>
+                    )}
+
+                    <Text style={[styles.fieldLabel, { marginTop: 8 }]}>Versión del Trabajador</Text>
+                    <View style={styles.descriptionBlock}>
+                        <Text style={{ fontSize: 9 }}>{incident.reporter_description ?? "No se registró versión del trabajador."}</Text>
+                    </View>
+
+                    {incident.witness_name && (
+                        <View style={{ marginTop: 8 }}>
+                            <Text style={styles.fieldLabel}>Testigo: {incident.witness_name}</Text>
+                            <View style={styles.descriptionBlock}>
+                                <Text style={{ fontSize: 9 }}>{incident.witness_description ?? "No hay declaración escrita del testigo."}</Text>
+                            </View>
+                        </View>
+                    )}
                 </View>
 
                 {/* ── Sección 4: Clasificación de la Lesión ── */}

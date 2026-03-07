@@ -44,6 +44,7 @@ interface CompanyProfile {
     ciiu: string;
     address: string;
     city: string;
+    consultantName?: string;
 }
 
 const DEFAULT_PROFILE: CompanyProfile = {
@@ -54,6 +55,7 @@ const DEFAULT_PROFILE: CompanyProfile = {
     ciiu: "",
     address: "",
     city: "Bogotá D.C.",
+    consultantName: "",
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────
@@ -280,6 +282,7 @@ export default function ExportsPage() {
                 ciiu: profile.ciiu || "—",
                 address: profile.address || "—",
                 city: profile.city || "—",
+                consultantName: profile.consultantName || "",
             });
             setPdfStates((prev) => ({
                 ...prev,
@@ -330,7 +333,8 @@ export default function ExportsPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                         {[
-                            { key: "name", label: "Razón Social", placeholder: "Acero del Norte S.A." },
+                            { key: "consultantName", label: "Empresa Consultora (En encabezado)", placeholder: "Ej. FOXTECH SAS" },
+                            { key: "name", label: "Razón Social Cliente", placeholder: "Acero del Norte S.A." },
                             { key: "nit", label: "NIT (sin DV)", placeholder: "900123456" },
                             { key: "arl", label: "ARL", placeholder: "Positiva Compañía de Seguros" },
                             { key: "ciiu", label: "Código CIIU (4 dígitos)", placeholder: "2410" },
