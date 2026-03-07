@@ -75,7 +75,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                     <Check className="w-4 h-4 text-green-400" />
                     <button
                         onClick={() => { onSelect(null); setQuery(""); }}
-                        className="text-[#64748B] text-xs hover:text-white underline transition-colors"
+                        className="text-xs text-white/50 hover:text-white transition-colors cursor-pointer"
                     >
                         Cambiar
                     </button>
@@ -88,15 +88,15 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
         <div className="space-y-3">
             {/* Search input */}
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#F59E0B] animate-spin" />}
+                {searching && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#F59E0B] animate-spin" />}
                 <input
+                    id="worker-search"
                     ref={inputRef}
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Buscar por nombre o cédula..."
-                    className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl pl-9 pr-10 py-3 text-white placeholder:text-[#64748B] outline-none focus:border-[#F59E0B] transition-colors text-sm"
+                    className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl pl-11 pr-10 py-3 text-white placeholder:text-[#64748B] outline-none focus:border-[#F59E0B] transition-colors text-sm"
                 />
             </div>
 
@@ -107,7 +107,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                         <button
                             key={w.id}
                             onClick={() => { onSelect(w); setQuery(w.full_name); setResults([]); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left cursor-pointer"
                         >
                             <div className="w-8 h-8 rounded-full bg-[#252B3B] flex items-center justify-center flex-shrink-0">
                                 <User className="w-4 h-4 text-[#64748B]" />
@@ -133,7 +133,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
 
             <button
                 onClick={() => setShowCreate(!showCreate)}
-                className="flex items-center gap-2 text-[#F59E0B] text-sm font-semibold hover:underline transition-colors"
+                className="flex items-center gap-2 text-[#F59E0B] text-sm font-semibold hover:underline transition-colors cursor-pointer"
             >
                 <UserPlus className="w-4 h-4" />
                 Registrar trabajador nuevo
@@ -173,7 +173,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                                 type="date"
                                 value={newWorker.birth_date ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, birth_date: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             />
                         </div>
 
@@ -182,7 +182,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                             <select
                                 value={newWorker.sex ?? "M"}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, sex: e.target.value as "M" | "F" | "Otro" }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 {SEX_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
@@ -204,7 +204,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                             <select
                                 value={newWorker.eps ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, eps: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 <option value="">Seleccionar EPS</option>
                                 {EPS_LIST.map((eps) => <option key={eps} value={eps}>{eps}</option>)}
@@ -216,7 +216,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                             <select
                                 value={newWorker.employment_type ?? "Indefinido"}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, employment_type: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
@@ -227,7 +227,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                             <select
                                 value={newWorker.education_level ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, education_level: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 <option value="">Seleccionar</option>
                                 {EDUCATION_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
@@ -240,7 +240,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                                 type="date"
                                 value={newWorker.hire_date ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, hire_date: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             />
                         </div>
                     </div>
@@ -249,14 +249,14 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                         <button
                             onClick={createWorker}
                             disabled={saving || !newWorker.full_name?.trim()}
-                            className="flex items-center gap-2 bg-[#F59E0B] text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-50"
+                            className="flex items-center gap-2 bg-[#F59E0B] text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-50 cursor-pointer"
                         >
                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                             {saving ? "Guardando..." : "Registrar"}
                         </button>
                         <button
                             onClick={() => setShowCreate(false)}
-                            className="text-[#64748B] text-sm font-semibold hover:text-white transition-colors px-4 py-2.5"
+                            className="text-[#64748B] text-sm font-semibold hover:text-white transition-colors px-4 py-2.5 cursor-pointer"
                         >
                             Cancelar
                         </button>

@@ -43,7 +43,7 @@ export function InjuryClassifier({ data, onChange, showDisabilityDays = true }: 
                     <select
                         value={data.injury_nature ?? ""}
                         onChange={(e) => onChange("injury_nature", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors"
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors cursor-pointer"
                     >
                         <option value="">Seleccionar...</option>
                         {INJURY_NATURES.map((n) => (
@@ -60,7 +60,7 @@ export function InjuryClassifier({ data, onChange, showDisabilityDays = true }: 
                     <select
                         value={data.body_part ?? ""}
                         onChange={(e) => onChange("body_part", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors"
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors cursor-pointer"
                     >
                         <option value="">Seleccionar...</option>
                         {BODY_PARTS.map((p) => (
@@ -77,7 +77,7 @@ export function InjuryClassifier({ data, onChange, showDisabilityDays = true }: 
                     <select
                         value={data.accident_mechanism ?? ""}
                         onChange={(e) => onChange("accident_mechanism", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors"
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors cursor-pointer"
                     >
                         <option value="">Seleccionar...</option>
                         {ACCIDENT_MECHANISMS.map((m) => (
@@ -94,7 +94,7 @@ export function InjuryClassifier({ data, onChange, showDisabilityDays = true }: 
                     <select
                         value={data.hazard_type ?? ""}
                         onChange={(e) => onChange("hazard_type", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors"
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors cursor-pointer"
                     >
                         <option value="">Seleccionar...</option>
                         {HAZARD_TYPES_GTC45.map((h) => (
@@ -124,7 +124,7 @@ export function InjuryClassifier({ data, onChange, showDisabilityDays = true }: 
                                 value={data.disability_days ?? ""}
                                 onChange={(e) => onChange("disability_days", parseInt(e.target.value) || 0)}
                                 placeholder="0"
-                                className="w-32 bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors text-center font-bold"
+                                className="w-32 bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors text-center font-bold cursor-pointer"
                             />
                             <span className="text-[#64748B] text-sm">días</span>
                             {(data.disability_days ?? 0) === 0 && (

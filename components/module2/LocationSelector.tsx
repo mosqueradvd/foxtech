@@ -55,7 +55,7 @@ export function LocationSelector({
                     <select
                         value={department}
                         onChange={(e) => onDepartmentChange(e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors"
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors cursor-pointer"
                     >
                         <option value="">Seleccionar...</option>
                         {DEPARTMENT_NAMES.map((d) => (
@@ -73,7 +73,7 @@ export function LocationSelector({
                         value={city}
                         onChange={(e) => onCityChange(e.target.value)}
                         disabled={!department}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors disabled:opacity-40"
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors disabled:opacity-40 cursor-pointer"
                     >
                         <option value="">Seleccionar...</option>
                         {cities.map((c) => (

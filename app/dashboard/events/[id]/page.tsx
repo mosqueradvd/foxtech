@@ -44,7 +44,7 @@ function ClassificationStatusBadge({ status }: { status?: string }) {
     };
     const s = map[status ?? "pending"] ?? map.pending;
     return (
-        <span className={`inline-flex items-center px-3 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wider ${s.cls}`}>
+        <span className={`inline-flex text-center items-center px-3 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wider ${s.cls}`}>
             {s.label}
         </span>
     );
@@ -181,12 +181,12 @@ function Step1Worker({
                 <div>
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Fecha nacimiento</label>
                     <input type="date" value={formData.worker_birth_date ?? ""} onChange={(e) => onFieldChange("worker_birth_date", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]" />
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer" />
                 </div>
                 <div>
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Sexo</label>
                     <select value={formData.worker_sex ?? ""} onChange={(e) => onFieldChange("worker_sex", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]">
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer">
                         <option value="">Seleccionar</option>
                         {SEX_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
@@ -194,7 +194,7 @@ function Step1Worker({
                 <div>
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">EPS</label>
                     <select value={formData.worker_eps ?? ""} onChange={(e) => onFieldChange("worker_eps", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]">
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer">
                         <option value="">Seleccionar EPS</option>
                         {EPS_LIST.map((eps) => <option key={eps} value={eps}>{eps}</option>)}
                     </select>
@@ -202,7 +202,7 @@ function Step1Worker({
                 <div>
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">ARL</label>
                     <select value={formData.worker_arl ?? ""} onChange={(e) => onFieldChange("worker_arl", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]">
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer">
                         <option value="">Seleccionar ARL</option>
                         {ARL_LIST.map((arl) => <option key={arl} value={arl}>{arl}</option>)}
                     </select>
@@ -216,7 +216,7 @@ function Step1Worker({
                 <div>
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Tipo de contrato</label>
                     <select value={formData.worker_employment_type ?? ""} onChange={(e) => onFieldChange("worker_employment_type", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]">
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer">
                         <option value="">Seleccionar</option>
                         {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -224,7 +224,7 @@ function Step1Worker({
                 <div>
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Nivel educativo</label>
                     <select value={formData.worker_education_level ?? ""} onChange={(e) => onFieldChange("worker_education_level", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]">
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer">
                         <option value="">Seleccionar</option>
                         {EDUCATION_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
                     </select>
@@ -236,7 +236,7 @@ function Step1Worker({
                         onFieldChange("worker_contract_start", v);
                         if (v) onFieldChange("worker_seniority_months", calcSeniorityMonths(v));
                     }}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]" />
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer" />
                 </div>
                 {(formData.worker_seniority_months !== undefined && formData.worker_seniority_months !== null) && (
                     <div className="flex items-center gap-2 col-span-2">
@@ -292,7 +292,7 @@ function Step2Event({
                             key={cls.value}
                             onClick={() => onFieldChange("classification", cls.value)}
                             className={[
-                                "text-left p-3 rounded-xl border-2 transition-all",
+                                "text-left p-3 rounded-xl border-2 transition-all cursor-pointer",
                                 isSelected
                                     ? colorMap[cls.color] ?? "border-[#F59E0B]/60 bg-amber-900/20"
                                     : "border-[#334155] bg-[#252B3B] hover:border-[#64748B]",
@@ -328,13 +328,13 @@ function Step2Event({
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Fecha exacta del evento *</label>
                     <input type="date" value={formData.event_date ?? ""}
                         onChange={(e) => handleDateChange(e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]" />
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer" />
                 </div>
                 <div>
                     <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Hora exacta del evento *</label>
                     <input type="time" value={formData.event_time ?? ""}
                         onChange={(e) => onFieldChange("event_time", e.target.value)}
-                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B]" />
+                        className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer" />
                 </div>
                 {formData.event_day_of_week && (
                     <div className="col-span-2 flex items-center gap-2">
@@ -553,13 +553,13 @@ export default function EventCharacterizationPage() {
                 <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
                     <button
                         onClick={() => router.push("/dashboard")}
-                        className="w-9 h-9 rounded-xl bg-[#1A1F2E] border border-[#334155] flex items-center justify-center hover:border-[#64748B] transition-colors flex-shrink-0"
+                        className="w-9 h-9 rounded-xl bg-[#1A1F2E] border border-[#334155] flex items-center justify-center hover:border-[#64748B] transition-colors flex-shrink-0 cursor-pointer"
                     >
                         <ArrowLeft className="w-4 h-4 text-[#64748B]" />
                     </button>
                     <div className="flex-1">
                         <h1 className="text-white font-black text-base leading-none">
-                            Módulo 2 — Caracterización y Clasificación
+                            Caracterización y Clasificación
                         </h1>
                         <p className="text-[#64748B] text-xs mt-0.5">ID: {eventId.slice(0, 8)}…</p>
                     </div>
@@ -577,7 +577,7 @@ export default function EventCharacterizationPage() {
                                 <button
                                     onClick={() => setStep(s.id)}
                                     className={[
-                                        "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all",
+                                        "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer",
                                         isActive ? "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30" : "",
                                         isDone ? "text-green-400" : "",
                                         !isActive && !isDone ? "text-[#64748B] hover:text-white" : "",
@@ -625,7 +625,7 @@ export default function EventCharacterizationPage() {
                         <button
                             onClick={() => setStep((s) => Math.max(1, s - 1))}
                             disabled={step === 1}
-                            className="flex items-center gap-2 text-[#64748B] font-semibold text-sm hover:text-white transition-colors disabled:opacity-30"
+                            className="flex items-center gap-2 text-[#64748B] font-semibold text-sm hover:text-white transition-colors disabled:opacity-30 cursor-pointer"
                         >
                             <ArrowLeft className="w-4 h-4" />
                             Anterior
@@ -634,7 +634,7 @@ export default function EventCharacterizationPage() {
                         {step < 3 ? (
                             <button
                                 onClick={() => setStep((s) => Math.min(3, s + 1))}
-                                className="flex items-center gap-2 bg-[#F59E0B] text-black font-bold text-sm px-6 py-3 rounded-xl hover:bg-amber-400 transition-colors"
+                                className="flex items-center gap-2 bg-[#F59E0B] text-black font-bold text-sm px-6 py-3 rounded-xl hover:bg-amber-400 transition-colors cursor-pointer"
                             >
                                 Siguiente
                                 <ArrowRight className="w-4 h-4" />
@@ -643,7 +643,7 @@ export default function EventCharacterizationPage() {
                             <button
                                 onClick={saveClassification}
                                 disabled={saving || saved}
-                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors disabled:opacity-70"
+                                className="flex items-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors disabled:opacity-70 cursor-pointer"
                             >
                                 {saving ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -683,8 +683,8 @@ export default function EventCharacterizationPage() {
                     {/* Investigation entry point — only when classified */}
                     {event.classification_status === "classified" || event.classification_status === "investigated" ? (
                         <div className={`border rounded-2xl p-4 space-y-3 ${event.classification_status === "investigated"
-                                ? "bg-emerald-900/20 border-emerald-700/30"
-                                : "bg-[#252B3B] border-[#334155]"
+                            ? "bg-emerald-900/20 border-emerald-700/30"
+                            : "bg-[#252B3B] border-[#334155]"
                             }`}>
                             <div className="flex items-center gap-2">
                                 <ClipboardList className={`w-4 h-4 ${event.classification_status === "investigated" ? "text-emerald-400" : "text-[#F59E0B]"

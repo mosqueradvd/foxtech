@@ -155,7 +155,6 @@ export const EDUCATION_LEVELS = [
 export const SEX_OPTIONS = [
     { value: "M", label: "Masculino" },
     { value: "F", label: "Femenino" },
-    { value: "Otro", label: "Otro / No declarado" },
 ] as const;
 
 // ─── EPS activas en Colombia ──────────────────────────────────────────────────
