@@ -106,6 +106,8 @@ async function syncIncidents(): Promise<void> {
                     reported_by_role: incident.reported_by_role || null,
                     event_type: incident.event_type || null,
                     description: incident.description || null,
+                    witness_names: incident.witness_name || null,
+                    worker_version: incident.reporter_description || null,
                     photo_url: photoUrl || null,
                     photo_lat: incident.photo_lat || null,
                     photo_lng: incident.photo_lng || null,

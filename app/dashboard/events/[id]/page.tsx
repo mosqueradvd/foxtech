@@ -84,6 +84,13 @@ function OriginalReportCard({ event }: { event: Event }) {
                         </>
                     )}
 
+                    {event.witness_names && (
+                        <>
+                            <p className="text-[#64748B] text-[10px] uppercase tracking-wider font-bold mt-3">Testigos reportados</p>
+                            <p className="text-[#94A3B8] text-sm leading-relaxed">👤 {event.witness_names}</p>
+                        </>
+                    )}
+
                     <div className="flex flex-wrap gap-2 mt-3">
                         {event.event_type && (
                             <span className="px-2 py-1 bg-amber-900/30 border border-amber-700/30 text-amber-400 text-[11px] font-bold rounded-lg">
