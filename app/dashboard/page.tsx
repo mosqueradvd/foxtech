@@ -207,7 +207,7 @@ export default function DashboardPage() {
                             Monitoreo de seguridad y cumplimiento normativo en tiempo real
                         </p>
                     </div>
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3">
                         {/* Search */}
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
@@ -233,7 +233,7 @@ export default function DashboardPage() {
 
                 <div className="px-8 py-6 space-y-6">
                     {/* ── KPI CARDS ── */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 gap-6">
                         <KPICard
                             title="Incidentes este mes"
                             value={loading ? "—" : totalIncidents || 12}

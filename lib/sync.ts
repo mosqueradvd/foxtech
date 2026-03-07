@@ -97,15 +97,19 @@ async function syncIncidents(): Promise<void> {
                 }
             }
 
+            // Map event_type to match Supabase constraints
+            let mappedEventType = incident.event_type;
+            if (mappedEventType === "accidente_trabajo") mappedEventType = "accidente";
+
             // --- Upsert to Supabase (idempotent by id) ---
             const { error } = await supabase.from("incidents").upsert(
                 {
                     id: incident.id,
-                    company_id: incident.company_id || null,
+                    company_id: incident.company_id || "03426697-f564-4d5c-af78-864f1afe89a2", // Hardcoded company for demo
                     reported_by_name: incident.reported_by_name || null,
                     reported_by_role: incident.reported_by_role || null,
-                    event_type: incident.event_type || null,
-                    description: incident.description || null,
+                    event_type: mappedEventType || null,
+                    description: incident.reporter_description || incident.description || null,
                     witness_names: incident.witness_name || null,
                     worker_version: incident.reporter_description || null,
                     photo_url: photoUrl || null,

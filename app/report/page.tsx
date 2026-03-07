@@ -22,7 +22,7 @@ import { VoiceNarration, type VoiceNarrationValue } from "@/components/forms/Voi
 import { createIncidentDraft, saveIncidentDraft } from "@/lib/db";
 import { syncPendingData } from "@/lib/sync";
 
-type EventType = "casi_accidente" | "accidente_trabajo" | "enfermedad_laboral" | "condicion_insegura" | "impacto_ambiental" | "dano_propiedad";
+type EventType = "casi_accidente" | "accidente" | "enfermedad_laboral" | "condicion_insegura" | "impacto_ambiental" | "dano_propiedad";
 type Step = 1 | 2 | 3;
 
 const eventTypes: {
@@ -40,7 +40,7 @@ const eventTypes: {
             iconBg: "bg-blue-900/50",
         },
         {
-            id: "accidente_trabajo",
+            id: "accidente",
             title: "Accidente de Trabajo",
             subtitle: "Ocurrió una lesión o daño físico",
             icon: <Briefcase className="w-5 h-5 text-red-400" />,
