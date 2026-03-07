@@ -439,6 +439,22 @@ export default function EventCharacterizationPage() {
         if (!error && data) {
             setEvent(data as Event);
             // Pre-populate form with any existing classification data
+            let initialClassification = data.classification;
+            if (!initialClassification && data.event_type) {
+                const typeMap: Record<string, string> = {
+                    casi_accidente: "CASI_ACCIDENTE",
+                    incidente: "INCIDENTE_SIN_LESION",
+                    condicion_insegura: "CONDICION_INSEGURA",
+                    accidente: "ACCIDENTE_TRABAJO",
+                    accidente_grave: "ACCIDENTE_TRABAJO_GRAVE",
+                    accidente_fatal: "ACCIDENTE_TRABAJO_FATAL",
+                    enfermedad_laboral: "ENFERMEDAD_LABORAL",
+                    impacto_ambiental: "IMPACTO_AMBIENTAL",
+                    dano_propiedad: "DANO_PROPIEDAD",
+                };
+                initialClassification = typeMap[data.event_type];
+            }
+
             setFormData({
                 worker_id: data.worker_id,
                 worker_name: data.worker_name,
@@ -452,7 +468,7 @@ export default function EventCharacterizationPage() {
                 worker_seniority_months: data.worker_seniority_months,
                 worker_contract_start: data.worker_contract_start,
                 worker_education_level: data.worker_education_level,
-                classification: data.classification,
+                classification: initialClassification,
                 event_date: data.event_date,
                 event_time: data.event_time,
                 event_day_of_week: data.event_day_of_week,

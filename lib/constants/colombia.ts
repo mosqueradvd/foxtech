@@ -8,7 +8,7 @@
 
 export const EVENT_CLASSIFICATIONS = [
     { value: "CASI_ACCIDENTE", label: "Casi-Accidente", description: "Evento no deseado que no causó lesión ni daño pero pudo haberlo hecho", color: "amber" },
-    { value: "INCIDENTE_SIN_LESION", label: "Incidente sin Lesión", description: "Evento que ocasionó daño a la propiedad o al proceso, sin lesión personal", color: "yellow" },
+    { value: "INCIDENTE_SIN_LESION", label: "Incidente sin Lesión", description: "Suceso que tuvo el potencial de ser un accidente, sin causar lesiones ni daño a la propiedad o al proceso", color: "yellow" },
     { value: "CONDICION_INSEGURA", label: "Condición Insegura", description: "Situación del ambiente de trabajo con potencial de causar accidente", color: "orange" },
     { value: "ACCIDENTE_TRABAJO", label: "Accidente de Trabajo", description: "Todo suceso repentino que sobrevenga por causa del trabajo (Ley 1562/2012)", color: "red" },
     { value: "ACCIDENTE_TRABAJO_GRAVE", label: "Accidente de Trabajo Grave", description: "AT con amputación, quemadura, pérdida ocular, lesión en columna o en órganos. Notificación al Ministerio en 2 días hábiles.", color: "red" },
