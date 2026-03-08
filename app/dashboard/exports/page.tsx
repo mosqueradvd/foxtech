@@ -113,7 +113,7 @@ function DownloadButton({
                 onClick={onClick}
                 disabled={isGenerating}
                 className={[
-                    "flex items-center justify-center gap-2 w-full h-12 rounded-xl font-bold text-sm transition-all",
+                    "flex items-center justify-center gap-2 w-full h-12 rounded-xl font-bold text-sm transition-all cursor-pointer",
                     isDone
                         ? "bg-green-700 text-white"
                         : isError
@@ -174,11 +174,11 @@ export default function ExportsPage() {
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
     const [profileSaved, setProfileSaved] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
 
     // RUC export period
-    const now = new Date();
-    const [rucYear, setRucYear] = useState(now.getFullYear());
-    const [rucMonth, setRucMonth] = useState(now.getMonth() + 1);
+    const [rucYear, setRucYear] = useState(new Date().getFullYear());
+    const [rucMonth, setRucMonth] = useState(new Date().getMonth() + 1);
     const [rucWorkersCount, setRucWorkersCount] = useState(10);
     const [rucHHT, setRucHHT] = useState(1920);
 
@@ -188,6 +188,7 @@ export default function ExportsPage() {
 
     // Load Supabase incidents + saved profile
     useEffect(() => {
+        setIsMounted(true);
         const loadData = async () => {
             const { data } = await supabase.from("incidents").select("*").order("created_at", { ascending: false });
             setIncidents(data || []);
@@ -306,6 +307,8 @@ export default function ExportsPage() {
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
     ];
 
+    if (!isMounted) return null;
+
     return (
         <div className="min-h-screen bg-[#1A1F2E]">
             {/* ── Top bar ── */}
@@ -380,7 +383,7 @@ export default function ExportsPage() {
                     <button
                         onClick={saveProfile}
                         className={[
-                            "mt-5 h-10 px-6 rounded-xl font-bold text-sm transition-all",
+                            "mt-5 h-10 px-6 rounded-xl font-bold text-sm transition-all cursor-pointer",
                             profileSaved
                                 ? "bg-green-700 text-white"
                                 : "bg-[#F59E0B]/15 border border-[#F59E0B]/30 text-[#F59E0B] hover:bg-[#F59E0B]/25",
@@ -573,7 +576,7 @@ export default function ExportsPage() {
                                             onClick={() => handlePDFExport(inc)}
                                             disabled={pdfState.status === "generating"}
                                             className={[
-                                                "flex items-center gap-1.5 px-4 h-9 rounded-xl text-xs font-bold transition-all flex-shrink-0",
+                                                "flex items-center gap-1.5 px-4 h-9 rounded-xl text-xs font-bold transition-all flex-shrink-0 cursor-pointer",
                                                 pdfState.status === "done"
                                                     ? "bg-green-700 text-white"
                                                     : pdfState.status === "error"
@@ -586,7 +589,7 @@ export default function ExportsPage() {
                                             ) : pdfState.status === "done" ? (
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                             ) : (
-                                                <Download className="w-3.5 h-3.5 cursor-pointer" />
+                                                <Download className="w-3.5 h-3.5" />
                                             )}
                                             {pdfState.status === "done" ? "Listo" : "PDF"}
                                         </button>
