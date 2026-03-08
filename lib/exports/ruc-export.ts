@@ -8,8 +8,8 @@
 
 import * as XLSX from "xlsx";
 import { RUC_COLUMNS, CCS_K_FACTOR } from "../constants/ruc-columns";
-import { calculateChargedDays } from "../constants/ansi-charged-days";
-import type { LocalIncident } from "../db";
+import { calculateDiasCargados } from "../stats/indicators";
+import type { Event } from "../supabase";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export interface RucPeriodInput {
     /** Total man-hours worked in the period */
     manHoursWorked: number;
     /** Classified accidents for this period */
-    accidents: LocalIncident[];
+    accidents: Event[];
     /** Occupational diseases count */
     occupationalDiseases?: number;
     /** Disability days from occupational diseases */
@@ -108,12 +108,12 @@ function buildRow(
     const { accidents, workerCount: workers, manHoursWorked: hht } = period;
 
     // Classify accidents
-    const fatalAccidents = accidents.filter((a) => a.severity === "mortal").length;
+    const fatalAccidents = accidents.filter((a) => a.classification === "ACCIDENTE_TRABAJO_FATAL").length;
     const disablingAccidents = accidents.filter(
-        (a) => a.severity !== "mortal" && (a.disability_days ?? 0) > 0
+        (a) => a.classification !== "ACCIDENTE_TRABAJO_FATAL" && (a.disability_days ?? 0) > 0
     ).length;
     const nonDisablingAccidents = accidents.filter(
-        (a) => a.severity !== "mortal" && (a.disability_days ?? 0) === 0
+        (a) => a.classification !== "ACCIDENTE_TRABAJO_FATAL" && (a.disability_days ?? 0) === 0
     ).length;
     const totalAccidents = fatalAccidents + disablingAccidents + nonDisablingAccidents;
 
@@ -123,16 +123,13 @@ function buildRow(
         0
     );
 
-    // Calculate charged days — each accident independently per ANSI Z16
+    // Calculate charged days — each accident independently per CCS standard
     let chargedDaysTotal = 0;
     for (const accident of accidents) {
-        const entries = accident.charged_day_entries ?? [];
-        // Fatal accidents without explicit ANSI entries still get 6000
-        if (accident.severity === "mortal" && !entries.includes("death")) {
-            chargedDaysTotal += 6000;
-        } else {
-            chargedDaysTotal += calculateChargedDays(entries);
-        }
+        chargedDaysTotal += calculateDiasCargados(
+            accident.classification ?? "",
+            accident.disability_days ?? 0
+        );
     }
 
     const occDiseases = period.occupationalDiseases ?? 0;
@@ -146,7 +143,7 @@ function buildRow(
         hht > 0 ? roundTo((totalAccidents / hht) * CCS_K_FACTOR, 2) : 0;
     const severityRate =
         hht > 0
-            ? roundTo(((disabilityDays + chargedDaysTotal) / hht) * CCS_K_FACTOR, 2)
+            ? roundTo((chargedDaysTotal / hht) * CCS_K_FACTOR, 2)
             : 0;
     const ili = roundTo((frequencyRate * severityRate) / 1000, 4);
 
@@ -242,6 +239,55 @@ export function generateRUCExport(
     const fileName = `RUC_${cleanNit}_${period.year}${padMonth(period.month)}.xlsx`;
 
     return { success: true, fileName, blob, errors: [], warnings };
+}
+
+/**
+ * Generates a historical RUC Excel flat file for CCS with multiple rows (e.g. 5 last years).
+ * 
+ * @param config  Company config
+ * @param periods Array of periods to include
+ */
+export function generateHistoricalRUCExport(
+    config: WorkCenterConfig,
+    periods: RucPeriodInput[]
+): RucExportResult {
+    const allErrors: string[] = [];
+    const allWarnings: string[] = [];
+    const rowData: any[][] = [];
+
+    // Headers
+    rowData.push(RUC_COLUMNS.map((col) => col.header));
+
+    for (const p of periods) {
+        const { errors, warnings } = validateInputs(config, p);
+        if (errors.length > 0) {
+            allErrors.push(...errors);
+            continue; // Or fail everything. User wants robust export, we will fail.
+        }
+        allWarnings.push(...warnings);
+
+        const row = buildRow(config, p);
+        rowData.push(RUC_COLUMNS.map((col) => row[col.header]));
+    }
+
+    if (allErrors.length > 0) {
+        return { success: false, fileName: "", errors: allErrors, warnings: allWarnings };
+    }
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(rowData);
+
+    // No styling per CCS
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Accidentalidad");
+
+    const wbOut = XLSX.write(workbook, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
+    const blob = new Blob([wbOut], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+    const cleanNit = sanitizeNit(config.nit);
+    const currentYear = new Date().getFullYear();
+    const fileName = `RUC_HISTORICO_${cleanNit}_${currentYear}.xlsx`;
+
+    return { success: true, fileName, blob, errors: [], warnings: allWarnings };
 }
 
 /**

@@ -20,13 +20,13 @@ import {
     Info,
     Loader2,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import type { LocalIncident } from "@/lib/db";
+import { supabase, type Event } from "@/lib/supabase";
 import {
     generateRUCExport,
     downloadBlob,
     type WorkCenterConfig,
 } from "@/lib/exports/ruc-export";
+import { calcIndicators } from "@/lib/stats/indicators";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -170,7 +170,7 @@ function SeverityBadge({ severity }: { severity?: string }) {
 // ── Main Page ─────────────────────────────────────────────────────────────
 
 export default function ExportsPage() {
-    const [incidents, setIncidents] = useState<any[]>([]);
+    const [incidents, setIncidents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
     const [profileSaved, setProfileSaved] = useState(false);
@@ -209,18 +209,18 @@ export default function ExportsPage() {
         (i) => i.classification_status === "classified" && i.event_type === "accidente"
     );
 
-    // Accidents in selected RUC period
-    const rucAccidents = incidents.filter((i) => {
-        if (i.event_type !== "accidente") return false;
-        const d = new Date(i.created_at);
+    // Events in selected RUC period
+    const rucPeriodEvents = incidents.filter((i) => {
+        const d = new Date(i.event_date || i.created_at || "");
         return d.getFullYear() === rucYear && d.getMonth() + 1 === rucMonth;
     });
 
-    const incidentsCount = incidents.filter((i) => {
-        if (i.event_type !== "casi_accidente") return false;
-        const d = new Date(i.created_at);
-        return d.getFullYear() === rucYear && d.getMonth() + 1 === rucMonth;
-    }).length;
+    const rucAccidents = rucPeriodEvents.filter((i) => i.event_type === "accidente" || i.event_type === "accidente_grave");
+
+    // Compute stats for export UI preview
+    const rucStats = calcIndicators(rucPeriodEvents, rucHHT, rucWorkersCount);
+    const atConIncap = rucPeriodEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) > 0).length;
+    const atSinIncap = rucPeriodEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) === 0).length;
 
     // Save profile
     const saveProfile = useCallback(() => {
@@ -255,7 +255,8 @@ export default function ExportsPage() {
             workerCount: rucWorkersCount,
             manHoursWorked: rucHHT,
             accidents: rucAccidents,
-            incidents: incidentsCount,
+            incidents: rucStats.incidentes,
+            occupationalDiseases: rucPeriodEvents.filter(e => e.classification === "ENFERMEDAD_LABORAL").length,
         });
 
         if (result.success && result.blob) {
@@ -268,7 +269,7 @@ export default function ExportsPage() {
         } else {
             setRucState({ status: "error", message: result.errors.join(" | ") });
         }
-    }, [profile, rucYear, rucMonth, rucWorkersCount, rucHHT, rucAccidents, incidentsCount]);
+    }, [profile, rucYear, rucMonth, rucWorkersCount, rucHHT, rucAccidents, rucPeriodEvents, rucStats.incidentes]);
 
     // Generate PDF for single event
     const handlePDFExport = useCallback(async (incident: any) => {
@@ -466,25 +467,36 @@ export default function ExportsPage() {
                     </div>
 
                     {/* Summary for selected period */}
-                    <div className="mt-4 p-4 bg-[#1A1F2E] rounded-xl border border-[#334155]">
-                        <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2">
-                            Período: {MONTHS[rucMonth - 1]} {rucYear}
-                        </p>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div>
-                                <p className="text-[#64748B] text-xs">Accidentes de trabajo</p>
-                                <p className="text-white font-bold text-lg">{rucAccidents.length}</p>
-                            </div>
-                            <div>
-                                <p className="text-[#64748B] text-xs">Casi accidentes</p>
-                                <p className="text-white font-bold text-lg">{incidentsCount}</p>
-                            </div>
-                            <div>
-                                <p className="text-[#64748B] text-xs">Mortales</p>
-                                <p className="text-white font-bold text-lg">
-                                    {rucAccidents.filter((a) => a.severity === "mortal").length}
-                                </p>
-                            </div>
+                    <div className="mt-4 p-5 bg-[#141824] rounded-xl border border-[#334155] shadow-inner font-mono text-[11px] text-[#94A3B8] leading-relaxed">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="font-bold text-white uppercase tracking-wider">
+                                PERÍODO: {MONTHS[rucMonth - 1]} {rucYear}
+                            </span>
+                            <span className="text-[#64748B] tracking-wider text-[10px]">
+                                {rucWorkersCount} TRAB. | K=240000 | {rucHHT.toLocaleString("es-CO")} HHT
+                            </span>
+                        </div>
+
+                        <div className="h-px bg-[#334155] w-full mb-3"></div>
+
+                        <div className="grid grid-cols-2 gap-x-12 gap-y-1">
+                            <div className="flex justify-between"><span>Accidentes de trabajo mortales:</span> <span className="text-white">{rucStats.atFatal}</span></div>
+                            <div className="flex justify-between"><span>AT con incapacidad:</span> <span className="text-white">{atConIncap}</span></div>
+                            <div className="flex justify-between"><span>AT sin incapacidad:</span> <span className="text-white">{atSinIncap}</span></div>
+                            <div className="flex justify-between font-bold"><span>Total AT:</span> <span className="text-[#F59E0B]">{rucStats.totalAT}</span></div>
+                            <div className="flex justify-between"><span>Días de incapacidad AT:</span> <span className="text-white">{rucStats.totalDisabilityDays}</span></div>
+                            <div className="flex justify-between"><span>Días cargados AT:</span> <span className="text-[#F97316]">{rucStats.diasCargadosAT}</span></div>
+                            <div className="flex justify-between"><span>Enfermedades laborales:</span> <span className="text-white">{rucPeriodEvents.filter(e => e.classification === "ENFERMEDAD_LABORAL").length}</span></div>
+                            <div className="flex justify-between"><span>Incidentes / Casi-accidentes:</span> <span className="text-white">{rucStats.incidentes}</span></div>
+                        </div>
+
+                        <div className="h-px bg-[#334155] w-full my-3"></div>
+
+                        <div className="grid grid-cols-2 gap-x-12 gap-y-1">
+                            <div className="flex justify-between"><span>IF (Índice de Frecuencia):</span> <span className="text-emerald-400 font-bold">{rucStats.IF.toFixed(2)}</span></div>
+                            <div className="flex justify-between"><span>IS (Índice de Severidad):</span> <span className="text-emerald-400 font-bold">{rucStats.IS.toFixed(2)}</span></div>
+                            <div className="flex justify-between"><span>ILI (Lesión Incapacitante):</span> <span className="text-emerald-400 font-bold">{rucStats.ILI < 0.01 ? rucStats.ILI > 0 ? "< 0.01" : "0.00" : rucStats.ILI.toFixed(2)}</span></div>
+                            <div className="flex justify-between"><span>Tasa de Accidentalidad:</span> <span className="text-white font-bold">{rucStats.TA.toFixed(2)}%</span></div>
                         </div>
                     </div>
 
@@ -527,7 +539,7 @@ export default function ExportsPage() {
                             {incidents.map((inc) => {
                                 const pdfState = pdfStates[inc.id] ?? { status: "idle" };
                                 const classified = inc.classification_status === "classified";
-                                const dateStr = new Date(inc.created_at).toLocaleDateString("es-CO", {
+                                const dateStr = new Date(inc.created_at || new Date().toISOString()).toLocaleDateString("es-CO", {
                                     day: "2-digit", month: "short", year: "numeric",
                                 });
                                 const eventTypeMap: Record<string, string> = {
@@ -562,7 +574,13 @@ export default function ExportsPage() {
                                                 <p className="text-[#64748B] text-xs truncate">
                                                     {inc.description?.slice(0, 60) || inc.location_name || "Sin descripción"}
                                                 </p>
-                                                <SeverityBadge severity={inc.severity} />
+                                                {/* En lugar de usar severity (usado para DB Dexie), mapeamos clasificación Supabase */}
+                                                <SeverityBadge severity={
+                                                    inc.classification === "ACCIDENTE_TRABAJO_FATAL" ? "mortal"
+                                                        : inc.classification === "ACCIDENTE_TRABAJO_GRAVE" ? "grave"
+                                                            : inc.classification === "ACCIDENTE_TRABAJO" ? "leve"
+                                                                : undefined
+                                                } />
                                                 {classified && (
                                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-blue-800/30 text-blue-400 border-blue-700/30">
                                                         Clasificado

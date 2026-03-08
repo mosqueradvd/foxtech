@@ -33,8 +33,10 @@ export interface StatsIndicators {
     incidentes: number;
     /** Condiciones inseguras */
     condicionesInseguras: number;
-    /** Total días de incapacidad */
+    /** Total días de incapacidad reales */
     totalDisabilityDays: number;
+    /** Días cargados por severidad (AT Fatal/Invalidez, etc.) según CCS */
+    diasCargadosAT: number;
     /** Horas-Hombre Trabajadas */
     hht: number;
     /** IF — Índice de Frecuencia */
@@ -91,6 +93,31 @@ export function isGrave(e: Event): boolean {
 }
 
 // ─── HHT estimator ────────────────────────────────────────────────────────────
+
+/**
+ * Calculate "días cargados" (charged days) according to CCS/OIT standard.
+ */
+export function calculateDiasCargados(
+    classification: string,
+    disabilityDays: number = 0,
+    hasInvalidez: boolean = false,
+    hasIPP: boolean = false,
+    pclPercent?: number
+): number {
+    if (classification === "ACCIDENTE_TRABAJO_FATAL" || hasInvalidez) {
+        return 6000;
+    }
+    if (hasIPP) {
+        if (pclPercent && pclPercent > 0 && pclPercent < 50) {
+            return Math.round((pclPercent / 100) * 6000);
+        }
+        return 600; // estimated default for IPP <50% without exact %
+    }
+    if (classification === "ACCIDENTE_TRABAJO_GRAVE" || classification === "ACCIDENTE_TRABAJO") {
+        return disabilityDays; // Real days (0 for AT Sin Tiempo Perdido)
+    }
+    return 0;
+}
 
 /**
  * Estimate HHT from worker count and number of months in the period.
@@ -152,15 +179,22 @@ export function calcIndicators(
         0
     );
 
+    const diasCargadosAT = atEvents.reduce((sum, e) => {
+        // En un futuro el backend podría enviar hasInvalidez, hasIPP y pclPercent.
+        // Por ahora usamos lo que tenemos en classification y disability_days.
+        return sum + calculateDiasCargados(e.classification ?? "", e.disability_days ?? 0);
+    }, 0);
+
     const IF = calcIF(totalAT, hht);
-    const IS = calcIS(totalDisabilityDays, hht);
+    // Para el IS, el RUC exige usar los DIAS_CARGADOS_AT, no solo los días de incapacidad
+    const IS = calcIS(diasCargadosAT, hht);
     const ILI = calcILI(IF, IS);
     const TA = calcTA(totalAT, workerCount);
     const mortalidadPct = totalAT > 0 ? safe((atFatal / totalAT) * 100) : 0;
 
     return {
         totalAT, atGrave, atFatal, incidentes, condicionesInseguras,
-        totalDisabilityDays, hht,
+        totalDisabilityDays, diasCargadosAT, hht,
         IF, IS, ILI, TA, mortalidadPct,
     };
 }

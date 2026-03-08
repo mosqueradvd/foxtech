@@ -10,8 +10,8 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
     ArrowLeft, BarChart2, TrendingUp, TrendingDown,
-    Minus, AlertTriangle, RefreshCw, Settings,
-    Activity, Zap, Shield, Users, Skull, ChevronDown
+    Minus, AlertTriangle, RefreshCw, Settings, Download, Loader2, CheckCircle2,
+    Activity, Zap, Shield, Users, Skull, ChevronDown, FileSpreadsheet
 } from "lucide-react";
 import {
     LineChart, Line, BarChart, Bar,
@@ -24,6 +24,11 @@ import {
     filterByPeriod, periodToRange, monthsInRange, estimateHHT,
     type StatsIndicators, type PeriodPreset,
 } from "@/lib/stats/indicators";
+import {
+    generateHistoricalRUCExport,
+    downloadBlob,
+    type WorkCenterConfig,
+} from "@/lib/exports/ruc-export";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,6 +160,9 @@ export default function StatsPage() {
     const [workerOverride, setWorkerOverride] = useState<string>("");
     const [showHHTInput, setShowHHTInput] = useState(false);
 
+    // For export
+    const [exportState, setExportState] = useState<{ status: string, message?: string }>({ status: "idle" });
+
     // ── Load ────────────────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -223,6 +231,76 @@ export default function StatsPage() {
     ), 12), [allEvents, selectedCompanyId]);
 
     const classData = useMemo(() => groupByClassification(filteredEvents), [filteredEvents]);
+
+    // ── Historical 5-year RUC ──────────────────────────────────────────────
+    const historicalData = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
+
+        return years.map(year => {
+            const yearEvents = allEvents.filter(e => {
+                const isMatchingCompany = selectedCompanyId === "all" || e.company_id === selectedCompanyId;
+                const d = new Date(e.event_date || e.created_at || "");
+                return isMatchingCompany && d.getFullYear() === year;
+            });
+            const hhtForYear = estimateHHT(Math.max(workerCount, 1), 12);
+            const yStats = calcIndicators(yearEvents, hhtForYear, Math.max(workerCount, 1));
+
+            const atMortales = yStats.atFatal;
+            const atConIncap = yearEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) > 0).length;
+            const atSinIncap = yearEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) === 0).length;
+            const totalAT = yStats.totalAT;
+            const diasIncap = yStats.totalDisabilityDays;
+            const el = yearEvents.filter(e => e.classification === "ENFERMEDAD_LABORAL").length;
+            const incidentes = yStats.incidentes;
+
+            return {
+                year, events: yearEvents, hhtForYear,
+                atMortales, atConIncap, atSinIncap, totalAT, diasIncap, el, incidentes,
+                IF: yStats.IF, IS: yStats.IS, ILI: yStats.ILI
+            };
+        });
+    }, [allEvents, selectedCompanyId, workerCount]);
+
+    // Export handler
+    const handleExportHistorical = useCallback(() => {
+        setExportState({ status: "generating" });
+
+        // Read profile from local storage or use defaults + db fields
+        const saved = typeof window !== "undefined" ? localStorage.getItem("foxtech_company_profile") : null;
+        let profile = { name: selectedCompany?.name || "Empresa", nit: selectedCompany?.nit || "0000", city: selectedCompany?.location || "Bogotá", ciiu: "0000", riskClass: 3 };
+        if (saved) {
+            try { profile = { ...profile, ...JSON.parse(saved) }; } catch { }
+        }
+
+        const config: WorkCenterConfig = {
+            companyName: profile.name,
+            nit: profile.nit,
+            workCenter: profile.city,
+            ciiuCode: profile.ciiu,
+            riskClass: profile.riskClass,
+        };
+
+        const periods = historicalData.map(h => ({
+            year: h.year,
+            month: 12, // historical uses aggregated full year. We pass 12 as nominal.
+            workerCount,
+            manHoursWorked: h.hhtForYear,
+            accidents: h.events.filter(e => e.event_type === "accidente" || e.event_type === "accidente_grave"),
+            incidents: h.incidentes,
+            occupationalDiseases: h.el
+        }));
+
+        const result = generateHistoricalRUCExport(config, periods);
+
+        if (result.success && result.blob) {
+            downloadBlob(result.blob, result.fileName);
+            setExportState({ status: "done", message: `Descargado: ${result.fileName}` });
+            setTimeout(() => setExportState({ status: "idle" }), 3000);
+        } else {
+            setExportState({ status: "error", message: result.errors.join(" | ") });
+        }
+    }, [historicalData, selectedCompany, workerCount]);
 
     // ── Render ────────────────────────────────────────────────────────────
     return (
@@ -405,7 +483,7 @@ export default function StatsPage() {
                 {/* ── EVENT SUMMARY CHIPS ── */}
                 <div className="flex flex-wrap gap-3">
                     {[
-                        { label: "Total Accidentes (AT)", value: stats.totalAT, color: "bg-amber-500/15 text-amber-400 border-amber-500/25 text-[16px]" },
+                        { label: "Total Accidentes (AT)", value: stats.totalAT, color: "bg-amber-500/15 text-amber-400 border-amber-500/25" },
                         { label: "AT Grave", value: stats.atGrave, color: "bg-orange-500/15 text-orange-400 border-orange-500/25" },
                         { label: "AT Fatal", value: stats.atFatal, color: "bg-red-500/15 text-red-400 border-red-500/25" },
                         { label: "Incidentes/Casi-acc.", value: stats.incidentes, color: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
@@ -581,6 +659,80 @@ export default function StatsPage() {
                             )}
                         </div>
                     )}
+                </section>
+
+                {/* ── HISTORICAL RUC 5 YEARS ── */}
+                <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 mb-8">
+                    <div className="flex items-center gap-2 mb-5">
+                        <FileSpreadsheet className="w-4 h-4 text-[#F59E0B]" />
+                        <h2 className="text-white font-semibold text-sm">Histórico RUC — Últimos 5 años</h2>
+                    </div>
+
+                    <div className="overflow-x-auto border border-[#1E2A3B] rounded-xl mb-5">
+                        <table className="w-full text-xs text-left">
+                            <thead className="bg-[#0F1420] text-[#64748B] uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">Año</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">AT Mortales</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">AT Con Incap.</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">AT Sin Incap.</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-amber-400">Total AT</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">Días Incap.</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">EL</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">Incidentes</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">IF</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">IS</th>
+                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">ILI</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {historicalData.map((row, i) => (
+                                    <tr key={row.year} className={`${i % 2 === 0 ? "bg-[#141824]" : "bg-[#0F1420]/30"} hover:bg-white/5 transition-colors border-b border-[#1E2A3B]/50 last:border-0`}>
+                                        <td className="px-4 py-3 font-bold text-white whitespace-nowrap">{row.year}</td>
+                                        <td className="px-4 py-3 text-white">{row.atMortales}</td>
+                                        <td className="px-4 py-3 text-white">{row.atConIncap}</td>
+                                        <td className="px-4 py-3 text-white">{row.atSinIncap}</td>
+                                        <td className="px-4 py-3 font-bold text-amber-400">{row.totalAT}</td>
+                                        <td className="px-4 py-3 text-white">{row.diasIncap}</td>
+                                        <td className="px-4 py-3 text-white">{row.el}</td>
+                                        <td className="px-4 py-3 text-white">{row.incidentes}</td>
+                                        <td className="px-4 py-3 font-bold text-emerald-400">{row.IF.toFixed(2)}</td>
+                                        <td className="px-4 py-3 font-bold text-emerald-400">{row.IS.toFixed(2)}</td>
+                                        <td className="px-4 py-3 font-bold text-emerald-400">{row.ILI < 0.01 && row.ILI > 0 ? "< 0.01" : row.ILI.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={handleExportHistorical}
+                            disabled={exportState.status === "generating"}
+                            className={[
+                                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer",
+                                exportState.status === "error" ? "bg-red-800 text-white" :
+                                    exportState.status === "done" ? "bg-green-700 text-white" :
+                                        "bg-[#F59E0B] text-black hover:bg-[#F59E0B]/90"
+                            ].join(" ")}
+                        >
+                            {exportState.status === "generating" ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : exportState.status === "done" ? (
+                                <CheckCircle2 className="w-4 h-4" />
+                            ) : (
+                                <Download className="w-4 h-4" />
+                            )}
+                            {exportState.status === "generating" ? "Generando Excel..." :
+                                exportState.status === "done" ? "¡Excel generado!" :
+                                    "⬇ Exportar Histórico 5 Años — Formato RUC/CCS (Excel)"}
+                        </button>
+                        {exportState.message && (
+                            <span className={`text-xs ${exportState.status === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {exportState.message}
+                            </span>
+                        )}
+                    </div>
                 </section>
 
                 {/* ── LEGAL NOTE ── */}
