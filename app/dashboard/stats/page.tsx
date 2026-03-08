@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import {
     ArrowLeft, BarChart2, TrendingUp, TrendingDown,
     Minus, AlertTriangle, RefreshCw, Settings,
-    Activity, Zap, Shield, Users, Skull
+    Activity, Zap, Shield, Users, Skull, ChevronDown
 } from "lucide-react";
 import {
     LineChart, Line, BarChart, Bar,
@@ -81,7 +81,7 @@ function KPICard({
                         Math.round(value).toLocaleString("es-CO");
 
     return (
-        <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col gap-3 hover:border-[#F59E0B]/30 transition-colors">
+        <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col gap-3 hover:border-[#F59E0B]/30 transition-colors cursor-pointer">
             <div className="flex items-start justify-between">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color === "text-emerald-400" ? "bg-emerald-400/10" :
                     color === "text-amber-400" ? "bg-amber-400/10" :
@@ -113,7 +113,7 @@ function KPICard({
                     {unit && <span className="text-sm font-normal text-[#64748B] ml-1">{unit}</span>}
                 </p>
             </div>
-            <p className="text-[#334155] text-[10px] leading-relaxed">{description}</p>
+            <p className="text-[#64748B] font-bold text-[10px] leading-relaxed">{description}</p>
         </div>
     );
 }
@@ -265,7 +265,7 @@ export default function StatsPage() {
                                     key={opt.value}
                                     onClick={() => setPeriod(opt.value)}
                                     className={[
-                                        "px-4 py-2 text-xs font-semibold transition-colors",
+                                        "px-4 py-2 text-xs font-semibold transition-colors cursor-pointer",
                                         period === opt.value
                                             ? "bg-[#F59E0B] text-black"
                                             : "bg-[#0F1420] text-[#64748B] hover:text-white",
@@ -282,16 +282,19 @@ export default function StatsPage() {
                         <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
                             Empresa
                         </label>
-                        <select
-                            value={selectedCompanyId}
-                            onChange={(e) => setSelectedCompanyId(e.target.value)}
-                            className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
-                        >
-                            <option value="all">Todas las empresas</option>
-                            {companies.map((c) => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <select
+                                value={selectedCompanyId}
+                                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                className="appearance-none bg-[#0F1420] border border-[#1E2A3B] rounded-xl pl-3 pr-10 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors cursor-pointer"
+                            >
+                                <option value="all">Todas las empresas</option>
+                                {companies.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                     </div>
 
                     {/* Workers & HHT */}
@@ -402,7 +405,7 @@ export default function StatsPage() {
                 {/* ── EVENT SUMMARY CHIPS ── */}
                 <div className="flex flex-wrap gap-3">
                     {[
-                        { label: "Total Accidentes (AT)", value: stats.totalAT, color: "bg-amber-500/15 text-amber-400 border-amber-500/25" },
+                        { label: "Total Accidentes (AT)", value: stats.totalAT, color: "bg-amber-500/15 text-amber-400 border-amber-500/25 text-[16px]" },
                         { label: "AT Grave", value: stats.atGrave, color: "bg-orange-500/15 text-orange-400 border-orange-500/25" },
                         { label: "AT Fatal", value: stats.atFatal, color: "bg-red-500/15 text-red-400 border-red-500/25" },
                         { label: "Incidentes/Casi-acc.", value: stats.incidentes, color: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
