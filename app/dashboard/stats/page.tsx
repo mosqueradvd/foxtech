@@ -75,7 +75,7 @@ function KPICard({
 
     const formatted =
         value === 0 ? "0" :
-            value < 0.01 ? value.toExponential(2) :
+            value < 0.01 ? "< 0.01" :
                 value < 10 ? value.toFixed(2) :
                     value < 100 ? value.toFixed(1) :
                         Math.round(value).toLocaleString("es-CO");
@@ -402,7 +402,7 @@ export default function StatsPage() {
                 {/* ── EVENT SUMMARY CHIPS ── */}
                 <div className="flex flex-wrap gap-3">
                     {[
-                        { label: "Accidentes de Trabajo", value: stats.totalAT, color: "bg-amber-500/15 text-amber-400 border-amber-500/25" },
+                        { label: "Total Accidentes (AT)", value: stats.totalAT, color: "bg-amber-500/15 text-amber-400 border-amber-500/25" },
                         { label: "AT Grave", value: stats.atGrave, color: "bg-orange-500/15 text-orange-400 border-orange-500/25" },
                         { label: "AT Fatal", value: stats.atFatal, color: "bg-red-500/15 text-red-400 border-red-500/25" },
                         { label: "Incidentes/Casi-acc.", value: stats.incidentes, color: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
