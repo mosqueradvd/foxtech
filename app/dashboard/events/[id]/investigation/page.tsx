@@ -97,6 +97,20 @@ function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; child
     );
 }
 
+function CauseRow({ label, value, onChange, onRemove, disabled }: { label: string; value: string; onChange: (v: string) => void; onRemove: () => void; disabled?: boolean; }) {
+    return (
+        <div className="flex items-start gap-2 mb-2">
+            <span className="mt-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider w-20 flex-shrink-0">{label}</span>
+            <FInput value={value} onChange={onChange} placeholder="Describe la causa..." disabled={disabled} />
+            {!disabled && (
+                <button onClick={onRemove} className="mt-2 p-1.5 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer">
+                    <Trash2 className="w-3.5 h-3.5" />
+                </button>
+            )}
+        </div>
+    );
+}
+
 // ── Signature status badge ────────────────────────────────────────────────────
 
 function SigBadge({ status }: { status: string }) {
@@ -334,20 +348,6 @@ export default function InvestigationPage() {
     const updAction = (i: number, p: Partial<ActionItem>) => { setActionPlan(actionPlan.map((a, idx) => idx === i ? { ...a, ...p } : a)); scheduleSave(); };
     const rmAction = (i: number) => { setActionPlan(actionPlan.filter((_, idx) => idx !== i)); scheduleSave(); };
 
-    function CauseRow({ label, value, onChange, onRemove }: { label: string; value: string; onChange: (v: string) => void; onRemove: () => void; }) {
-        return (
-            <div className="flex items-start gap-2 mb-2">
-                <span className="mt-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider w-20 flex-shrink-0">{label}</span>
-                <FInput value={value} onChange={onChange} placeholder="Describe la causa..." disabled={isClosed} />
-                {!isClosed && (
-                    <button onClick={onRemove} className="mt-2 p-1.5 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all">
-                        <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                )}
-            </div>
-        );
-    }
-
     // ── Render ────────────────────────────────────────────────────────────────
     if (loading) return (
         <div className="min-h-screen bg-[#0F1420] flex items-center justify-center">
@@ -419,7 +419,7 @@ export default function InvestigationPage() {
                         Puedes guardarlo y continuarlo en cualquier momento.
                     </p>
                     <button onClick={handleCreate} disabled={creating}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-[#F59E0B] text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-60">
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-[#F59E0B] text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-60 cursor-pointer">
                         {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                         Iniciar Investigación
                     </button>
@@ -432,7 +432,7 @@ export default function InvestigationPage() {
                             const Icon = tab.icon;
                             return (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                    className={["flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
+                                    className={["flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer",
                                         activeTab === tab.id ? "bg-[#F59E0B] text-black" : "text-[#64748B] hover:text-white"].join(" ")}>
                                     <Icon className="w-4 h-4 flex-shrink-0" />
                                     <span>{tab.label}</span>
@@ -482,14 +482,14 @@ export default function InvestigationPage() {
                                 <p className="text-[#64748B] text-xs mb-4">Condiciones o actos que directamente causaron el evento.</p>
                                 {immCauses.map((c, i) => (
                                     <CauseRow key={i} label={c.type === "acto" ? "Acto" : "Condición"} value={c.description}
-                                        onChange={(v) => updImmCause(i, v)} onRemove={() => rmImmCause(i)} />
+                                        onChange={(v) => updImmCause(i, v)} onRemove={() => rmImmCause(i)} disabled={isClosed} />
                                 ))}
                                 {!isClosed && (
                                     <div className="flex flex-wrap gap-2 mt-4">
-                                        <button onClick={() => addImmCause("acto")} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded-lg text-xs font-semibold hover:bg-amber-400/20 transition-colors">
+                                        <button onClick={() => addImmCause("acto")} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded-lg text-xs font-semibold hover:bg-amber-400/20 transition-colors cursor-pointer">
                                             <Plus className="w-3 h-3" /> Acto subestándar
                                         </button>
-                                        <button onClick={() => addImmCause("condicion")} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-400/10 text-orange-400 border border-orange-400/20 rounded-lg text-xs font-semibold hover:bg-orange-400/20 transition-colors">
+                                        <button onClick={() => addImmCause("condicion")} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-400/10 text-orange-400 border border-orange-400/20 rounded-lg text-xs font-semibold hover:bg-orange-400/20 transition-colors cursor-pointer">
                                             <Plus className="w-3 h-3" /> Condición subestándar
                                         </button>
                                     </div>
@@ -500,7 +500,7 @@ export default function InvestigationPage() {
                                 <p className="text-[#64748B] text-xs mb-4">Factores personales o del trabajo que generaron las causas inmediatas.</p>
                                 {basicCauses.map((c, i) => (
                                     <CauseRow key={i} label={c.type === "personal" ? "Personal" : "Trabajo"} value={c.description}
-                                        onChange={(v) => updBasicCause(i, v)} onRemove={() => rmBasicCause(i)} />
+                                        onChange={(v) => updBasicCause(i, v)} onRemove={() => rmBasicCause(i)} disabled={isClosed} />
                                 ))}
                                 {!isClosed && (
                                     <div className="flex flex-wrap gap-2 mt-4">
@@ -568,7 +568,7 @@ export default function InvestigationPage() {
                                     </div>
                                 ))}
                                 {!isClosed && (
-                                    <button onClick={addAction} className="flex items-center gap-2 px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors mt-2">
+                                    <button onClick={addAction} className="flex items-center gap-2 px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors mt-2 cursor-pointer">
                                         <Plus className="w-4 h-4" /> Agregar acción
                                     </button>
                                 )}
