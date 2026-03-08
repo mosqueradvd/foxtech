@@ -205,23 +205,40 @@ export function groupByMonth(events: Event[], months: number = 12): MonthlyPoint
 // ─── Classification breakdown ─────────────────────────────────────────────────
 
 export function groupByClassification(events: Event[]): ClassificationPoint[] {
-    const groups: { label: string; key: string; color: string }[] = [
-        { key: "ACCIDENTE_TRABAJO", label: "AT Simple", color: "#F59E0B" },
-        { key: "ACCIDENTE_TRABAJO_GRAVE", label: "AT Grave", color: "#F97316" },
-        { key: "ACCIDENTE_TRABAJO_FATAL", label: "AT Fatal", color: "#EF4444" },
-        { key: "CASI_ACCIDENTE", label: "Casi-Accidente", color: "#3B82F6" },
-        { key: "INCIDENTE_SIN_LESION", label: "Incidente sin lesión", color: "#8B5CF6" },
-        { key: "CONDICION_INSEGURA", label: "Condición Insegura", color: "#22C55E" },
-        { key: "ENFERMEDAD_LABORAL", label: "Enfermedad Laboral", color: "#EC4899" },
+    let atConTP = 0;
+    let atSinTP = 0;
+    let atGrave = 0;
+    let atFatal = 0;
+    let casiAccidente = 0;
+    let incidente = 0;
+    let condicion = 0;
+    let enfermedad = 0;
+
+    events.forEach(e => {
+        if (e.classification === "ACCIDENTE_TRABAJO_FATAL") atFatal++;
+        else if (e.classification === "ACCIDENTE_TRABAJO_GRAVE") atGrave++;
+        else if (e.classification === "ACCIDENTE_TRABAJO") {
+            if ((e.disability_days ?? 0) > 0) atConTP++;
+            else atSinTP++;
+        }
+        else if (e.classification === "CASI_ACCIDENTE") casiAccidente++;
+        else if (e.classification === "INCIDENTE_SIN_LESION") incidente++;
+        else if (e.classification === "CONDICION_INSEGURA") condicion++;
+        else if (e.classification === "ENFERMEDAD_LABORAL") enfermedad++;
+    });
+
+    const groups = [
+        { label: "AT Con Tiempo Perdido", value: atConTP, color: "#F59E0B" },
+        { label: "AT Sin Tiempo Perdido", value: atSinTP, color: "#FCD34D" },
+        { label: "AT Grave", value: atGrave, color: "#F97316" },
+        { label: "AT Fatal", value: atFatal, color: "#EF4444" },
+        { label: "Casi-Accidente", value: casiAccidente, color: "#3B82F6" },
+        { label: "Enfermedad Laboral", value: enfermedad, color: "#EC4899" },
+        { label: "Condición Insegura", value: condicion, color: "#22C55E" },
+        { label: "Incidente sin Lesión", value: incidente, color: "#8B5CF6" },
     ];
 
-    return groups
-        .map(({ key, label, color }) => ({
-            label,
-            color,
-            value: events.filter((e) => e.classification === key).length,
-        }))
-        .filter((g) => g.value > 0);
+    return groups.filter((g) => g.value > 0);
 }
 
 // ─── Period filter helpers ────────────────────────────────────────────────────

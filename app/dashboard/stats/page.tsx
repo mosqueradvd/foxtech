@@ -84,22 +84,25 @@ function KPICard({
         <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col gap-3 hover:border-[#F59E0B]/30 transition-colors">
             <div className="flex items-start justify-between">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color === "text-emerald-400" ? "bg-emerald-400/10" :
-                        color === "text-amber-400" ? "bg-amber-400/10" :
-                            color === "text-red-400" ? "bg-red-400/10" : "bg-white/5"
+                    color === "text-amber-400" ? "bg-amber-400/10" :
+                        color === "text-red-400" ? "bg-red-400/10" : "bg-white/5"
                     }`}>
                     <Icon className={`w-4 h-4 ${color}`} />
                 </div>
                 {hasChange && (
-                    <div className={`flex items-center gap-1 text-xs font-semibold ${Math.abs(diff) < 0.01 ? "text-[#64748B]" :
+                    <div className="flex flex-col items-end">
+                        <div className={`flex items-center gap-1 text-xs font-semibold ${Math.abs(diff) < 0.01 ? "text-[#64748B]" :
                             diff < 0 ? "text-emerald-400" : "text-red-400"
-                        }`}>
-                        {Math.abs(diff) < 0.01
-                            ? <Minus className="w-3 h-3" />
-                            : diff < 0
-                                ? <TrendingDown className="w-3 h-3" />
-                                : <TrendingUp className="w-3 h-3" />
-                        }
-                        {Math.abs(diff).toFixed(1)}
+                            }`}>
+                            {Math.abs(diff) < 0.01
+                                ? <Minus className="w-3 h-3" />
+                                : diff < 0
+                                    ? <TrendingDown className="w-3 h-3" />
+                                    : <TrendingUp className="w-3 h-3" />
+                            }
+                            {Math.abs(diff).toFixed(1)}
+                        </div>
+                        <span className="text-[9px] font-normal text-[#64748B] mt-0.5">vs. período anterior</span>
                     </div>
                 )}
             </div>
@@ -149,6 +152,7 @@ export default function StatsPage() {
     const [period, setPeriod] = useState<PeriodPreset>("year");
     const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
     const [hhtOverride, setHhtOverride] = useState<string>("");
+    const [workerOverride, setWorkerOverride] = useState<string>("");
     const [showHHTInput, setShowHHTInput] = useState(false);
 
     // ── Load ────────────────────────────────────────────────────────────────
@@ -195,11 +199,12 @@ export default function StatsPage() {
 
     // ── HHT ──────────────────────────────────────────────────────────────
     const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
-    const workerCount =
+    const dbWorkerCount =
         selectedCompany?.employee_count ??
         companies.reduce((s, c) => s + (c.employee_count ?? 0), 0);
+    const workerCount = workerOverride !== "" ? Number(workerOverride) : Math.max(dbWorkerCount, 1);
     const monthsInPeriod = monthsInRange(range);
-    const estimatedHHT = estimateHHT(Math.max(workerCount, 1), monthsInPeriod);
+    const estimatedHHT = estimateHHT(workerCount, monthsInPeriod);
     const hhtValue = hhtOverride !== "" ? Number(hhtOverride) : estimatedHHT;
 
     // ── Indicators ────────────────────────────────────────────────────────
@@ -289,46 +294,47 @@ export default function StatsPage() {
                         </select>
                     </div>
 
-                    {/* HHT */}
-                    <div className="flex-1 min-w-[280px]">
-                        <div className="flex items-center gap-2 mb-1.5">
-                            <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider">
-                                Horas-Hombre Trabajadas (HHT)
+                    {/* Workers & HHT */}
+                    <div className="flex-1 min-w-[320px] flex gap-4">
+                        <div className="flex-1">
+                            <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                                Trabajadores
                             </label>
-                            <button
-                                onClick={() => setShowHHTInput(!showHHTInput)}
-                                className="text-[#F59E0B] hover:text-amber-300 transition-colors"
-                                title="Editar HHT manual"
-                            >
-                                <Settings className="w-3 h-3" />
-                            </button>
+                            <input
+                                type="number"
+                                placeholder={dbWorkerCount > 0 ? dbWorkerCount.toString() : "Ej: 150"}
+                                value={workerOverride}
+                                onChange={(e) => setWorkerOverride(e.target.value)}
+                                className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155]"
+                            />
                         </div>
-                        {showHHTInput ? (
-                            <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                                <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider">
+                                    HHT
+                                </label>
+                                <button
+                                    onClick={() => setShowHHTInput(!showHHTInput)}
+                                    className="text-[#F59E0B] hover:text-amber-300 transition-colors"
+                                    title="Editar HHT manual"
+                                >
+                                    <Settings className="w-3 h-3" />
+                                </button>
+                            </div>
+                            {showHHTInput ? (
                                 <input
                                     type="number"
-                                    placeholder={`Estimado: ${estimatedHHT.toLocaleString("es-CO")}`}
+                                    placeholder={`Est: ${estimatedHHT.toLocaleString("es-CO")}`}
                                     value={hhtOverride}
                                     onChange={(e) => setHhtOverride(e.target.value)}
-                                    className="flex-1 bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155]"
+                                    className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155]"
                                 />
-                                {hhtOverride !== "" && (
-                                    <button
-                                        onClick={() => setHhtOverride("")}
-                                        className="text-[#64748B] hover:text-white text-xs"
-                                    >
-                                        Usar estimado
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <p className="text-white text-sm">
-                                {hhtValue.toLocaleString("es-CO")} h
-                                <span className="text-[#64748B] text-xs ml-2">
-                                    {hhtOverride !== "" ? "(manual)" : `(estimado: ${workerCount} trabajadores × ${monthsInPeriod} mes${monthsInPeriod !== 1 ? "es" : ""})`}
-                                </span>
-                            </p>
-                        )}
+                            ) : (
+                                <div className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm flex items-center h-[38px]">
+                                    {hhtValue.toLocaleString("es-CO")} h
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Range display */}
@@ -523,16 +529,23 @@ export default function StatsPage() {
                                                     {(ev.event_date || ev.created_at || "").slice(0, 10)}
                                                 </td>
                                                 <td className="px-4 py-3 text-white text-xs">
-                                                    {ev.worker_name || ev.reported_by_name || "—"}
+                                                    {ev.worker_name || "Sin asignar"}
                                                 </td>
                                                 <td className="px-4 py-3 text-xs">
-                                                    <span className={`px-2 py-0.5 rounded-full font-semibold ${isFatal ? "bg-red-500/20 text-red-400" :
+                                                    {ev.classification_status === "classified" ? (
+                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${isFatal ? "bg-red-500/20 text-red-400" :
                                                             isGrave ? "bg-orange-500/20 text-orange-400" :
                                                                 isAT ? "bg-amber-500/20 text-amber-400" :
                                                                     "bg-blue-500/20 text-blue-400"
-                                                        }`}>
-                                                        {isFatal ? "AT Fatal" : isGrave ? "AT Grave" : isAT ? "AT" : (ev.classification ?? "—").replace(/_/g, " ")}
-                                                    </span>
+                                                            }`}>
+                                                            {isFatal ? "AT Fatal" : isGrave ? "AT Grave" : isAT ? "AT" : (ev.classification ?? "—").replace(/_/g, " ")}
+                                                        </span>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[#94A3B8] capitalize">{((ev.event_type || "") as string).replace(/_/g, " ")}</span>
+                                                            <span className="bg-[#334155]/50 text-[#94A3B8] px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider">Sin clasificar</span>
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3 text-[#94A3B8] text-xs">
                                                     {ev.injury_nature || "—"}
@@ -547,8 +560,8 @@ export default function StatsPage() {
                                                 </td>
                                                 <td className="px-4 py-3 text-xs">
                                                     <span className={`px-2 py-0.5 rounded-full font-semibold ${ev.classification_status === "classified"
-                                                            ? "bg-blue-500/15 text-blue-400"
-                                                            : "bg-amber-500/15 text-amber-500"
+                                                        ? "bg-blue-500/15 text-blue-400"
+                                                        : "bg-amber-500/15 text-amber-500"
                                                         }`}>
                                                         {ev.classification_status === "classified" ? "Clasificado" : "Pendiente"}
                                                     </span>
