@@ -283,7 +283,7 @@ export default function StatsPage() {
 
         const periods = historicalData.map(h => ({
             year: h.year,
-            month: 12, // historical uses aggregated full year. We pass 12 as nominal.
+            month: 0, // historical uses aggregated full year. We pass 0 as nominal for annual.
             workerCount,
             manHoursWorked: h.hhtForYear,
             accidents: h.events.filter(e => e.event_type === "accidente" || e.event_type === "accidente_grave"),

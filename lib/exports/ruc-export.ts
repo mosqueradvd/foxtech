@@ -74,8 +74,8 @@ function validateInputs(
     if (period.year < 2000 || period.year > 2100)
         errors.push(`${prefix}: AÑO fuera de rango válido (${period.year}).`);
 
-    if (period.month < 1 || period.month > 12)
-        errors.push(`${prefix}: MES debe estar entre 1 y 12.`);
+    if (period.month < 0 || period.month > 12)
+        errors.push(`${prefix}: MES debe estar entre 0 y 12.`);
 
     const cleanNit = sanitizeNit(config.nit);
     if (!/^\d{6,10}$/.test(cleanNit))
@@ -137,13 +137,16 @@ function buildRow(
     const incidentCount = period.incidents ?? 0;
 
     // Indicators — all recalculated, never from stored values (skill P3)
+    const isAnnual = period.month === 0;
+    const hhtAnnual = isAnnual ? hht : (hht * 12);
+
     const accidentRate =
         workers > 0 ? roundTo((totalAccidents / workers) * 100, 2) : 0;
     const frequencyRate =
-        hht > 0 ? roundTo((totalAccidents / hht) * CCS_K_FACTOR, 2) : 0;
+        hhtAnnual > 0 ? roundTo((totalAccidents / hhtAnnual) * CCS_K_FACTOR, 2) : 0;
     const severityRate =
-        hht > 0
-            ? roundTo((chargedDaysTotal / hht) * CCS_K_FACTOR, 2)
+        hhtAnnual > 0
+            ? roundTo((chargedDaysTotal / hhtAnnual) * CCS_K_FACTOR, 2)
             : 0;
     const ili = roundTo((frequencyRate * severityRate) / 1000, 4);
 
@@ -153,7 +156,7 @@ function buildRow(
         NIT: sanitizeNit(config.nit),
         RAZON_SOCIAL: config.companyName.trim(),
         CENTRO_TRABAJO: config.workCenter.trim(),
-        CODIGO_CIIU: config.ciiuCode,
+        CODIGO_CIIU: parseInt(config.ciiuCode, 10) || 0,
         CLASE_RIESGO: config.riskClass,
         NUM_TRABAJADORES: workers,
         HHT: hht,

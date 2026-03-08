@@ -217,8 +217,8 @@ export default function ExportsPage() {
 
     const rucAccidents = rucPeriodEvents.filter((i) => i.event_type === "accidente" || i.event_type === "accidente_grave");
 
-    // Compute stats for export UI preview
-    const rucStats = calcIndicators(rucPeriodEvents, rucHHT, rucWorkersCount);
+    // Compute stats for export UI preview (use annualized HHT for accurate monthly indices)
+    const rucStats = calcIndicators(rucPeriodEvents, rucHHT * 12, rucWorkersCount);
     const atConIncap = rucPeriodEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) > 0).length;
     const atSinIncap = rucPeriodEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) === 0).length;
 
