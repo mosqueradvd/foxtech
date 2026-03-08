@@ -413,7 +413,7 @@ export default function StatsPage() {
                         { label: "Días de incapacidad", value: stats.totalDisabilityDays, color: "bg-[#1E2A3B] text-[#94A3B8] border-[#334155]" },
                     ].map((chip) => (
                         <span key={chip.label} className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-semibold ${chip.color}`}>
-                            <span className="text-xl font-black">{chip.value}</span>
+                            <span className="text-base font-black">{chip.value}</span>
                             {chip.label}
                         </span>
                     ))}
