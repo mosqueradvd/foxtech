@@ -17,6 +17,7 @@ import {
     type InspectionActionItem,
     type Company,
 } from "@/lib/supabase";
+import { PhotoCapture } from "@/components/forms/PhotoCapture";
 import { INSPECTION_TEMPLATES } from "@/lib/inspection-templates";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -33,10 +34,14 @@ function ScoreBar({ score }: { score: number }) {
 function ActionStatusSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
     return (
         <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}
-            className="bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-2 py-1.5 text-white text-xs outline-none focus:border-[#F59E0B]/50 disabled:opacity-50">
+            className="bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-2 py-1.5 text-white text-xs outline-none focus:border-[#F59E0B]/50 disabled:opacity-50 cursor-pointer">
             <option value="pendiente">Pendiente</option>
-            <option value="en_curso">En Curso</option>
-            <option value="cerrado">Cerrado</option>
+            <option value="en_ejecucion">En ejecución</option>
+            <option value="completada">Completada</option>
+            {(value === "verificada" || value === "cerrado") && (
+                <option value={value} disabled>{value === "cerrado" ? "Cerrado" : "Verificada"}</option>
+            )}
+            {value === "en_curso" && <option value="en_curso" hidden>En Curso</option>}
         </select>
     );
 }
@@ -176,7 +181,7 @@ export default function InspectionDetailPage() {
         scheduleSave();
     };
 
-    const openActions = actionPlan.filter((a) => a.status !== "cerrado").length;
+    const openActions = actionPlan.filter((a) => a.status !== "cerrado" && a.status !== "verificada").length;
     const allActionsSet = failed.length > 0 && failed.every((f) => actionPlan.some((a) => a.finding_id === f.id));
 
     // ── Render ─────────────────────────────────────────────────────────────────
@@ -332,19 +337,57 @@ export default function InspectionDetailPage() {
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Estado</label>
                                                         <ActionStatusSelect value={action.status} onChange={(v) => updateAction(action.id, { status: v as InspectionActionItem["status"] })} disabled={isClosed} />
                                                     </div>
-                                                    {action.status === "cerrado" && (
-                                                        <div>
-                                                            <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">¿Fue eficaz?</label>
-                                                            <div className="flex gap-2">
-                                                                <button onClick={() => updateAction(action.id, { effective: true })} disabled={isClosed}
-                                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${action.effective === true ? "bg-emerald-400/20 text-emerald-400 border-emerald-400/30" : "bg-[#0F1420] text-[#64748B] border-[#1E2A3B]"}`}>
-                                                                    ✓ Sí
-                                                                </button>
-                                                                <button onClick={() => updateAction(action.id, { effective: false })} disabled={isClosed}
-                                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${action.effective === false ? "bg-red-400/20 text-red-400 border-red-400/30" : "bg-[#0F1420] text-[#64748B] border-[#1E2A3B]"}`}>
-                                                                    ✗ No
-                                                                </button>
+                                                    {action.status === "completada" && (
+                                                        <div className="sm:col-span-2 mt-2 p-3 sm:p-4 bg-[#0F1420] border border-[#1E2A3B] rounded-xl space-y-4">
+                                                            <div className="flex items-center gap-2 border-b border-[#1E2A3B] pb-2">
+                                                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                                                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Verificación de Eficacia (Dec. 1072)</span>
                                                             </div>
+                                                            <div>
+                                                                <label className="text-[#64748B] text-[10px] uppercase block mb-1.5">Nota de cierre / Observaciones de Verificación</label>
+                                                                <FInput value={action.verification_note || ""} onChange={(v) => updateAction(action.id, { verification_note: v })} disabled={isClosed} placeholder="E.g. área limpia y delimitada, se cerró el hallazgo." />
+                                                            </div>
+                                                            <div>
+                                                                <label className="text-[#64748B] text-[10px] uppercase block mb-1.5 mt-2">Evidencia fotográfica</label>
+                                                                {action.verification_photo_url ? (
+                                                                    <div className="relative inline-block mt-1">
+                                                                        <img src={action.verification_photo_url} className="h-24 w-24 object-cover rounded-xl border-2 border-[#1E2A3B]" alt="Verificación" />
+                                                                        {!isClosed && (
+                                                                            <button onClick={() => updateAction(action.id, { verification_photo_url: undefined })} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-400 transition-colors cursor-pointer"><XCircle className="w-3.5 h-3.5" /></button>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="w-full sm:w-80">
+                                                                        <PhotoCapture onCapture={(data) => updateAction(action.id, { verification_photo_url: data.photoBase64 })} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => updateAction(action.id, { status: "verificada", effective: true })}
+                                                                disabled={!action.verification_note || !action.verification_photo_url || isClosed}
+                                                                className="w-full sm:max-w-xs mt-2 py-2.5 bg-emerald-500 text-white text-xs font-bold rounded-lg hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer">
+                                                                Confirmar y Validar Cierre
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {(action.status === "verificada" || action.status === "cerrado") && (
+                                                        <div className="sm:col-span-2 mt-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                                                <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Acción Verificada</span>
+                                                            </div>
+                                                            {action.verification_note && (
+                                                                <p className="text-emerald-400/80 text-xs mt-1 italic">"{action.verification_note}"</p>
+                                                            )}
+                                                            {action.verification_photo_url && (
+                                                                <a href={action.verification_photo_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-2">
+                                                                    <img src={action.verification_photo_url} className="h-16 w-16 object-cover rounded-lg border border-emerald-500/30 hover:opacity-80 transition-opacity" alt="Evidencia de cierre" />
+                                                                </a>
+                                                            )}
+                                                            {/* backward compatibility */}
+                                                            {action.effective !== undefined && action.effective !== null && !action.verification_note && (
+                                                                <p className="text-emerald-400/80 text-xs mt-1">Eficaz: {action.effective ? "Sí" : "No"}</p>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>

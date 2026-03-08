@@ -115,9 +115,11 @@ export type InspectionActionItem = {
     action: string;
     responsible: string;
     deadline: string;
-    status: "pendiente" | "en_curso" | "cerrado";
+    status: "pendiente" | "en_curso" | "en_ejecucion" | "completada" | "verificada" | "cerrado";
     effective?: boolean | null; // evaluación de eficacia
     voice_url?: string; // audio memo url
+    verification_photo_url?: string; // foto de verificación
+    verification_note?: string;      // nota de cierre
 };
 
 export type Inspection = {
