@@ -26,6 +26,8 @@ export interface CompanyLegal {
     nitWithDv: string;
     city: string;
     department: string;
+    address?: string;
+    workCenter?: string;
     legalRep: LegalRepresentative;
 }
 
@@ -218,7 +220,7 @@ function MintrabajoLetterDocument({ input }: { input: MintrabajoLetterInput }) {
                     <View style={S.alertBar}>
                         <Text style={S.alertText}>
                             ⚠ ACCIDENTE MORTAL — Notificación inmediata obligatoria. Plazo: 2 días hábiles
-                            (Art. 2.2.4.1.6, Decreto 1072/2015).
+                            (Art. 2.2.4.1.7, Decreto 1072/2015).
                         </Text>
                     </View>
                 )}
@@ -238,7 +240,7 @@ function MintrabajoLetterDocument({ input }: { input: MintrabajoLetterInput }) {
 
                 {/* Subject */}
                 <Text style={S.subject}>
-                    Asunto: Notificación de accidente de trabajo {severityLabel} — Art. 2.2.4.1.6
+                    Asunto: Notificación de accidente de trabajo {severityLabel} — Art. 2.2.4.1.7
                     del Decreto 1072 de 2015
                 </Text>
 
@@ -248,7 +250,7 @@ function MintrabajoLetterDocument({ input }: { input: MintrabajoLetterInput }) {
                 {/* Opening paragraph */}
                 <Text style={S.paragraph}>
                     {company.name}, identificada con NIT {company.nitWithDv}, en cumplimiento de
-                    lo establecido en el Artículo 2.2.4.1.6 del Decreto 1072 de 2015 y el Artículo
+                    lo establecido en el Artículo 2.2.4.1.7 del Decreto 1072 de 2015 y el Artículo
                     3 de la Resolución 1401 de 2007, se permite notificar ante su Despacho el
                     siguiente evento laboral:
                 </Text>

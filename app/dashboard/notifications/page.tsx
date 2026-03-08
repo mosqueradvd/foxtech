@@ -148,6 +148,7 @@ export default function NotificationsPage() {
         nitWithDv: "",
         city: "Bogotá D.C.",
         department: "Bogotá D.C.",
+        address: "",
         legalRep: { name: "", phone: "", email: "" },
     });
 
@@ -193,6 +194,9 @@ export default function NotificationsPage() {
                     : "grave",
                 // Map worker_job_title → worker_position (used in letters)
                 worker_position: (inc as unknown as Record<string, string>)["worker_job_title"] || inc.worker_position,
+                worker_id_number: (inc as unknown as Record<string, string>)["worker_cedula"] || inc.worker_id_number,
+                injury_type: (inc as unknown as Record<string, string>)["injury_nature"] || inc.injury_type,
+                body_part_description: (inc as unknown as Record<string, string>)["body_part"] || inc.body_part_description,
                 // Map worker_arl from Supabase field
                 worker_arl: (inc as unknown as Record<string, string>)["worker_arl"] || inc.worker_arl,
                 worker_eps: (inc as unknown as Record<string, string>)["worker_eps"] || inc.worker_eps,
@@ -256,6 +260,7 @@ export default function NotificationsPage() {
                 nitWithDv: (saved as CompanyLegal).nitWithDv || c.nitWithDv,
                 city: (saved as CompanyLegal).city || c.city,
                 department: (saved as CompanyLegal).department || c.department,
+                address: (saved as CompanyLegal).address || c.address,
                 legalRep: (saved as CompanyLegal).legalRep || c.legalRep,
             }));
         }
@@ -501,6 +506,7 @@ export default function NotificationsPage() {
                                         { label: "NIT (con DV)", key: "nitWithDv", placeholder: "900.123.456-7" },
                                         { label: "Ciudad", key: "city", placeholder: "Bogotá D.C." },
                                         { label: "Departamento", key: "department", placeholder: "Bogotá D.C." },
+                                        { label: "Dirección (o centro trabajo)", key: "address", placeholder: "Calle 123 #45-67" },
                                     ].map(({ label, key, placeholder }) => (
                                         <div key={key}>
                                             <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1">
@@ -615,7 +621,7 @@ export default function NotificationsPage() {
                                     <div className="rounded-xl bg-[#0F1420] border border-[#1E2A3B] p-4 flex flex-col gap-3">
                                         <div>
                                             <p className="text-white text-xs font-bold mb-0.5">Ministerio del Trabajo</p>
-                                            <p className="text-[#64748B] text-xs">Art. 2.2.4.1.6 Dec. 1072/2015</p>
+                                            <p className="text-[#64748B] text-xs">Art. 2.2.4.1.7 Dec. 1072/2015</p>
                                             <p className="text-[#64748B] text-xs">Plazo: 2 días hábiles</p>
                                         </div>
                                         {isNotified("mintrabajo") && (
@@ -625,7 +631,7 @@ export default function NotificationsPage() {
                                             onClick={handleMintrabajoDownload}
                                             disabled={dlMintra === "generating"}
                                             className={[
-                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
                                                 dlMintra === "done"
                                                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                     : dlMintra === "error"
@@ -652,7 +658,7 @@ export default function NotificationsPage() {
                                             onClick={handleARLDownload}
                                             disabled={dlARL === "generating"}
                                             className={[
-                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
                                                 dlARL === "done"
                                                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                     : dlARL === "error"
@@ -679,7 +685,7 @@ export default function NotificationsPage() {
                                             onClick={handleEPSDownload}
                                             disabled={dlEPS === "generating"}
                                             className={[
-                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
                                                 dlEPS === "done"
                                                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                     : dlEPS === "error"
