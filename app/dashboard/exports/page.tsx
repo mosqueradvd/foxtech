@@ -20,7 +20,8 @@ import {
     Info,
     Loader2,
 } from "lucide-react";
-import { db, type LocalIncident } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
+import type { LocalIncident } from "@/lib/db";
 import {
     generateRUCExport,
     downloadBlob,
@@ -169,7 +170,7 @@ function SeverityBadge({ severity }: { severity?: string }) {
 // ── Main Page ─────────────────────────────────────────────────────────────
 
 export default function ExportsPage() {
-    const [incidents, setIncidents] = useState<LocalIncident[]>([]);
+    const [incidents, setIncidents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
     const [profileSaved, setProfileSaved] = useState(false);
@@ -185,11 +186,11 @@ export default function ExportsPage() {
     const [rucState, setRucState] = useState<DownloadState>({ status: "idle" });
     const [pdfStates, setPdfStates] = useState<Record<string, DownloadState>>({});
 
-    // Load Dexie incidents + saved profile
+    // Load Supabase incidents + saved profile
     useEffect(() => {
         const loadData = async () => {
-            const all = await db.incidents.orderBy("created_at").reverse().toArray();
-            setIncidents(all);
+            const { data } = await supabase.from("incidents").select("*").order("created_at", { ascending: false });
+            setIncidents(data || []);
             setLoading(false);
         };
         loadData();
@@ -269,7 +270,7 @@ export default function ExportsPage() {
     }, [profile, rucYear, rucMonth, rucWorkersCount, rucHHT, rucAccidents, incidentsCount]);
 
     // Generate PDF for single event
-    const handlePDFExport = useCallback(async (incident: LocalIncident) => {
+    const handlePDFExport = useCallback(async (incident: any) => {
         setPdfStates((prev) => ({ ...prev, [incident.id]: { status: "generating" } }));
         try {
             // Dynamic import to avoid SSR issues with @react-pdf/renderer
@@ -585,7 +586,7 @@ export default function ExportsPage() {
                                             ) : pdfState.status === "done" ? (
                                                 <CheckCircle2 className="w-3.5 h-3.5" />
                                             ) : (
-                                                <Download className="w-3.5 h-3.5" />
+                                                <Download className="w-3.5 h-3.5 cursor-pointer" />
                                             )}
                                             {pdfState.status === "done" ? "Listo" : "PDF"}
                                         </button>
