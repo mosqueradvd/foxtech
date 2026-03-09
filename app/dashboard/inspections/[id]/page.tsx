@@ -19,6 +19,12 @@ import {
 } from "@/lib/supabase";
 import { PhotoCapture } from "@/components/forms/PhotoCapture";
 import { INSPECTION_TEMPLATES } from "@/lib/inspection-templates";
+import * as LucideIcons from "lucide-react";
+
+function DynamicIcon({ name, className }: { name: string; className?: string }) {
+    const IconComponent = (LucideIcons as any)[name?.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("")] || LucideIcons.ClipboardList;
+    return <IconComponent className={className} />;
+}
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -210,8 +216,9 @@ export default function InspectionDetailPage() {
                 </button>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-white font-bold text-sm leading-none">
-                            {template?.icon} {inspection.template_name ?? template?.name ?? "Inspección"}
+                        <h1 className="text-white font-bold text-sm leading-none flex items-center gap-2">
+                            <DynamicIcon name={template?.icon ?? "clipboard-list"} className="w-4 h-4" />
+                            {inspection.template_name ?? template?.name ?? "Inspección"}
                         </h1>
                         {isClosed
                             ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"><Lock className="w-3 h-3" />Cerrada</span>

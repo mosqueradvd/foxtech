@@ -125,7 +125,7 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
             {query.length >= 2 && results.length === 0 && !searching && (
                 <div className="text-center py-3 text-[#64748B] text-sm">
                     No encontrado.{" "}
-                    <button onClick={() => setShowCreate(true)} className="text-[#F59E0B] font-semibold hover:underline">
+                    <button onClick={() => setShowCreate(true)} className="text-[#F59E0B] font-semibold hover:underline cursor-pointer">
                         Registrar nuevo trabajador
                     </button>
                 </div>

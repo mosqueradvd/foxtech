@@ -361,7 +361,7 @@ export default function InvestigationPage() {
         <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* HEADER */}
             <header className="bg-[#141824] border-b border-[#1E2A3B] px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-30">
-                <button onClick={() => router.push(`/dashboard/events/${incidentId}`)} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0">
+                <button onClick={() => router.push(`/dashboard/events/${incidentId}`)} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0 cursor-pointer">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
@@ -382,7 +382,7 @@ export default function InvestigationPage() {
                     {saved && !saving && <span className="text-emerald-400 text-xs font-semibold hidden sm:inline">Guardado ✓</span>}
                     {investigation && !isClosed && (
                         <button onClick={() => save(true)} disabled={saving}
-                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors">
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer">
                             <Save className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Guardar</span>
                         </button>
@@ -504,10 +504,10 @@ export default function InvestigationPage() {
                                 ))}
                                 {!isClosed && (
                                     <div className="flex flex-wrap gap-2 mt-4">
-                                        <button onClick={() => addBasicCause("personal")} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-400/10 text-blue-400 border border-blue-400/20 rounded-lg text-xs font-semibold hover:bg-blue-400/20 transition-colors">
+                                        <button onClick={() => addBasicCause("personal")} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-400/10 text-blue-400 border border-blue-400/20 rounded-lg text-xs font-semibold hover:bg-blue-400/20 transition-colors cursor-pointer">
                                             <Plus className="w-3 h-3" /> Factor personal
                                         </button>
-                                        <button onClick={() => addBasicCause("trabajo")} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-400/10 text-purple-400 border border-purple-400/20 rounded-lg text-xs font-semibold hover:bg-purple-400/20 transition-colors">
+                                        <button onClick={() => addBasicCause("trabajo")} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-400/10 text-purple-400 border border-purple-400/20 rounded-lg text-xs font-semibold hover:bg-purple-400/20 transition-colors cursor-pointer">
                                             <Plus className="w-3 h-3" /> Factor de trabajo
                                         </button>
                                     </div>
@@ -650,7 +650,7 @@ export default function InvestigationPage() {
                                                 ) : (
                                                     <div className="flex flex-wrap gap-2">
                                                         <button onClick={() => generateSignatureLink(role)} disabled={isLoading}
-                                                            className="flex items-center gap-1.5 px-3 py-2 bg-[#F59E0B] text-black text-xs font-bold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-60">
+                                                            className="flex items-center gap-1.5 px-3 py-2 bg-[#F59E0B] text-black text-xs font-bold rounded-lg hover:bg-amber-400 transition-colors disabled:opacity-60 cursor-pointer">
                                                             {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PenLine className="w-3.5 h-3.5" />}
                                                             {existing ? "Regenerar enlace" : "Generar enlace"}
                                                         </button>
@@ -658,12 +658,12 @@ export default function InvestigationPage() {
                                                         {existing && (
                                                             <>
                                                                 <button onClick={() => copyLink(existing.token, existing.id)}
-                                                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white text-xs font-semibold rounded-lg transition-colors">
+                                                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">
                                                                     {copiedId === existing.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                                                                     {copiedId === existing.id ? "¡Copiado!" : "Copiar enlace"}
                                                                 </button>
                                                                 <a href={whatsappLink(existing.token, label)} target="_blank" rel="noopener noreferrer"
-                                                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/25 text-xs font-semibold rounded-lg hover:bg-[#25D366]/25 transition-colors">
+                                                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/25 text-xs font-semibold rounded-lg hover:bg-[#25D366]/25 transition-colors cursor-pointer">
                                                                     <Share2 className="w-3.5 h-3.5" />
                                                                     WhatsApp
                                                                 </a>
@@ -691,7 +691,7 @@ export default function InvestigationPage() {
                                 <button
                                     disabled={!allSigned}
                                     onClick={() => alert("PDF generation coming — implement with @react-pdf/renderer")}
-                                    className="flex items-center gap-2 px-5 py-2.5 bg-[#F59E0B] text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-[#F59E0B] text-black font-bold rounded-xl hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
                                     <FileText className="w-4 h-4" />
                                     Generar PDF Final
                                 </button>

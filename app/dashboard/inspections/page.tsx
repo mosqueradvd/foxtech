@@ -12,6 +12,12 @@ import {
 } from "lucide-react";
 import { supabase, type Inspection, type Company } from "@/lib/supabase";
 import { INSPECTION_TEMPLATES } from "@/lib/inspection-templates";
+import * as LucideIcons from "lucide-react";
+
+function DynamicIcon({ name, className }: { name: string; className?: string }) {
+    const IconComponent = (LucideIcons as any)[name?.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("")] || LucideIcons.ClipboardList;
+    return <IconComponent className={className} />;
+}
 
 // ── Score semaphore ────────────────────────────────────────────────────────────
 
@@ -83,7 +89,7 @@ export default function InspectionsListPage() {
         <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* HEADER */}
             <header className="bg-[#141824] border-b border-[#1E2A3B] px-4 sm:px-6 py-4 flex items-center gap-3 sticky top-0 z-30">
-                <button onClick={() => router.push("/dashboard")} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all">
+                <button onClick={() => router.push("/dashboard")} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all cursor-pointer">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
@@ -125,7 +131,7 @@ export default function InspectionsListPage() {
                         <select value={filterTemplate} onChange={(e) => setFilterTemplate(e.target.value)}
                             className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#F59E0B]/50">
                             <option value="all">Todos los templates</option>
-                            {INSPECTION_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.icon} {t.name}</option>)}
+                            {INSPECTION_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
                             className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#F59E0B]/50">
@@ -168,7 +174,7 @@ export default function InspectionsListPage() {
                                     className="w-full text-left bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 hover:border-[#F59E0B]/30 hover:bg-[#141824]/80 transition-all flex items-center gap-4">
                                     {/* Template icon */}
                                     <div className="w-10 h-10 rounded-xl bg-[#0F1420] border border-[#1E2A3B] flex items-center justify-center text-lg flex-shrink-0">
-                                        {template?.icon ?? "🏭"}
+                                        <DynamicIcon name={template?.icon ?? "clipboard-list"} className="w-5 h-5 text-current" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center flex-wrap gap-2 mb-1">

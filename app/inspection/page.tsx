@@ -14,6 +14,12 @@ import { syncPendingData } from "@/lib/sync";
 import { INSPECTION_TEMPLATES, type InspectionTemplate, type TemplateItem, type CheckState } from "@/lib/inspection-templates";
 import { PhotoCapture } from "@/components/forms/PhotoCapture";
 import { VoiceNarration } from "@/components/forms/VoiceNarration";
+import * as LucideIcons from "lucide-react";
+
+function DynamicIcon({ name, className }: { name: string; className?: string }) {
+    const IconComponent = (LucideIcons as any)[name.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("")] || LucideIcons.ClipboardList;
+    return <IconComponent className={className} />;
+}
 
 interface CheckItem extends TemplateItem {
     checked: CheckState;
@@ -34,6 +40,7 @@ export default function InspectionPage() {
     const [inspectorName, setInspectorName] = useState("");
     const [locationName, setLocationName] = useState("");
     const [saved, setSaved] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [inspectionId] = useState(() => generateId());
     const obsRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
@@ -175,7 +182,10 @@ export default function InspectionPage() {
                 }} className="min-w-[44px] min-h-[44px] flex items-center">
                     <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
-                <h1 className="text-white font-bold flex-1 truncate">{selectedTemplate.icon} {selectedTemplate.name}</h1>
+                <h1 className="text-white font-bold flex-1 truncate flex items-center gap-2">
+                    <DynamicIcon name={selectedTemplate.icon} className="w-5 h-5" />
+                    {selectedTemplate.name}
+                </h1>
                 <span className={`text-sm font-black px-3 py-1 rounded-full bg-[#252B3B] border border-[#334155] ${scoreColor}`}>
                     {score}%
                 </span>
@@ -184,13 +194,42 @@ export default function InspectionPage() {
             {/* Template selector */}
             <div className="px-4 pt-4 space-y-3">
                 <div className="relative">
-                    <select value={selectedTemplate.id} onChange={(e) => onTemplateChange(e.target.value)}
-                        className="w-full appearance-none bg-[#252B3B] border border-[#334155] rounded-xl px-4 py-3 text-white font-medium text-sm min-h-[48px] outline-none focus:border-[#F59E0B] pr-10">
-                        {INSPECTION_TEMPLATES.map((t) => (
-                            <option key={t.id} value={t.id}>{t.icon} {t.name}</option>
-                        ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                    <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="w-full flex items-center justify-between bg-[#252B3B] border border-[#334155] rounded-xl px-4 py-3 text-white font-medium text-sm min-h-[48px] outline-none focus:border-[#F59E0B]"
+                    >
+                        <div className="flex items-center gap-2 truncate">
+                            <DynamicIcon name={selectedTemplate.icon} className="w-5 h-5 flex-shrink-0" />
+                            <span className="truncate">{selectedTemplate.name}</span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-[#64748B] flex-shrink-0 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isDropdownOpen && (
+                        <>
+                            <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setIsDropdownOpen(false)}
+                            />
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-[#252B3B] border border-[#334155] rounded-xl overflow-hidden shadow-xl z-50">
+                                <div className="max-h-60 overflow-y-auto py-1 custom-scrollbar">
+                                    {INSPECTION_TEMPLATES.map((t) => (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => {
+                                                onTemplateChange(t.id);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[#2E3547] transition-colors ${selectedTemplate.id === t.id ? 'bg-[#2E3547] text-white' : 'text-[#94A3B8]'}`}
+                                        >
+                                            <DynamicIcon name={t.icon} className={`w-5 h-5 flex-shrink-0 ${selectedTemplate.id === t.id ? 'text-[#F59E0B]' : 'text-[#64748B]'}`} />
+                                            <span className="text-sm font-medium">{t.name}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
                 <div className="space-y-1 px-1">
                     <p className="text-[#F59E0B] text-xs font-bold tracking-wide">Marco Legal: {selectedTemplate.norm}</p>

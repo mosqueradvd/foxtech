@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
     ArrowLeft, Bell, AlertTriangle, CheckCircle2,
-    FileText, Download, Building2, Send
+    FileText, Download, Building2, Send, Mail
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -114,9 +114,25 @@ function formatDate(iso: string): string {
 }
 
 const SEVERITY_LABEL: Record<string, string> = {
-    grave: "🟠 Grave",
-    mortal: "🔴 Mortal",
+    grave: "Grave",
+    mortal: "Mortal",
 };
+
+function SeverityBadge({ severity }: { severity: string }) {
+    if (!severity) return null;
+    const isFatal = severity.toLowerCase() === "mortal" || severity.toLowerCase() === "fatal";
+    const label = SEVERITY_LABEL[severity] || severity;
+    const color = isFatal ? "text-red-400" : "text-amber-500";
+    const dot = isFatal ? "bg-red-400" : "bg-amber-500";
+    const bg = isFatal ? "bg-red-400/10 border-red-400/20" : "bg-amber-500/10 border-amber-500/20";
+
+    return (
+        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${bg} ${color}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+            {label}
+        </span>
+    );
+}
 
 const COMPANY_STORAGE_KEY = "foxtech_company_profile";
 
@@ -175,7 +191,7 @@ export default function NotificationsPage() {
             // Module 2 saves to Supabase with classification = "ACCIDENTE_TRABAJO_GRAVE" | "ACCIDENTE_TRABAJO_FATAL"
             const { data, error } = await supabase
                 .from("incidents")
-                .select("*")
+                .select("*, investigations(event_narrative)")
                 .in("classification", ["ACCIDENTE_TRABAJO_GRAVE", "ACCIDENTE_TRABAJO_FATAL"])
                 .order("created_at", { ascending: false });
 
@@ -184,27 +200,38 @@ export default function NotificationsPage() {
                 return;
             }
 
-            const rawIncidents = (data ?? []) as LocalIncident[];
+            const rawIncidents = (data ?? []) as any[];
 
             // Map Supabase classification → severity for the notification logic
-            const mappedIncidents: LocalIncident[] = rawIncidents.map((inc) => ({
-                ...inc,
-                severity: (inc as unknown as Record<string, string>)["classification"] === "ACCIDENTE_TRABAJO_FATAL"
-                    ? "mortal"
-                    : "grave",
-                // Map worker_job_title → worker_position (used in letters)
-                worker_position: (inc as unknown as Record<string, string>)["worker_job_title"] || inc.worker_position,
-                worker_id_number: (inc as unknown as Record<string, string>)["worker_cedula"] || inc.worker_id_number,
-                injury_type: (inc as unknown as Record<string, string>)["injury_nature"] || inc.injury_type,
-                body_part_description: (inc as unknown as Record<string, string>)["body_part"] || inc.body_part_description,
-                // Map worker_arl from Supabase field
-                worker_arl: (inc as unknown as Record<string, string>)["worker_arl"] || inc.worker_arl,
-                worker_eps: (inc as unknown as Record<string, string>)["worker_eps"] || inc.worker_eps,
-                // Map location from event_city/event_address
-                location_name: (inc as unknown as Record<string, string>)["location_name"]
-                    || [(inc as unknown as Record<string, string>)["event_address"], (inc as unknown as Record<string, string>)["event_city"]].filter(Boolean).join(", ")
-                    || "",
-            }));
+            const mappedIncidents: LocalIncident[] = rawIncidents.map((inc) => {
+                const invData = inc.investigations;
+                let narrative = undefined;
+                if (Array.isArray(invData) && invData.length > 0) {
+                    narrative = invData[0]?.event_narrative;
+                } else if (invData && !Array.isArray(invData)) {
+                    narrative = invData.event_narrative;
+                }
+
+                return {
+                    ...inc,
+                    description: narrative || inc.description, // Use investigation narrative if available
+                    severity: inc.classification === "ACCIDENTE_TRABAJO_FATAL"
+                        ? "mortal"
+                        : "grave",
+                    // Map worker_job_title → worker_position (used in letters)
+                    worker_position: inc.worker_job_title || inc.worker_position,
+                    worker_id_number: inc.worker_cedula || inc.worker_id_number,
+                    injury_type: inc.injury_nature || inc.injury_type,
+                    body_part_description: inc.body_part || inc.body_part_description,
+                    // Map worker_arl from Supabase field
+                    worker_arl: inc.worker_arl || inc.worker_arl,
+                    worker_eps: inc.worker_eps || inc.worker_eps,
+                    // Map location from event_city/event_address
+                    location_name: inc.location_name
+                        || [inc.event_address, inc.event_city].filter(Boolean).join(", ")
+                        || "",
+                };
+            });
 
             const enriched: EnrichedIncident[] = await Promise.all(
                 mappedIncidents.map(async (inc) => {
@@ -252,16 +279,20 @@ export default function NotificationsPage() {
         loadData();
 
         // Load company profile from localStorage (shared with exports page)
-        const saved = loadCompanyProfile();
-        if (saved && (saved as CompanyLegal).name) {
+        const saved: any = loadCompanyProfile();
+        if (saved && saved.name) {
             setCompany((c) => ({
                 ...c,
-                name: (saved as CompanyLegal).name || c.name,
-                nitWithDv: (saved as CompanyLegal).nitWithDv || c.nitWithDv,
-                city: (saved as CompanyLegal).city || c.city,
-                department: (saved as CompanyLegal).department || c.department,
-                address: (saved as CompanyLegal).address || c.address,
-                legalRep: (saved as CompanyLegal).legalRep || c.legalRep,
+                name: saved.name || c.name,
+                nitWithDv: saved.nit || c.nitWithDv,
+                city: saved.city || c.city,
+                department: saved.department || c.department,
+                address: saved.address || c.address,
+                legalRep: {
+                    name: saved.consultantName || c.legalRep.name,
+                    phone: c.legalRep.phone,
+                    email: c.legalRep.email
+                },
             }));
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -350,6 +381,61 @@ export default function NotificationsPage() {
             (n) => n.type === type && (n.status === "sent" || n.status === "filed")
         ) ?? false;
 
+    // ── Mailto generators ─────────────────────────────────────────────────
+
+    const buildMailtoMintrabajo = () => {
+        if (!selected) return "#";
+
+        // Default mintrabajo emails pattern
+        const dept = company.department?.toLowerCase() || "";
+        let email = "atencionalciudadano@mintrabajo.gov.co";
+        if (dept.includes("bogot") || dept.includes("cundinamarca")) email = "dtbogota@mintrabajo.gov.co";
+        else if (dept.includes("antioquia")) email = "dtantioquia@mintrabajo.gov.co";
+        else if (dept.includes("valle")) email = "dtvalle@mintrabajo.gov.co";
+        else if (dept.includes("atlantico")) email = "dtatlantico@mintrabajo.gov.co";
+
+        const subject = encodeURIComponent(`Notificación AT Grave — ${company.name || "Empresa"} — ${formatDate(selected.created_at)} — Art. 2.2.4.1.7 Dec. 1072/2015`);
+        const body = encodeURIComponent(
+            `Respetados señores,\n\nAdjunto a este correo remitimos la comunicación formal de notificación de Accidente de Trabajo Grave/Mortal, junto con el reporte FURAT correspondiente.\n\nQuedamos atentos a cualquier requerimiento adicional.\n\nCordialmente,\n${company.legalRep?.name || "Representante de SG-SST"}\n${company.name || "Empresa"}`
+        );
+        return `mailto:${email}?subject=${subject}&body=${body}`;
+    };
+
+    const buildMailtoEPS = () => {
+        if (!selected) return "#";
+
+        const epsName = (selected.worker_eps || "").toLowerCase();
+        let email = "notificaciones@eps.com.co"; // placeholder
+        if (epsName.includes("sura")) email = "notificacioneseps@epssura.com.co";
+        else if (epsName.includes("sanitas")) email = "atencionalciudadano@epssanitas.com";
+        else if (epsName.includes("compensar")) email = "notificaciones@compensarsalud.com";
+        else if (epsName.includes("famisanar")) email = "servicioalcliente@famisanar.com.co";
+
+        const subject = encodeURIComponent(`Reporte AT — ${selected.worker_name || "Trabajador"} — ${formatDate(selected.created_at)} — Art. 62 Dec. Ley 1295/1994`);
+        const body = encodeURIComponent(
+            `Señores EPS ${selected.worker_eps || ""},\n\nAdjuntamos el reporte de Accidente de Trabajo (FURAT) del trabajador ${selected.worker_name || ""} identificado con documento ${selected.worker_id_number || ""}.\n\nCordialmente,\n${company.legalRep?.name || "Representante de SG-SST"}\n${company.name || "Empresa"}`
+        );
+        return `mailto:${email}?subject=${subject}&body=${body}`;
+    };
+
+    const buildMailtoARL = () => {
+        if (!selected) return "#";
+
+        const arlName = (selected.worker_arl || "").toLowerCase();
+        let email = "notificaciones@arl.com.co"; // placeholder
+        if (arlName.includes("sura")) email = "comunicaciones@arlsura.com.co";
+        else if (arlName.includes("positiva")) email = "servicioalcliente@positiva.gov.co";
+        else if (arlName.includes("colmena")) email = "notificaciones@colmenaseguros.com";
+        else if (arlName.includes("bolivar")) email = "atencion@arlbolivar.com";
+        else if (arlName.includes("axa")) email = "notificaciones@axacolpatria.co";
+
+        const subject = encodeURIComponent(`Reporte AT — ${selected.worker_name || "Trabajador"} — ${formatDate(selected.created_at)}`);
+        const body = encodeURIComponent(
+            `Señores ARL ${selected.worker_arl || ""},\n\nAdjuntamos el reporte de Accidente de Trabajo (FURAT) y la comunicación formal del trabajador ${selected.worker_name || ""} identificado con documento ${selected.worker_id_number || ""}.\n\nCordialmente,\n${company.legalRep?.name || "Representante de SG-SST"}\n${company.name || "Empresa"}`
+        );
+        return `mailto:${email}?subject=${subject}&body=${body}`;
+    };
+
     // ── Render ────────────────────────────────────────────────────────────
 
     return (
@@ -358,7 +444,7 @@ export default function NotificationsPage() {
             <header className="bg-[#141824] border-b border-[#1E2A3B] px-6 py-4 flex items-center gap-4 sticky top-0 z-30">
                 <button
                     onClick={() => router.push("/dashboard")}
-                    className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all"
+                    className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all cursor-pointer"
                     aria-label="Volver al dashboard"
                 >
                     <ArrowLeft className="w-4 h-4" />
@@ -428,10 +514,8 @@ export default function NotificationsPage() {
                                         <p className="text-[#64748B] text-xs mb-1.5">
                                             {formatDate(inc.created_at)}
                                         </p>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-xs font-semibold text-amber-300">
-                                                {SEVERITY_LABEL[inc.severity ?? ""] ?? inc.severity}
-                                            </span>
+                                        <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                                            <SeverityBadge severity={inc.severity ?? ""} />
                                             {notifiedMintrabajo && (
                                                 <span className="text-xs text-emerald-400 font-medium">✓ Notificado</span>
                                             )}
@@ -472,9 +556,7 @@ export default function NotificationsPage() {
                                     <div className="flex items-center gap-3 flex-wrap mb-1">
                                         <h2 className="text-white font-bold text-sm">{incidentTitle(selected)}</h2>
                                         <UrgencyBadge level={selected.urgency} days={selected.daysRemaining} />
-                                        <span className="text-amber-300 text-xs font-semibold">
-                                            {SEVERITY_LABEL[selected.severity ?? ""] ?? selected.severity}
-                                        </span>
+                                        <SeverityBadge severity={selected.severity ?? ""} />
                                     </div>
                                     <p className="text-[#64748B] text-xs">
                                         Evento del {formatDate(selected.created_at)}
@@ -612,10 +694,19 @@ export default function NotificationsPage() {
 
                             {/* PDF Download buttons */}
                             <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Download className="w-4 h-4 text-[#F59E0B]" />
-                                    <h3 className="text-white font-semibold text-sm">Generar Cartas PDF</h3>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <Download className="w-4 h-4 text-[#F59E0B]" />
+                                        <h3 className="text-white font-semibold text-sm">Generar Cartas PDF</h3>
+                                    </div>
                                 </div>
+                                {/* <div className="bg-blue-950/30 border border-blue-900/50 rounded-lg p-3 mb-4 flex gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                                    <p className="text-blue-300 text-xs leading-relaxed">
+                                        <strong>Nota sobre los correos:</strong> Por limitaciones de seguridad de los navegadores, el PDF no se puede adjuntar automáticamente al abrir tu cliente de correo.
+                                        Deberás <strong>descargar primero el PDF</strong> y luego <strong>adjuntarlo manualmente</strong> en la ventana de correo que se abrirá con el botón "Abrir en correo".
+                                    </p>
+                                </div> */}
                                 <div className="grid grid-cols-3 gap-3">
                                     {/* Mintrabajo */}
                                     <div className="rounded-xl bg-[#0F1420] border border-[#1E2A3B] p-4 flex flex-col gap-3">
@@ -627,21 +718,30 @@ export default function NotificationsPage() {
                                         {isNotified("mintrabajo") && (
                                             <span className="text-xs text-emerald-400 font-semibold">✓ Ya notificado</span>
                                         )}
-                                        <button
-                                            onClick={handleMintrabajoDownload}
-                                            disabled={dlMintra === "generating"}
-                                            className={[
-                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                                                dlMintra === "done"
-                                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                    : dlMintra === "error"
-                                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                                        : "bg-red-500 hover:bg-red-600 text-white",
-                                            ].join(" ")}
-                                        >
-                                            <Download className="w-3 h-3" />
-                                            {dlLabel(dlMintra, "Descargar PDF")}
-                                        </button>
+                                        <div className="mt-auto flex flex-col gap-2">
+                                            <button
+                                                onClick={handleMintrabajoDownload}
+                                                disabled={dlMintra === "generating"}
+                                                className={[
+                                                    "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                                                    dlMintra === "done"
+                                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                                        : dlMintra === "error"
+                                                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                                            : "bg-red-500 hover:bg-red-600 text-white",
+                                                ].join(" ")}
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                {dlLabel(dlMintra, "Descargar PDF")}
+                                            </button>
+                                            {/* <a
+                                                href={buildMailtoMintrabajo()}
+                                                className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-red-500 hover:bg-red-600 text-white"
+                                            >
+                                                <Mail className="w-3 h-3" />
+                                                Abrir en correo
+                                            </a> */}
+                                        </div>
                                     </div>
 
                                     {/* ARL */}
@@ -654,21 +754,30 @@ export default function NotificationsPage() {
                                         {isNotified("arl") && (
                                             <span className="text-xs text-emerald-400 font-semibold">✓ Ya notificado</span>
                                         )}
-                                        <button
-                                            onClick={handleARLDownload}
-                                            disabled={dlARL === "generating"}
-                                            className={[
-                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                                                dlARL === "done"
-                                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                    : dlARL === "error"
-                                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                                        : "bg-amber-500 hover:bg-amber-600 text-white",
-                                            ].join(" ")}
-                                        >
-                                            <Download className="w-3 h-3" />
-                                            {dlLabel(dlARL, "Descargar PDF")}
-                                        </button>
+                                        <div className="mt-auto flex flex-col gap-2">
+                                            <button
+                                                onClick={handleARLDownload}
+                                                disabled={dlARL === "generating"}
+                                                className={[
+                                                    "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                                                    dlARL === "done"
+                                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                                        : dlARL === "error"
+                                                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                                            : "bg-amber-500 hover:bg-amber-600 text-white",
+                                                ].join(" ")}
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                {dlLabel(dlARL, "Descargar PDF")}
+                                            </button>
+                                            {/* <a
+                                                href={buildMailtoARL()}
+                                                className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-amber-500 hover:bg-amber-600 text-white"
+                                            >
+                                                <Mail className="w-3 h-3" />
+                                                Abrir en correo
+                                            </a> */}
+                                        </div>
                                     </div>
 
                                     {/* EPS */}
@@ -681,21 +790,30 @@ export default function NotificationsPage() {
                                         {isNotified("eps") && (
                                             <span className="text-xs text-emerald-400 font-semibold">✓ Ya notificado</span>
                                         )}
-                                        <button
-                                            onClick={handleEPSDownload}
-                                            disabled={dlEPS === "generating"}
-                                            className={[
-                                                "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                                                dlEPS === "done"
-                                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                    : dlEPS === "error"
-                                                        ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                                        : "bg-blue-500 hover:bg-blue-600 text-white",
-                                            ].join(" ")}
-                                        >
-                                            <Download className="w-3 h-3" />
-                                            {dlLabel(dlEPS, "Descargar PDF")}
-                                        </button>
+                                        <div className="mt-auto flex flex-col gap-2">
+                                            <button
+                                                onClick={handleEPSDownload}
+                                                disabled={dlEPS === "generating"}
+                                                className={[
+                                                    "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                                                    dlEPS === "done"
+                                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                                        : dlEPS === "error"
+                                                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                                            : "bg-blue-500 hover:bg-blue-600 text-white",
+                                                ].join(" ")}
+                                            >
+                                                <Download className="w-3 h-3" />
+                                                {dlLabel(dlEPS, "Descargar PDF")}
+                                            </button>
+                                            {/* <a
+                                                href={buildMailtoEPS()}
+                                                className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-blue-500 hover:bg-blue-600 text-white"
+                                            >
+                                                <Mail className="w-3 h-3" />
+                                                Abrir en correo
+                                            </a> */}
+                                        </div>
                                     </div>
                                 </div>
                             </section>
@@ -725,7 +843,7 @@ export default function NotificationsPage() {
                                             onClick={() => markAsSent(type)}
                                             disabled={markingType !== null || isNotified(type)}
                                             className={[
-                                                "px-3 py-2 rounded-lg text-xs font-bold transition-all border",
+                                                "px-3 py-2 rounded-lg text-xs font-bold transition-all border cursor-pointer",
                                                 isNotified(type)
                                                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 cursor-default"
                                                     : "bg-[#1E2A3B] text-white border-[#334155] hover:bg-[#252B3B] hover:border-[#F59E0B]/30",

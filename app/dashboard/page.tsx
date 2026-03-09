@@ -163,7 +163,7 @@ export default function DashboardPage() {
                                     if (item.href) router.push(item.href);
                                 }}
                                 className={[
-                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer",
                                     isActive
                                         ? "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/20"
                                         : "text-[#64748B] hover:bg-white/5 hover:text-white",

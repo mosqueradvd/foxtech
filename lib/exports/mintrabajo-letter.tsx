@@ -271,7 +271,9 @@ function MintrabajoLetterDocument({ input }: { input: MintrabajoLetterInput }) {
                 <Field label="Tipo de lesión" value={incident.injury_type ?? ""} />
                 <Field label="Parte del cuerpo afectada" value={
                     incident.body_part_description
-                        ? `(${incident.body_part_code}) ${incident.body_part_description}`
+                        ? incident.body_part_code
+                            ? `(${incident.body_part_code}) ${incident.body_part_description}`
+                            : incident.body_part_description
                         : ""
                 } />
                 <Field label="Severidad" value={severityLabel} />

@@ -31,7 +31,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Inspección General",
         description: "Verificación diaria de condiciones básicas de seguridad",
         norm: "Decreto 1072/2015",
-        icon: "🏭",
+        icon: "factory",
         items: [
             { id: "epp_completo", label: "EPP completo y en buen estado (casco, guantes, gafas, calzado)", required: true, norm: "Art. 2.2.4.6.12" },
             { id: "senalizacion", label: "Señalización de seguridad instalada y visible", required: true, norm: "Dec. 1072 §4.6.27" },
@@ -50,7 +50,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Trabajo en Alturas",
         description: "Inspección para tareas con riesgo de caída a más de 1.50 m",
         norm: "Res. 4272/2021",
-        icon: "🪜",
+        icon: "monitor-up",
         items: [
             { id: "permiso_alturas", label: "Permiso de trabajo en alturas firmado y vigente", required: true, norm: "Res. 4272 Art. 20" },
             { id: "arnés_certificado", label: "Arnés certificado (ANSI Z359.1), sin desgaste ni cortes", required: true, norm: "Res. 4272 Art. 10" },
@@ -70,7 +70,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Riesgo Eléctrico",
         description: "Inspección de instalaciones y trabajos eléctricos",
         norm: "RETIE / NTC 2050",
-        icon: "⚡",
+        icon: "zap",
         items: [
             { id: "bloqueo_loto", label: "Bloqueo y etiquetado (LOTO) aplicado antes de intervención", required: true, norm: "NTC 4120" },
             { id: "herramientas_diels", label: "Herramientas dieléctricas certificadas y en buen estado", required: true, norm: "RETIE Art. 30" },
@@ -90,7 +90,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Inspección COPASST",
         description: "Inspección mensual por el Comité Paritario de SST",
         norm: "Res. 2013/1986 — Dec. 1072/2015",
-        icon: "🔍",
+        icon: "search",
         items: [
             { id: "actas_copasst", label: "Actas de reunión COPASST al día (mínimo 1/mes)", required: true, norm: "Res. 2013 Art. 4" },
             { id: "vigias_activos", label: "Vigías/representantes activos y capacitados", required: true, norm: "Res. 2013 Art. 2" },
@@ -111,7 +111,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Pre-operacional Maquinaria",
         description: "Verificación antes de operar equipos y maquinaria pesada",
         norm: "ISO 45001:2018 — Dec. 1072/2015",
-        icon: "🔧",
+        icon: "wrench",
         items: [
             { id: "hoja_preop", label: "Hoja pre-operacional diligenciada y firmada por operador", required: true, norm: "Dec. 1072 §4.6.26" },
             { id: "licencia_op", label: "Operador con licencia/certificación vigente para el equipo", required: true, norm: "Dec. 1072 §4.6.6" },
@@ -131,7 +131,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Orden y Aseo",
         description: "Inspección básica transversal a todas las áreas de la empresa",
         norm: "Res. 2400/1979 — Dec. 1072/2015",
-        icon: "🧹",
+        icon: "sparkles",
         items: [
             { id: "pasillos_libres", label: "Pasillos y zonas de tránsito libres de obstáculos", required: true, norm: "Res. 2400 Art. 11" },
             { id: "pisos_limpios", label: "Pisos limpios, secos y sin riesgo de resbalamiento", required: true, norm: "Res. 2400 Art. 17" },
@@ -150,7 +150,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Inspección Locativa",
         description: "Condiciones de infraestructura, servicios y áreas comunes",
         norm: "Res. 2400/1979 — NSR-10",
-        icon: "🏢",
+        icon: "building-2",
         items: [
             { id: "techos_buen_estado", label: "Techos y cubiertas sin goteras ni riesgo de desprendimiento", required: true, norm: "Res. 2400 Art. 8" },
             { id: "muros_sin_grietas", label: "Paredes y muros estables, sin grietas profundas", required: true, norm: "NSR-10" },
@@ -169,7 +169,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Inspección de Vehículos (PESV)",
         description: "Checklist preoperacional diario o semanal de la flota (Plan Estratégico de Seguridad Vial)",
         norm: "Res. 40595/2022 — Res. 1565/2014",
-        icon: "🚛",
+        icon: "truck",
         items: [
             { id: "documentos_vehiculo", label: "SOAT, revisión técnico-mecánica y tarjeta de propiedad vigentes", required: true, norm: "Ley 769/2002 Art. 17" },
             { id: "licencia_conductor", label: "Licencia de conducción vigente y categoría adecuada", required: true, norm: "Res. 40595 / PESV" },
@@ -188,7 +188,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Sustancias Químicas (SGA)",
         description: "Manejo, almacenamiento y etiquetado de sustancias peligrosas",
         norm: "Dec. 1496/2018 — SGA / Res. 2400/1979",
-        icon: "🧪",
+        icon: "flask-conical",
         items: [
             { id: "fichas_fsds", label: "Fichas de Datos de Seguridad (FDS) disponibles en el lugar de uso", required: true, norm: "Dec. 1496/2018 Art. 11" },
             { id: "etiquetas_sga", label: "Todos los envases están etiquetados según Sistema Globalmente Armonizado (SGA)", required: true, norm: "Dec. 1496/2018 Art. 9" },
@@ -207,7 +207,7 @@ export const INSPECTION_TEMPLATES: InspectionTemplate[] = [
         name: "Herramientas Manuales",
         description: "Uso y estado de herramientas manuales y de poder",
         norm: "Dec. 1072/2015 — Res. 2400/1979",
-        icon: "🛠️",
+        icon: "hammer",
         items: [
             { id: "estado_mangos", label: "Mangos firmes, sin astillas, fisuras ni holgaduras", required: true, norm: "Res. 2400 Art. 355" },
             { id: "herramientas_poder_cables", label: "Herramientas eléctricas con cables íntegros y enchufes originales", required: true, norm: "RETIE / Res. 2400 Art. 355" },

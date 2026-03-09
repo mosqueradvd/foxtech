@@ -134,7 +134,7 @@ export default function InvestigationsPage() {
                                 key={opt.value}
                                 onClick={() => setFilterStatus(opt.value)}
                                 className={[
-                                    "px-4 py-2 text-xs font-semibold transition-colors",
+                                    "px-4 py-2 text-xs font-semibold transition-colors cursor-pointer",
                                     filterStatus === opt.value
                                         ? "bg-[#F59E0B] text-black"
                                         : "bg-[#0F1420] text-[#64748B] hover:text-white",

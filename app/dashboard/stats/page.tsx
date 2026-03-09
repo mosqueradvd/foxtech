@@ -309,7 +309,7 @@ export default function StatsPage() {
             <header className="bg-[#141824] border-b border-[#1E2A3B] px-6 py-4 flex items-center gap-4 sticky top-0 z-30">
                 <button
                     onClick={() => router.push("/dashboard")}
-                    className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all"
+                    className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all cursor-pointer"
                 >
                     <ArrowLeft className="w-4 h-4" />
                 </button>
@@ -725,7 +725,7 @@ export default function StatsPage() {
                             )}
                             {exportState.status === "generating" ? "Generando Excel..." :
                                 exportState.status === "done" ? "¡Excel generado!" :
-                                    "⬇ Exportar Histórico 5 Años — Formato RUC/CCS (Excel)"}
+                                    "Exportar Histórico 5 Años — Formato RUC/CCS (Excel)"}
                         </button>
                         {exportState.message && (
                             <span className={`text-xs ${exportState.status === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>

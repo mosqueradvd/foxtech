@@ -215,7 +215,7 @@ export default function SignPage() {
                     <div className="flex items-center justify-between mb-2">
                         <p className="text-[#94A3B8] text-xs font-bold uppercase tracking-wider">Tu firma</p>
                         <button onClick={() => { sigRef.current?.clear(); setIsEmpty(true); }}
-                            className="flex items-center gap-1 text-[#64748B] hover:text-white text-xs transition-colors">
+                            className="flex items-center gap-1 text-[#64748B] hover:text-white text-xs transition-colors cursor-pointer">
                             <RotateCcw className="w-3 h-3" /> Limpiar
                         </button>
                     </div>
@@ -261,7 +261,7 @@ export default function SignPage() {
                     type="button"
                     onClick={() => setAgreed((v) => !v)}
                     className={[
-                        "w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98]",
+                        "w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98] cursor-pointer",
                         agreed
                             ? "bg-[#F59E0B]/10 border-[#F59E0B]"
                             : "bg-[#141824] border-[#1E2A3B]",
@@ -299,7 +299,7 @@ export default function SignPage() {
                 <button
                     onClick={handleSubmit}
                     disabled={isEmpty || !agreed || state === "submitting"}
-                    className="w-full py-4 bg-[#F59E0B] text-black font-bold text-base rounded-2xl hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-[#F59E0B] text-black font-bold text-base rounded-2xl hover:bg-amber-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                 >
                     {state === "submitting" ? (
                         <><Loader2 className="w-5 h-5 animate-spin" /> Registrando firma...</>

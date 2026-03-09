@@ -66,7 +66,7 @@ function OriginalReportCard({ event }: { event: Event }) {
             <div className="flex items-center justify-between">
                 <h3 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[#F59E0B]" />
-                    Reporte Preliminar (Módulo 1)
+                    Reporte Preliminar
                 </h3>
                 <ClassificationStatusBadge status={event.classification_status} />
             </div>
