@@ -139,7 +139,7 @@ export function InjuryClassifier({ data, onChange, showDisabilityDays = true }: 
                             )}
                             {(data.disability_days ?? 0) > 2 && (
                                 <span className="text-red-400 text-xs bg-red-900/30 border border-red-700/30 px-3 py-1 rounded-full font-semibold">
-                                    {(data.disability_days ?? 0) > 29 ? "⚠️ Grave — notificar Ministerio" : "Moderado"}
+                                    Moderado
                                 </span>
                             )}
                         </div>
