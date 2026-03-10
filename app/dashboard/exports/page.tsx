@@ -218,7 +218,7 @@ export default function ExportsPage() {
     const rucAccidents = rucPeriodEvents.filter((i) => i.event_type === "accidente" || i.event_type === "accidente_grave");
 
     // Compute stats for export UI preview (use annualized HHT for accurate monthly indices)
-    const rucStats = calcIndicators(rucPeriodEvents, rucHHT * 12, rucWorkersCount);
+    const rucStats = calcIndicators(rucPeriodEvents, rucHHT * 12, rucWorkersCount, 240000);
     const atConIncap = rucPeriodEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) > 0).length;
     const atSinIncap = rucPeriodEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) === 0).length;
 
@@ -257,6 +257,7 @@ export default function ExportsPage() {
             accidents: rucAccidents,
             incidents: rucStats.incidentes,
             occupationalDiseases: rucPeriodEvents.filter(e => e.classification === "ENFERMEDAD_LABORAL").length,
+            kConstant: 240000,
         });
 
         if (result.success && result.blob) {
@@ -403,8 +404,8 @@ export default function ExportsPage() {
                     />
 
                     <InfoBadge>
-                        El archivo Excel generado cumple el formato CCS: 22 columnas exactas, hoja "Accidentalidad",
-                        indicadores calculados en tiempo real (IF, IS, ILI, TA) con K=240.000. Sin formato de celda
+                        El archivo Excel generado cumple el formato CCS: 21 columnas exactas, hoja "Accidentalidad",
+                        indicadores calculados en tiempo real (IF, IS, TA) con K=240.000. Sin formato de celda
                         (CCS rechaza archivos con colores o negrita).
                     </InfoBadge>
 
@@ -495,8 +496,8 @@ export default function ExportsPage() {
                         <div className="grid grid-cols-2 gap-x-12 gap-y-1">
                             <div className="flex justify-between"><span>IF (Índice de Frecuencia):</span> <span className="text-emerald-400 font-bold">{rucStats.IF.toFixed(2)}</span></div>
                             <div className="flex justify-between"><span>IS (Índice de Severidad):</span> <span className="text-emerald-400 font-bold">{rucStats.IS.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span>ILI (Lesión Incapacitante):</span> <span className="text-emerald-400 font-bold">{rucStats.ILI < 0.01 ? rucStats.ILI > 0 ? "< 0.01" : "0.00" : rucStats.ILI.toFixed(2)}</span></div>
                             <div className="flex justify-between"><span>Tasa de Accidentalidad:</span> <span className="text-white font-bold">{rucStats.TA.toFixed(2)}%</span></div>
+                            <div className="flex justify-between"></div>
                         </div>
                     </div>
 

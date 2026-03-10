@@ -36,6 +36,8 @@ export interface RucPeriodInput {
     diseaseDays?: number;
     /** Incidents (casi accidentes) count */
     incidents?: number;
+    /** The K constant to use for generating the export */
+    kConstant: number;
 }
 
 export interface RucExportResult {
@@ -143,12 +145,11 @@ function buildRow(
     const accidentRate =
         workers > 0 ? roundTo((totalAccidents / workers) * 100, 2) : 0;
     const frequencyRate =
-        hhtAnnual > 0 ? roundTo((totalAccidents / hhtAnnual) * CCS_K_FACTOR, 2) : 0;
+        hhtAnnual > 0 ? roundTo((totalAccidents / hhtAnnual) * period.kConstant, 2) : 0;
     const severityRate =
         hhtAnnual > 0
-            ? roundTo((chargedDaysTotal / hhtAnnual) * CCS_K_FACTOR, 2)
+            ? roundTo((chargedDaysTotal / hhtAnnual) * period.kConstant, 2)
             : 0;
-    const ili = roundTo((frequencyRate * severityRate) / 1000, 4);
 
     return {
         AÑO: period.year,
@@ -172,7 +173,6 @@ function buildRow(
         TASA_ACCIDENTALIDAD: accidentRate,
         IF_AT: frequencyRate,
         IS_AT: severityRate,
-        ILI: ili,
     };
 }
 

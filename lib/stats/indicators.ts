@@ -43,8 +43,6 @@ export interface StatsIndicators {
     IF: number;
     /** IS — Índice de Severidad */
     IS: number;
-    /** ILI — Índice de Lesiones Incapacitantes */
-    ILI: number;
     /** TA — Tasa de Accidentalidad (%) */
     TA: number;
     /** IM — Índice de Mortalidad (%) */
@@ -133,21 +131,16 @@ function safe(n: number): number {
     return isFinite(n) && !isNaN(n) ? n : 0;
 }
 
-/** Índice de Frecuencia: (N° AT / HHT) × 240,000 */
-export function calcIF(atCount: number, hht: number): number {
+/** Índice de Frecuencia: (N° AT / HHT) × K */
+export function calcIF(atCount: number, hht: number, kConstant: number): number {
     if (hht <= 0) return 0;
-    return safe((atCount / hht) * HHT_CONSTANT);
+    return safe((atCount / hht) * kConstant);
 }
 
-/** Índice de Severidad: (días perdidos / HHT) × 240,000 */
-export function calcIS(lostDays: number, hht: number): number {
+/** Índice de Severidad: (días perdidos / HHT) × K */
+export function calcIS(lostDays: number, hht: number, kConstant: number): number {
     if (hht <= 0) return 0;
-    return safe((lostDays / hht) * HHT_CONSTANT);
-}
-
-/** Índice de Lesiones Incapacitantes: (IF × IS) / 1,000 */
-export function calcILI(IF: number, IS: number): number {
-    return safe((IF * IS) / 1000);
+    return safe((lostDays / hht) * kConstant);
 }
 
 /** Tasa de Accidentalidad: (N° AT / N° trabajadores) × 100 */
@@ -161,7 +154,8 @@ export function calcTA(atCount: number, workerCount: number): number {
 export function calcIndicators(
     events: Event[],
     hht: number,
-    workerCount: number
+    workerCount: number,
+    kConstant: number
 ): StatsIndicators {
     const atEvents = events.filter(isAT);
     const totalAT = atEvents.length;
@@ -185,17 +179,16 @@ export function calcIndicators(
         return sum + calculateDiasCargados(e.classification ?? "", e.disability_days ?? 0);
     }, 0);
 
-    const IF = calcIF(totalAT, hht);
+    const IF = calcIF(totalAT, hht, kConstant);
     // Para el IS, el RUC exige usar los DIAS_CARGADOS_AT, no solo los días de incapacidad
-    const IS = calcIS(diasCargadosAT, hht);
-    const ILI = calcILI(IF, IS);
+    const IS = calcIS(diasCargadosAT, hht, kConstant);
     const TA = calcTA(totalAT, workerCount);
     const mortalidadPct = totalAT > 0 ? safe((atFatal / totalAT) * 100) : 0;
 
     return {
         totalAT, atGrave, atFatal, incidentes, condicionesInseguras,
         totalDisabilityDays, diasCargadosAT, hht,
-        IF, IS, ILI, TA, mortalidadPct,
+        IF, IS, TA, mortalidadPct,
     };
 }
 

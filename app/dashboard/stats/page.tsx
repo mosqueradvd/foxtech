@@ -11,7 +11,8 @@ import { useRouter } from "next/navigation";
 import {
     ArrowLeft, BarChart2, TrendingUp, TrendingDown,
     Minus, AlertTriangle, RefreshCw, Settings, Download, Loader2, CheckCircle2,
-    Activity, Zap, Shield, Users, Skull, ChevronDown, FileSpreadsheet
+    Activity, Zap, Shield, Users, Skull, ChevronDown, FileSpreadsheet,
+    Volume2, FlaskConical, Bug, PersonStanding, Brain, HardHat, Building, Cog
 } from "lucide-react";
 import {
     LineChart, Line, BarChart, Bar,
@@ -160,6 +161,20 @@ export default function StatsPage() {
     const [workerOverride, setWorkerOverride] = useState<string>("");
     const [showHHTInput, setShowHHTInput] = useState(false);
 
+    // Settings
+    const [kConstant, setKConstant] = useState<number>(200000);
+    const [commonIllnessDaysStr, setCommonIllnessDaysStr] = useState<string>("0");
+
+    useEffect(() => {
+        const savedK = localStorage.getItem("foxtech_k_constant");
+        if (savedK) setKConstant(Number(savedK));
+    }, []);
+
+    const handleKChange = (val: number) => {
+        setKConstant(val);
+        localStorage.setItem("foxtech_k_constant", val.toString());
+    };
+
     // For export
     const [exportState, setExportState] = useState<{ status: string, message?: string }>({ status: "idle" });
 
@@ -217,12 +232,12 @@ export default function StatsPage() {
 
     // ── Indicators ────────────────────────────────────────────────────────
     const stats = useMemo(
-        () => calcIndicators(filteredEvents, hhtValue, Math.max(workerCount, 1)),
-        [filteredEvents, hhtValue, workerCount]
+        () => calcIndicators(filteredEvents, hhtValue, Math.max(workerCount, 1), kConstant),
+        [filteredEvents, hhtValue, workerCount, kConstant]
     );
     const prevStats = useMemo(
-        () => calcIndicators(prevEvents, estimateHHT(Math.max(workerCount, 1), monthsInPeriod), Math.max(workerCount, 1)),
-        [prevEvents, workerCount, monthsInPeriod]
+        () => calcIndicators(prevEvents, estimateHHT(Math.max(workerCount, 1), monthsInPeriod), Math.max(workerCount, 1), kConstant),
+        [prevEvents, workerCount, monthsInPeriod, kConstant]
     );
 
     // ── Chart data ────────────────────────────────────────────────────────
@@ -230,7 +245,26 @@ export default function StatsPage() {
         (e) => selectedCompanyId === "all" || e.company_id === selectedCompanyId
     ), 12), [allEvents, selectedCompanyId]);
 
-    const classData = useMemo(() => groupByClassification(filteredEvents), [filteredEvents]);
+    const hazardData = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredEvents.forEach(e => {
+            const h = e.hazard_type || "No Especificado";
+            counts[h] = (counts[h] || 0) + 1;
+        });
+        const colors = ["#F59E0B", "#3B82F6", "#EC4899", "#22C55E", "#8B5CF6", "#F97316", "#14B8A6", "#EAB308", "#64748B"];
+        return Object.entries(counts)
+            .map(([label, value], i) => ({ label, value, color: colors[i % colors.length] }))
+            .sort((a, b) => b.value - a.value);
+    }, [filteredEvents]);
+
+    // Absenteeism calculations
+    const diasPerdidosEL = useMemo(
+        () => filteredEvents.filter(e => e.classification === "ENFERMEDAD_LABORAL").reduce((sum, e) => sum + (e.disability_days ?? 0), 0),
+        [filteredEvents]
+    );
+    const ausentismoLaboral = hhtValue > 0 ? ((stats.totalDisabilityDays + diasPerdidosEL) * kConstant) / hhtValue : 0;
+    const ausentismoComun = hhtValue > 0 ? ((Number(commonIllnessDaysStr) || 0) * kConstant) / hhtValue : 0;
+
 
     // ── Historical 5-year RUC ──────────────────────────────────────────────
     const historicalData = useMemo(() => {
@@ -244,7 +278,7 @@ export default function StatsPage() {
                 return isMatchingCompany && d.getFullYear() === year;
             });
             const hhtForYear = estimateHHT(Math.max(workerCount, 1), 12);
-            const yStats = calcIndicators(yearEvents, hhtForYear, Math.max(workerCount, 1));
+            const yStats = calcIndicators(yearEvents, hhtForYear, Math.max(workerCount, 1), kConstant);
 
             const atMortales = yStats.atFatal;
             const atConIncap = yearEvents.filter(e => e.classification !== "ACCIDENTE_TRABAJO_FATAL" && (e.classification?.startsWith("ACCIDENTE_TRABAJO") ?? false) && (e.disability_days ?? 0) > 0).length;
@@ -257,7 +291,7 @@ export default function StatsPage() {
             return {
                 year, events: yearEvents, hhtForYear,
                 atMortales, atConIncap, atSinIncap, totalAT, diasIncap, el, incidentes,
-                IF: yStats.IF, IS: yStats.IS, ILI: yStats.ILI
+                IF: yStats.IF, IS: yStats.IS
             };
         });
     }, [allEvents, selectedCompanyId, workerCount]);
@@ -288,7 +322,8 @@ export default function StatsPage() {
             manHoursWorked: h.hhtForYear,
             accidents: h.events.filter(e => e.event_type === "accidente" || e.event_type === "accidente_grave"),
             incidents: h.incidentes,
-            occupationalDiseases: h.el
+            occupationalDiseases: h.el,
+            kConstant,
         }));
 
         const result = generateHistoricalRUCExport(config, periods);
@@ -375,6 +410,39 @@ export default function StatsPage() {
                         </div>
                     </div>
 
+                    {/* K Constant & Common Illness */}
+                    <div className="flex gap-4">
+                        <div>
+                            <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                                Constante K
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={kConstant}
+                                    onChange={(e) => handleKChange(Number(e.target.value))}
+                                    className="appearance-none bg-[#0F1420] border border-[#1E2A3B] rounded-xl pl-3 pr-10 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors cursor-pointer"
+                                >
+                                    <option value={200000}>200,000 — Res. 312</option>
+                                    <option value={240000}>240,000 — RUC/CCS</option>
+                                    <option value={1000000}>1,000,000 — Int.</option>
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                                Días Enf. Común
+                            </label>
+                            <input
+                                type="number"
+                                placeholder="0"
+                                value={commonIllnessDaysStr}
+                                onChange={(e) => setCommonIllnessDaysStr(e.target.value)}
+                                className="w-24 bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155]"
+                            />
+                        </div>
+                    </div>
+
                     {/* Workers & HHT */}
                     <div className="flex-1 min-w-[320px] flex gap-4">
                         <div className="flex-1">
@@ -442,7 +510,7 @@ export default function StatsPage() {
                             value={stats.IF}
                             colorFn={ifColor}
                             prev={prevStats.IF}
-                            description="Accidentes por cada 240,000 horas trabajadas (base anual CCS)"
+                            description={`Accidentes por cada ${kConstant.toLocaleString("es-CO")} horas trabajadas`}
                         />
                         <KPICard
                             icon={Zap}
@@ -450,16 +518,24 @@ export default function StatsPage() {
                             value={stats.IS}
                             colorFn={isColor}
                             prev={prevStats.IS}
-                            description="Días perdidos por cada 240,000 horas trabajadas"
+                            description={`Días perdidos por cada ${kConstant.toLocaleString("es-CO")} horas trabajadas`}
                         />
-                        <KPICard
-                            icon={Shield}
-                            label="ILI — Lesiones Incapacitantes"
-                            value={stats.ILI}
-                            colorFn={(v) => v === 0 ? "text-emerald-400" : v < 1 ? "text-amber-400" : "text-red-400"}
-                            prev={prevStats.ILI}
-                            description="(IF × IS) / 1,000 — combina frecuencia y severidad"
-                        />
+                        <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col justify-between hover:border-[#F59E0B]/30 transition-colors lg:col-span-2">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Activity className="w-4 h-4 text-[#3B82F6]" />
+                                <span className="text-[#64748B] text-xs font-semibold uppercase tracking-wider">Ausentismo por HHT</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-[10px] text-[#64748B] font-bold mb-1">LABORAL (AT+EL)</p>
+                                    <p className="text-2xl font-black text-orange-400">{ausentismoLaboral < 0.01 && ausentismoLaboral > 0 ? "< 0.01" : ausentismoLaboral.toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-[#64748B] font-bold mb-1">COMÚN (EG)</p>
+                                    <p className="text-2xl font-black text-blue-400">{ausentismoComun < 0.01 && ausentismoComun > 0 ? "< 0.01" : ausentismoComun.toFixed(2)}</p>
+                                </div>
+                            </div>
+                        </div>
                         <KPICard
                             icon={Users}
                             label="TA — Tasa de Accidentalidad"
@@ -537,31 +613,64 @@ export default function StatsPage() {
                     </section>
 
                     {/* Classification breakdown */}
-                    <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5">
+                    <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col">
                         <div className="flex items-center gap-2 mb-5">
                             <BarChart2 className="w-4 h-4 text-[#F59E0B]" />
-                            <h2 className="text-white font-semibold text-sm">Distribución por clasificación — período seleccionado</h2>
+                            <h2 className="text-white font-semibold text-sm">Distribución por Peligros GTC-45</h2>
                         </div>
                         {loading ? (
-                            <div className="h-56 bg-[#0F1420] rounded-xl animate-pulse" />
-                        ) : classData.length === 0 ? (
-                            <div className="h-56 flex items-center justify-center">
+                            <div className="h-40 bg-[#0F1420] rounded-xl animate-pulse" />
+                        ) : hazardData.length === 0 ? (
+                            <div className="h-40 flex items-center justify-center">
                                 <p className="text-[#334155] text-sm">Sin eventos en este período</p>
                             </div>
                         ) : (
-                            <ResponsiveContainer width="100%" height={220}>
-                                <BarChart data={classData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" horizontal={false} />
-                                    <XAxis type="number" tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                    <YAxis type="category" dataKey="label" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} width={130} />
-                                    <Tooltip content={<ChartTooltip />} />
-                                    <Bar dataKey="value" name="Eventos" radius={[0, 6, 6, 0]}>
-                                        {classData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <div className="flex-1 flex flex-col justify-between">
+                                <ResponsiveContainer width="100%" height={160}>
+                                    <BarChart data={hazardData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" horizontal={false} />
+                                        <XAxis type="number" tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                                        <YAxis type="category" dataKey="label" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} width={100} />
+                                        <Tooltip content={<ChartTooltip />} />
+                                        <Bar dataKey="value" name="Eventos" radius={[0, 6, 6, 0]}>
+                                            {hazardData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+
+                                {/* Top 3 Peligros Widget */}
+                                <div className="mt-4 pt-4 border-t border-[#1E2A3B]">
+                                    <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-3">Top 3 Peligros Frecuentes</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {hazardData.slice(0, 3).map((hz, idx) => {
+                                            const HzIcon =
+                                                hz.label === "Físico" ? Volume2 :
+                                                    hz.label === "Químico" ? FlaskConical :
+                                                        hz.label === "Biológico" ? Bug :
+                                                            hz.label === "Ergonómico" ? PersonStanding :
+                                                                hz.label === "Psicosocial" ? Brain :
+                                                                    hz.label === "Seguridad" ? HardHat :
+                                                                        hz.label === "Eléctrico" ? Zap :
+                                                                            hz.label === "Locativo" ? Building :
+                                                                                hz.label === "Mecánico" ? Cog : Shield;
+
+                                            return (
+                                                <div key={hz.label} className="bg-[#0F1420] rounded-lg p-2 flex items-center gap-2 border border-[#1E2A3B]">
+                                                    <div className="w-7 h-7 rounded-md bg-[#1E2A3B] flex items-center justify-center flex-shrink-0">
+                                                        <HzIcon className="w-3.5 h-3.5" style={{ color: hz.color }} />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-white text-[10px] font-bold truncate">{hz.label}</p>
+                                                        <p className="text-[#64748B] text-[9px]">{hz.value} eventos</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </section>
                 </div>
@@ -682,7 +791,6 @@ export default function StatsPage() {
                                     <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">Incidentes</th>
                                     <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">IF</th>
                                     <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">IS</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">ILI</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -698,7 +806,6 @@ export default function StatsPage() {
                                         <td className="px-4 py-3 text-white">{row.incidentes}</td>
                                         <td className="px-4 py-3 font-bold text-emerald-400">{row.IF.toFixed(2)}</td>
                                         <td className="px-4 py-3 font-bold text-emerald-400">{row.IS.toFixed(2)}</td>
-                                        <td className="px-4 py-3 font-bold text-emerald-400">{row.ILI < 0.01 && row.ILI > 0 ? "< 0.01" : row.ILI.toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -737,7 +844,7 @@ export default function StatsPage() {
 
                 {/* ── LEGAL NOTE ── */}
                 <p className="text-[#334155] text-xs text-center pb-2">
-                    Indicadores calculados según Dec. 1072/2015 Art. 2.2.4.6.32 — Constante 240,000 HHT (base RUC/CCS)
+                    Calculado según Normativa SG-SST — K={kConstant.toLocaleString("es-CO")}
                 </p>
             </div>
         </div>

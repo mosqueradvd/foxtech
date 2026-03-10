@@ -35,7 +35,6 @@ export const RUC_COLUMNS: readonly RucColumnDef[] = [
     { key: 'accidentRate', header: 'TASA_ACCIDENTALIDAD', type: 'decimal2', description: 'Tasa de accidentalidad', formula: '(TOTAL_AT / NUM_TRABAJADORES) × 100' },
     { key: 'frequencyRate', header: 'IF_AT', type: 'decimal2', description: 'Índice de Frecuencia de AT', formula: '(TOTAL_AT / HHT) × 240.000' },
     { key: 'severityRate', header: 'IS_AT', type: 'decimal2', description: 'Índice de Severidad de AT', formula: '((DIAS_INCAPACIDAD_AT + DIAS_CARGADOS_AT) / HHT) × 240.000' },
-    { key: 'ili', header: 'ILI', type: 'decimal4', description: 'Índice de Lesión Incapacitante', formula: '(IF_AT × IS_AT) / 1.000' },
 ] as const;
 
 /**
