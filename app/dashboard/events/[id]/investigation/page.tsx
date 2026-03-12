@@ -714,10 +714,10 @@ export default function InvestigationPage() {
                                     const hasContact = !!(item.responsible_phone || item.responsible_email);
                                     const isNotified = !!item.notified_at;
                                     const notifyDisabled = !hasContact || isClosed;
-                                    const buildMessage = () => {
+                                    const buildMessage = (tok?: string) => {
                                         const name = item.responsible || "responsable";
                                         const deadlineStr = item.deadline ? new Date(item.deadline + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" }) : "pendiente";
-                                        const link = item.token ? `${window.location.origin}/acciones/${item.token}` : "";
+                                        const link = tok ? `${window.location.origin}/acciones/${tok}` : "";
                                         return `Hola ${name}, se te ha asignado una acción correctiva en el sistema SST de FOXTECH.\n\n📋 *Acción:* ${item.action}\n📍 *Origen:* Investigación\n📅 *Fecha límite:* ${deadlineStr}${link ? `\n🔗 *Ver detalle:* ${link}` : ""}\n\nPor favor confirma recibido respondiendo este mensaje.`;
                                     };
                                     const handleNotify = async (via: "whatsapp" | "email") => {
@@ -732,8 +732,8 @@ export default function InvestigationPage() {
                                             tok = data?.token ?? undefined;
                                             updAction(i, { token: tok });
                                         }
-                                        // 2 — open channel
-                                        const msg = buildMessage();
+                                        // 2 — open channel (pass tok explicitly so link is always present)
+                                        const msg = buildMessage(tok);
                                         if (via === "whatsapp" && item.responsible_phone) {
                                             const phone = item.responsible_phone.replace(/\D/g, "");
                                             window.open(`https://wa.me/57${phone}?text=${encodeURIComponent(msg)}`, "_blank");
