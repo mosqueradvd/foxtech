@@ -13,7 +13,7 @@ import {
     ArrowLeft, Save, CheckCircle2, AlertTriangle, Users,
     Search, Zap, ClipboardList, Plus, Trash2, Loader2,
     ChevronRight, ChevronDown, Lock, Clock, PenLine, Copy, Check, Share2, FileText,
-    Car, TriangleAlert
+    Car, TriangleAlert, BookOpen, Camera, CalendarDays, Image
 } from "lucide-react";
 import {
     CONDICIONES_SUBESTANDAR,
@@ -36,6 +36,7 @@ import {
     type ActionItem,
     type SignatureRequest,
     type SignerRole,
+    type LessonsLearned,
 } from "@/lib/supabase";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -44,8 +45,18 @@ const TABS = [
     { id: 0, label: "Equipo", icon: Users },
     { id: 1, label: "Causas", icon: Zap },
     { id: 2, label: "Acciones", icon: ClipboardList },
-    { id: 3, label: "Firmas", icon: PenLine },
+    { id: 3, label: "Lección", icon: BookOpen },
+    { id: 4, label: "Firmas", icon: PenLine },
 ] as const;
+
+const DEFAULT_LESSONS: LessonsLearned = {
+    que_ocurrio: "",
+    por_que_ocurrio: "",
+    que_aprendimos: "",
+    como_prevenimos: "",
+    foto_cierre: undefined,
+    fecha_divulgacion: "",
+};
 
 const SIGNER_ROLES: { role: SignerRole; label: string; short: string }[] = [
     { role: "COPASST", label: "Representante COPASST", short: "COPASST" },
@@ -118,12 +129,11 @@ function CauseCheckbox({ code, label, checked, onChange, disabled }: {
 }) {
     const id = `cause-${code}`;
     return (
-        <label htmlFor={id} className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
-            checked ? "bg-amber-400/8 border border-amber-400/20" : "hover:bg-white/3 border border-transparent"
-        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
+        <label htmlFor={id} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${checked ? "bg-amber-400/8 border border-amber-400/20" : "hover:bg-white/3 border border-transparent"
+            } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
             <input id={id} type="checkbox" checked={checked} disabled={disabled}
                 onChange={(e) => onChange(e.target.checked)}
-                className="mt-0.5 w-3.5 h-3.5 accent-amber-400 flex-shrink-0 cursor-pointer" />
+                className="mt-0.5 max-w-3.5 max-h-3.5 accent-amber-400 flex-shrink-0 cursor-pointer" />
             <span className="text-xs leading-relaxed">
                 <span className="text-amber-400/80 font-mono font-bold mr-1">{code}</span>
                 <span className="text-[#CBD5E1]">{label}</span>
@@ -262,6 +272,7 @@ export default function InvestigationPage() {
     const [controlFails, setControlFails] = useState("");
     const [actionPlan, setActionPlan] = useState<ActionItem[]>([]);
     const [conclusions, setConclusions] = useState("");
+    const [lessonsLearned, setLessons] = useState<LessonsLearned>(DEFAULT_LESSONS);
     const [signerNames, setSignerNames] = useState<Record<SignerRole, string>>({
         COPASST: "", SUPERVISOR: "", SST_PROFESSIONAL: "",
     });
@@ -289,6 +300,7 @@ export default function InvestigationPage() {
             setControlFails(inv.control_failures ?? "");
             setActionPlan(inv.action_plan ?? []);
             setConclusions(inv.conclusions ?? "");
+            if (inv.lessons_learned) setLessons(inv.lessons_learned);
             // Load existing signature requests
             const { data: sigs } = await supabase.from("signature_requests").select("*").eq("investigation_id", inv.id);
             if (sigs) {
@@ -325,10 +337,10 @@ export default function InvestigationPage() {
         if (!investigation?.id) return;
         try {
             localStorage.setItem(`inv_draft_${investigation.id}`, JSON.stringify({
-                team, narrative, causesSelected, controlFails, actionPlan, conclusions,
+                team, narrative, causesSelected, controlFails, actionPlan, conclusions, lessonsLearned,
             }));
         } catch { /* quota exceeded ignored */ }
-    }, [investigation?.id, team, narrative, causesSelected, controlFails, actionPlan, conclusions]);
+    }, [investigation?.id, team, narrative, causesSelected, controlFails, actionPlan, conclusions, lessonsLearned]);
 
     // ── Create investigation ─────────────────────────────────────────────────
     const handleCreate = async () => {
@@ -361,13 +373,14 @@ export default function InvestigationPage() {
             control_failures: controlFails || null,
             action_plan: actionPlan,
             conclusions: conclusions || null,
+            lessons_learned: lessonsLearned,
             status: newStatus,
             updated_at: new Date().toISOString(),
         }).eq("id", investigation.id);
         setInv((prev) => prev ? { ...prev, status: newStatus } : prev);
         persistLocal();
         if (showFeedback) { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); }
-    }, [investigation, isClosed, team, narrative, causesSelected, involucraVehiculo, controlFails, actionPlan, conclusions, persistLocal]);
+    }, [investigation, isClosed, team, narrative, causesSelected, involucraVehiculo, controlFails, actionPlan, conclusions, lessonsLearned, persistLocal]);
 
     const scheduleSave = useCallback(() => {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -768,8 +781,133 @@ export default function InvestigationPage() {
                         </div>
                     )}
 
-                    {/* TAB 4: FIRMAS */}
+                    {/* TAB 4: LECCIÓN APRENDIDA */}
                     {activeTab === 3 && (
+                        <div className="space-y-4">
+                            {/* header info */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <BookOpen className="w-4 h-4 text-[#F59E0B]" />
+                                    <h3 className="text-white font-semibold text-sm">Lección Aprendida</h3>
+                                </div>
+                                <p className="text-[#64748B] text-xs">Este documento se adjuntará como última sección del PDF final de investigación.</p>
+                            </div>
+
+                            {/* ¿Qué ocurrió? */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">1</span>
+                                    <FieldLabel>¿Qué ocurrió? — Resumen ejecutivo</FieldLabel>
+                                </div>
+                                <FTextarea rows={3} value={lessonsLearned.que_ocurrio}
+                                    onChange={(v) => { setLessons(p => ({ ...p, que_ocurrio: v })); scheduleSave(); }}
+                                    placeholder="Describe brevemente qué ocurrió en términos claros para cualquier trabajador..."
+                                    disabled={isClosed} />
+                            </div>
+
+                            {/* ¿Por qué ocurrió? */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">2</span>
+                                    <FieldLabel>¿Por qué ocurrió? — Causa raíz en lenguaje simple</FieldLabel>
+                                </div>
+                                <FTextarea rows={3} value={lessonsLearned.por_que_ocurrio}
+                                    onChange={(v) => { setLessons(p => ({ ...p, por_que_ocurrio: v })); scheduleSave(); }}
+                                    placeholder="Explica la causa raíz de manera que cualquier persona lo entienda..."
+                                    disabled={isClosed} />
+                            </div>
+
+                            {/* ¿Qué aprendimos? */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">3</span>
+                                    <FieldLabel>¿Qué aprendimos?</FieldLabel>
+                                </div>
+                                <FTextarea rows={3} value={lessonsLearned.que_aprendimos}
+                                    onChange={(v) => { setLessons(p => ({ ...p, que_aprendimos: v })); scheduleSave(); }}
+                                    placeholder="Lecciones clave que deja este evento para el equipo y la organización..."
+                                    disabled={isClosed} />
+                            </div>
+
+                            {/* ¿Cómo lo prevenimos? */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">4</span>
+                                    <FieldLabel>¿Cómo lo prevenimos? — Medidas implementadas</FieldLabel>
+                                </div>
+                                <FTextarea rows={3} value={lessonsLearned.como_prevenimos}
+                                    onChange={(v) => { setLessons(p => ({ ...p, como_prevenimos: v })); scheduleSave(); }}
+                                    placeholder="Controles, procedimientos o cambios implementados para prevenir la recurrencia..."
+                                    disabled={isClosed} />
+                            </div>
+
+                            {/* Evidencia fotográfica del cierre */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">5</span>
+                                    <FieldLabel>Evidencia fotográfica del cierre</FieldLabel>
+                                </div>
+                                {lessonsLearned.foto_cierre ? (
+                                    <div className="space-y-3">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={lessonsLearned.foto_cierre} alt="Evidencia" className="w-full max-h-64 object-cover rounded-xl border border-[#1E2A3B]" />
+                                        {lessonsLearned.foto_timestamp && (
+                                            <p className="text-[#64748B] text-xs">
+                                                Capturada: {new Date(lessonsLearned.foto_timestamp).toLocaleString("es-CO")}
+                                            </p>
+                                        )}
+                                        {!isClosed && (
+                                            <button onClick={() => { setLessons(p => ({ ...p, foto_cierre: undefined, foto_lat: undefined, foto_lng: undefined, foto_timestamp: undefined })); scheduleSave(); }}
+                                                className="text-xs text-red-400 hover:text-red-300 underline cursor-pointer">
+                                                Quitar foto
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <label className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed border-[#1E2A3B] rounded-xl p-8 w-full transition-colors ${isClosed ? "opacity-50 cursor-not-allowed" : "hover:border-amber-400/40 cursor-pointer"}`}>
+                                        <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center">
+                                            <Image className="w-6 h-6 text-[#F59E0B]" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-white text-sm font-semibold">Adjuntar foto de evidencia</p>
+                                            <p className="text-[#64748B] text-xs mt-0.5">Toca para seleccionar desde cámara o galeria</p>
+                                        </div>
+                                        <input type="file" accept="image/*" capture="environment" disabled={isClosed} className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                const reader = new FileReader();
+                                                reader.onload = (ev) => {
+                                                    const base64 = ev.target?.result as string;
+                                                    setLessons(p => ({ ...p, foto_cierre: base64, foto_timestamp: new Date().toISOString() }));
+                                                    scheduleSave();
+                                                };
+                                                reader.readAsDataURL(file);
+                                            }} />
+                                    </label>
+                                )}
+                            </div>
+
+                            {/* Fecha de divulgación */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">6</span>
+                                    <FieldLabel>Fecha de divulgación al personal</FieldLabel>
+                                </div>
+                                <input type="date" value={lessonsLearned.fecha_divulgacion} disabled={isClosed}
+                                    onChange={(e) => { setLessons(p => ({ ...p, fecha_divulgacion: e.target.value })); scheduleSave(); }}
+                                    className="w-full sm:w-64 bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50" />
+                                {lessonsLearned.fecha_divulgacion && (
+                                    <p className="text-[#64748B] text-xs mt-2">
+                                        Divulgado el {new Date(lessonsLearned.fecha_divulgacion + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB 5: FIRMAS */}
+                    {activeTab === 4 && (
                         <div className="space-y-4">
                             <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={PenLine}>Firmas Digitales</SectionTitle>

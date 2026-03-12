@@ -158,6 +158,18 @@ export type InspectionItem = {
 
 export type { CausesSelected } from "./ntc3701-causes-data";
 
+export interface LessonsLearned {
+    que_ocurrio: string;       // resumen ejecutivo
+    por_que_ocurrio: string;   // causa raíz en lenguaje simple
+    que_aprendimos: string;    // texto libre
+    como_prevenimos: string;   // medidas implementadas
+    foto_cierre?: string;      // base64 de evidencia fotográfica
+    foto_lat?: number;
+    foto_lng?: number;
+    foto_timestamp?: string;
+    fecha_divulgacion: string; // ISO date YYYY-MM-DD
+}
+
 export interface ImmediateCause {
     type: "acto" | "condicion";
     description: string;
@@ -206,6 +218,9 @@ export type Investigation = {
 
     // Structured causes (NTC 3701)
     causes_selected?: import("./ntc3701-causes-data").CausesSelected;
+
+    // Lessons learned
+    lessons_learned?: LessonsLearned;
 
     // Closure
     conclusions?: string;
