@@ -492,7 +492,7 @@ export default function InvestigationPage() {
                     {saved && !saving && <span className="text-emerald-400 text-xs font-semibold hidden sm:inline">Guardado ✓</span>}
                     {investigation && !isClosed && (
                         <button onClick={() => save(true)} disabled={saving}
-                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors cursor-pointer">
+                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#F59E0B] hover:bg-amber-400 text-black text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer">
                             <Save className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Guardar</span>
                         </button>
@@ -724,11 +724,12 @@ export default function InvestigationPage() {
                                         // 1 — generate token if not yet created
                                         let tok = item.token;
                                         if (!tok) {
-                                            const { data } = await supabase.from("action_tokens").insert({
+                                            const { data, error: tokErr } = await supabase.from("action_tokens").insert({
                                                 source: "investigation",
                                                 source_id: investigation!.id,
                                                 action_index: i,
                                             }).select("token").single();
+                                            if (tokErr) console.error("action_tokens insert failed:", tokErr);
                                             tok = data?.token ?? undefined;
                                             updAction(i, { token: tok });
                                         }

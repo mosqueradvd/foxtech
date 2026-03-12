@@ -212,7 +212,7 @@ export default function InspectionDetailPage() {
         <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* HEADER */}
             <header className="bg-[#141824] border-b border-[#1E2A3B] px-4 sm:px-6 py-4 flex items-center gap-3 sticky top-0 z-30">
-                <button onClick={() => router.push("/dashboard/inspections")} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0">
+                <button onClick={() => router.push("/dashboard/inspections")} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0 cursor-pointer">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
@@ -319,7 +319,7 @@ export default function InspectionDetailPage() {
                                             )}
                                         </div>
 
-                                         {/* Action form */}
+                                        {/* Action form */}
                                         {action && (expanded || !action.action) && (
                                             <div className="p-3 border-t border-[#1E2A3B] bg-[#141824] space-y-3">
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -363,9 +363,10 @@ export default function InspectionDetailPage() {
                                                             <button disabled={isClosed} onClick={async () => {
                                                                 let tok = action.token;
                                                                 if (!tok) {
-                                                                    const { data } = await supabase.from("action_tokens").insert({
+                                                                    const { data, error: tokErr } = await supabase.from("action_tokens").insert({
                                                                         source: "inspection", source_id: id, action_index: actionPlan.findIndex(a => a.id === action.id),
                                                                     }).select("token").single();
+                                                                    if (tokErr) console.error("action_tokens insert failed:", tokErr);
                                                                     tok = data?.token ?? undefined;
                                                                     updateAction(action.id, { token: tok });
                                                                 }
@@ -385,10 +386,11 @@ export default function InspectionDetailPage() {
                                                             <button disabled={isClosed} onClick={async () => {
                                                                 let tok = action.token;
                                                                 if (!tok) {
-                                                                    const { data } = await supabase.from("action_tokens").insert({
+                                                                    const { data: d2, error: tokErr2 } = await supabase.from("action_tokens").insert({
                                                                         source: "inspection", source_id: id, action_index: actionPlan.findIndex(a => a.id === action.id),
                                                                     }).select("token").single();
-                                                                    tok = data?.token ?? undefined;
+                                                                    if (tokErr2) console.error("action_tokens insert failed:", tokErr2);
+                                                                    tok = d2?.token ?? undefined;
                                                                     updateAction(action.id, { token: tok });
                                                                 }
                                                                 const name = action.responsible || "responsable";

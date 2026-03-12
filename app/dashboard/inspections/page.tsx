@@ -97,7 +97,7 @@ export default function InspectionsListPage() {
                     <p className="text-[#64748B] text-xs mt-0.5">Dec. 1072/2015 — Res. 4272/2021 — RETIE</p>
                 </div>
                 <button onClick={() => router.push("/inspection")}
-                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-[#F59E0B] text-black text-xs sm:text-sm font-bold rounded-xl hover:bg-amber-400 transition-colors">
+                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-[#F59E0B] text-black text-xs sm:text-sm font-bold rounded-xl hover:bg-amber-400 transition-colors cursor-pointer">
                     <Plus className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">Nueva Inspección</span>
                     <span className="sm:hidden">Nueva</span>
@@ -171,7 +171,7 @@ export default function InspectionsListPage() {
                             const template = INSPECTION_TEMPLATES.find((t) => t.id === insp.template_id);
                             return (
                                 <button key={insp.id} onClick={() => router.push(`/dashboard/inspections/${insp.id}`)}
-                                    className="w-full text-left bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 hover:border-[#F59E0B]/30 hover:bg-[#141824]/80 transition-all flex items-center gap-4">
+                                    className="w-full text-left bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 hover:border-[#F59E0B]/30 hover:bg-[#141824]/80 transition-all flex items-center gap-4 cursor-pointer">
                                     {/* Template icon */}
                                     <div className="w-10 h-10 rounded-xl bg-[#0F1420] border border-[#1E2A3B] flex items-center justify-center text-lg flex-shrink-0">
                                         <DynamicIcon name={template?.icon ?? "clipboard-list"} className="w-5 h-5 text-current" />
