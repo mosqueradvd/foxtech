@@ -12,8 +12,21 @@ import { useRouter, useParams } from "next/navigation";
 import {
     ArrowLeft, Save, CheckCircle2, AlertTriangle, Users,
     Search, Zap, ClipboardList, Plus, Trash2, Loader2,
-    ChevronRight, Lock, Clock, PenLine, Copy, Check, Share2, FileText
+    ChevronRight, ChevronDown, Lock, Clock, PenLine, Copy, Check, Share2, FileText,
+    Car, TriangleAlert
 } from "lucide-react";
+import {
+    CONDICIONES_SUBESTANDAR,
+    ACTOS_SUBESTANDAR,
+    FACTORES_PERSONALES,
+    FACTORES_TRABAJO,
+    PESV_FACTOR_HUMANO,
+    PESV_FACTOR_VEHICULO,
+    PESV_FACTOR_INFRAESTRUCTURA,
+    DEFAULT_CAUSES_SELECTED,
+    type CausesSelected,
+    type CauseCategory,
+} from "@/lib/ntc3701-causes-data";
 import {
     supabase,
     type Event,
@@ -97,16 +110,91 @@ function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; child
     );
 }
 
-function CauseRow({ label, value, onChange, onRemove, disabled }: { label: string; value: string; onChange: (v: string) => void; onRemove: () => void; disabled?: boolean; }) {
+// ── NTC 3701 cause selector components ────────────────────────────────────────
+
+function CauseCheckbox({ code, label, checked, onChange, disabled }: {
+    code: string; label: string; checked: boolean;
+    onChange: (v: boolean) => void; disabled?: boolean;
+}) {
+    const id = `cause-${code}`;
     return (
-        <div className="flex items-start gap-2 mb-2">
-            <span className="mt-2.5 text-[10px] font-bold text-[#64748B] uppercase tracking-wider w-20 flex-shrink-0">{label}</span>
-            <FInput value={value} onChange={onChange} placeholder="Describe la causa..." disabled={disabled} />
-            {!disabled && (
-                <button onClick={onRemove} className="mt-2 p-1.5 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all cursor-pointer">
-                    <Trash2 className="w-3.5 h-3.5" />
-                </button>
+        <label htmlFor={id} className={`flex items-start gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${
+            checked ? "bg-amber-400/8 border border-amber-400/20" : "hover:bg-white/3 border border-transparent"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
+            <input id={id} type="checkbox" checked={checked} disabled={disabled}
+                onChange={(e) => onChange(e.target.checked)}
+                className="mt-0.5 w-3.5 h-3.5 accent-amber-400 flex-shrink-0 cursor-pointer" />
+            <span className="text-xs leading-relaxed">
+                <span className="text-amber-400/80 font-mono font-bold mr-1">{code}</span>
+                <span className="text-[#CBD5E1]">{label}</span>
+            </span>
+        </label>
+    );
+}
+
+function SubCategoryAccordion({ category, selected, onToggle, disabled }: {
+    category: CauseCategory;
+    selected: string[];
+    onToggle: (key: string) => void;
+    disabled?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const selectedCount = category.causes.filter(c => selected.includes(`${c.code} ${c.label}`)).length;
+    return (
+        <div className="border border-[#1E2A3B] rounded-xl overflow-hidden mb-2">
+            <button onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2.5 bg-[#0F1420] hover:bg-white/3 transition-colors cursor-pointer">
+                <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-amber-400/70 font-mono text-[11px] font-bold flex-shrink-0">{category.code}</span>
+                    <span className="text-[#94A3B8] text-xs font-semibold truncate text-left">{category.label}</span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                    {selectedCount > 0 && (
+                        <span className="bg-amber-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{selectedCount}</span>
+                    )}
+                    <ChevronDown className={`w-3.5 h-3.5 text-[#64748B] transition-transform ${open ? "rotate-180" : ""}`} />
+                </div>
+            </button>
+            {open && (
+                <div className="px-3 py-2 bg-[#0A0F1A] space-y-0.5">
+                    {category.causes.map(c => {
+                        const key = `${c.code} ${c.label}`;
+                        return (
+                            <CauseCheckbox key={c.code} code={c.code} label={c.label}
+                                checked={selected.includes(key)}
+                                onChange={() => onToggle(key)}
+                                disabled={disabled} />
+                        );
+                    })}
+                </div>
             )}
+        </div>
+    );
+}
+
+function CausesAccordion({ title, norm, count, defaultOpen, children }: {
+    title: string; norm: string; count: number; defaultOpen?: boolean; children: React.ReactNode;
+}) {
+    const [open, setOpen] = useState(defaultOpen ?? false);
+    return (
+        <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl overflow-hidden">
+            <button onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 sm:px-6 py-4 hover:bg-white/2 transition-colors cursor-pointer">
+                <div className="flex flex-col items-start gap-0.5">
+                    <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-[#F59E0B]" />
+                        <span className="text-white font-semibold text-sm">{title}</span>
+                        {count > 0 && (
+                            <span className="bg-amber-400 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                {count} seleccionada{count !== 1 ? "s" : ""}
+                            </span>
+                        )}
+                    </div>
+                    <span className="text-[#475569] text-[10px] ml-6">{norm}</span>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-[#64748B] transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
+            </button>
+            {open && <div className="px-4 sm:px-6 pb-5">{children}</div>}
         </div>
     );
 }
@@ -169,8 +257,8 @@ export default function InvestigationPage() {
     // Form state
     const [team, setTeam] = useState({ sst: "", jefe: "", copasst: "", extra: "" });
     const [narrative, setNarrative] = useState("");
-    const [immCauses, setImmCauses] = useState<ImmediateCause[]>([]);
-    const [basicCauses, setBasicCauses] = useState<BasicCause[]>([]);
+    const [causesSelected, setCausesSelected] = useState<CausesSelected>(DEFAULT_CAUSES_SELECTED);
+    const [involucraVehiculo, setInvolucraVehiculo] = useState(false);
     const [controlFails, setControlFails] = useState("");
     const [actionPlan, setActionPlan] = useState<ActionItem[]>([]);
     const [conclusions, setConclusions] = useState("");
@@ -194,8 +282,10 @@ export default function InvestigationPage() {
             setInv(inv);
             setTeam({ sst: inv.investigator_sst ?? "", jefe: inv.investigator_jefe ?? "", copasst: inv.investigator_copasst ?? "", extra: inv.investigators_extra ?? "" });
             setNarrative(inv.event_narrative ?? "");
-            setImmCauses(inv.immediate_causes ?? []);
-            setBasicCauses(inv.basic_causes ?? []);
+            if (inv.causes_selected) {
+                setCausesSelected(inv.causes_selected);
+                setInvolucraVehiculo(inv.causes_selected.pesv?.aplica ?? false);
+            }
             setControlFails(inv.control_failures ?? "");
             setActionPlan(inv.action_plan ?? []);
             setConclusions(inv.conclusions ?? "");
@@ -235,10 +325,10 @@ export default function InvestigationPage() {
         if (!investigation?.id) return;
         try {
             localStorage.setItem(`inv_draft_${investigation.id}`, JSON.stringify({
-                team, narrative, immCauses, basicCauses, controlFails, actionPlan, conclusions,
+                team, narrative, causesSelected, controlFails, actionPlan, conclusions,
             }));
         } catch { /* quota exceeded ignored */ }
-    }, [investigation?.id, team, narrative, immCauses, basicCauses, controlFails, actionPlan, conclusions]);
+    }, [investigation?.id, team, narrative, causesSelected, controlFails, actionPlan, conclusions]);
 
     // ── Create investigation ─────────────────────────────────────────────────
     const handleCreate = async () => {
@@ -267,8 +357,7 @@ export default function InvestigationPage() {
             investigator_copasst: team.copasst || null,
             investigators_extra: team.extra || null,
             event_narrative: narrative || null,
-            immediate_causes: immCauses,
-            basic_causes: basicCauses,
+            causes_selected: { ...causesSelected, pesv: { ...causesSelected.pesv, aplica: involucraVehiculo } },
             control_failures: controlFails || null,
             action_plan: actionPlan,
             conclusions: conclusions || null,
@@ -278,7 +367,7 @@ export default function InvestigationPage() {
         setInv((prev) => prev ? { ...prev, status: newStatus } : prev);
         persistLocal();
         if (showFeedback) { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000); }
-    }, [investigation, isClosed, team, narrative, immCauses, basicCauses, controlFails, actionPlan, conclusions, persistLocal]);
+    }, [investigation, isClosed, team, narrative, causesSelected, involucraVehiculo, controlFails, actionPlan, conclusions, persistLocal]);
 
     const scheduleSave = useCallback(() => {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -338,12 +427,20 @@ export default function InvestigationPage() {
     };
 
     // ── Cause helpers ────────────────────────────────────────────────────────
-    const addImmCause = (type: ImmediateCause["type"]) => { setImmCauses([...immCauses, { type, description: "" }]); scheduleSave(); };
-    const updImmCause = (i: number, d: string) => { setImmCauses(immCauses.map((c, idx) => idx === i ? { ...c, description: d } : c)); scheduleSave(); };
-    const rmImmCause = (i: number) => { setImmCauses(immCauses.filter((_, idx) => idx !== i)); scheduleSave(); };
-    const addBasicCause = (type: BasicCause["type"]) => { setBasicCauses([...basicCauses, { type, description: "" }]); scheduleSave(); };
-    const updBasicCause = (i: number, d: string) => { setBasicCauses(basicCauses.map((c, idx) => idx === i ? { ...c, description: d } : c)); scheduleSave(); };
-    const rmBasicCause = (i: number) => { setBasicCauses(basicCauses.filter((_, idx) => idx !== i)); scheduleSave(); };
+    const toggleCause = useCallback((
+        section: keyof CausesSelected,
+        field: string,
+        key: string
+    ) => {
+        setCausesSelected(prev => {
+            const sec = prev[section] as Record<string, unknown>;
+            const arr = (sec[field] as string[]) ?? [];
+            const next = arr.includes(key) ? arr.filter(x => x !== key) : [...arr, key];
+            return { ...prev, [section]: { ...sec, [field]: next } };
+        });
+        scheduleSave();
+    }, [scheduleSave]);
+
     const addAction = () => { setActionPlan([...actionPlan, { action: "", responsible: "", deadline: "", status: "pendiente" }]); scheduleSave(); };
     const updAction = (i: number, p: Partial<ActionItem>) => { setActionPlan(actionPlan.map((a, idx) => idx === i ? { ...a, ...p } : a)); scheduleSave(); };
     const rmAction = (i: number) => { setActionPlan(actionPlan.filter((_, idx) => idx !== i)); scheduleSave(); };
@@ -476,48 +573,117 @@ export default function InvestigationPage() {
 
                     {/* TAB 2: CAUSAS */}
                     {activeTab === 1 && (
-                        <div className="space-y-6">
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={Zap}>Causas Inmediatas (§5.2)</SectionTitle>
-                                <p className="text-[#64748B] text-xs mb-4">Condiciones o actos que directamente causaron el evento.</p>
-                                {immCauses.map((c, i) => (
-                                    <CauseRow key={i} label={c.type === "acto" ? "Acto" : "Condición"} value={c.description}
-                                        onChange={(v) => updImmCause(i, v)} onRemove={() => rmImmCause(i)} disabled={isClosed} />
-                                ))}
-                                {!isClosed && (
-                                    <div className="flex flex-wrap gap-2 mt-4">
-                                        <button onClick={() => addImmCause("acto")} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded-lg text-xs font-semibold hover:bg-amber-400/20 transition-colors cursor-pointer">
-                                            <Plus className="w-3 h-3" /> Acto subestándar
-                                        </button>
-                                        <button onClick={() => addImmCause("condicion")} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-400/10 text-orange-400 border border-orange-400/20 rounded-lg text-xs font-semibold hover:bg-orange-400/20 transition-colors cursor-pointer">
-                                            <Plus className="w-3 h-3" /> Condición subestándar
-                                        </button>
-                                    </div>
-                                )}
+                        <div className="space-y-4">
+                            {/* Vehicle toggle */}
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-2">
+                                    <Car className="w-4 h-4 text-blue-400" />
+                                    <span className="text-white text-sm font-semibold">¿El evento involucró un vehículo?</span>
+                                </div>
+                                <button disabled={isClosed}
+                                    onClick={() => { setInvolucraVehiculo((v: boolean) => !v); scheduleSave(); }}
+                                    className={`relative inline-flex w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${involucraVehiculo ? "bg-blue-500" : "bg-[#1E2A3B]"} ${isClosed ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+                                    <span className={`inline-block w-4 h-4 mt-1 rounded-full bg-white shadow transition-transform duration-200 ${involucraVehiculo ? "translate-x-6" : "translate-x-1"}`} />
+                                </button>
                             </div>
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={Search}>Causas Básicas (§5.3)</SectionTitle>
-                                <p className="text-[#64748B] text-xs mb-4">Factores personales o del trabajo que generaron las causas inmediatas.</p>
-                                {basicCauses.map((c, i) => (
-                                    <CauseRow key={i} label={c.type === "personal" ? "Personal" : "Trabajo"} value={c.description}
-                                        onChange={(v) => updBasicCause(i, v)} onRemove={() => rmBasicCause(i)} disabled={isClosed} />
+
+                            {/* §5.2 — Causas Inmediatas */}
+                            <CausesAccordion title="§5.2 — Causas Inmediatas" norm="NTC 3701"
+                                count={causesSelected.inmediatas.condiciones.length + causesSelected.inmediatas.actos.length}
+                                defaultOpen={true}>
+                                <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-1">A — Condiciones Ambientales Subestándar</p>
+                                {CONDICIONES_SUBESTANDAR.map(cat => (
+                                    <SubCategoryAccordion key={cat.code} category={cat}
+                                        selected={causesSelected.inmediatas.condiciones}
+                                        onToggle={(key) => toggleCause("inmediatas", "condiciones", key)}
+                                        disabled={isClosed} />
                                 ))}
-                                {!isClosed && (
-                                    <div className="flex flex-wrap gap-2 mt-4">
-                                        <button onClick={() => addBasicCause("personal")} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-400/10 text-blue-400 border border-blue-400/20 rounded-lg text-xs font-semibold hover:bg-blue-400/20 transition-colors cursor-pointer">
-                                            <Plus className="w-3 h-3" /> Factor personal
-                                        </button>
-                                        <button onClick={() => addBasicCause("trabajo")} className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-400/10 text-purple-400 border border-purple-400/20 rounded-lg text-xs font-semibold hover:bg-purple-400/20 transition-colors cursor-pointer">
-                                            <Plus className="w-3 h-3" /> Factor de trabajo
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-4">B — Actos Subestándar</p>
+                                {ACTOS_SUBESTANDAR.map(cat => (
+                                    <SubCategoryAccordion key={cat.code} category={cat}
+                                        selected={causesSelected.inmediatas.actos}
+                                        onToggle={(key) => toggleCause("inmediatas", "actos", key)}
+                                        disabled={isClosed} />
+                                ))}
+                                <div className="mt-4">
+                                    <FieldLabel>Otra causa inmediata no listada</FieldLabel>
+                                    <FTextarea rows={2} value={causesSelected.inmediatas.otra}
+                                        onChange={(v) => { setCausesSelected(p => ({ ...p, inmediatas: { ...p.inmediatas, otra: v } })); scheduleSave(); }}
+                                        placeholder="Describe si hay otra causa no listada..." disabled={isClosed} />
+                                </div>
+                            </CausesAccordion>
+
+                            {/* §5.3 — Causas Básicas */}
+                            <CausesAccordion title="§5.3 — Causas Básicas" norm="NTC 3701"
+                                count={causesSelected.basicas.factores_personales.length + causesSelected.basicas.factores_trabajo.length}>
+                                <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-1">A — Factores Personales</p>
+                                {FACTORES_PERSONALES.map(cat => (
+                                    <SubCategoryAccordion key={cat.code} category={cat}
+                                        selected={causesSelected.basicas.factores_personales}
+                                        onToggle={(key) => toggleCause("basicas", "factores_personales", key)}
+                                        disabled={isClosed} />
+                                ))}
+                                <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-4">B — Factores del Trabajo</p>
+                                {FACTORES_TRABAJO.map(cat => (
+                                    <SubCategoryAccordion key={cat.code} category={cat}
+                                        selected={causesSelected.basicas.factores_trabajo}
+                                        onToggle={(key) => toggleCause("basicas", "factores_trabajo", key)}
+                                        disabled={isClosed} />
+                                ))}
+                                <div className="mt-4">
+                                    <FieldLabel>Otra causa básica no listada</FieldLabel>
+                                    <FTextarea rows={2} value={causesSelected.basicas.otra}
+                                        onChange={(v) => { setCausesSelected(p => ({ ...p, basicas: { ...p.basicas, otra: v } })); scheduleSave(); }}
+                                        placeholder="Describe si hay otra causa no listada..." disabled={isClosed} />
+                                </div>
+                            </CausesAccordion>
+
+                            {/* §5.4 — Fallas en Control Administrativo (unchanged — free text) */}
                             <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
                                 <SectionTitle icon={AlertTriangle}>Fallas en el Control Administrativo (§5.4)</SectionTitle>
                                 <FTextarea value={controlFails} onChange={(v) => { setControlFails(v); scheduleSave(); }}
                                     placeholder="Deficiencias del sistema de gestión que permitieron que las causas básicas existieran..." rows={4} disabled={isClosed} />
                             </div>
+
+                            {/* §5.5 — Factores PESV (conditional on vehicle toggle) */}
+                            {involucraVehiculo && (
+                                <CausesAccordion title="§5.5 — Factores PESV" norm="PESV — Res. 1565/2014"
+                                    count={causesSelected.pesv.factor_humano.length + causesSelected.pesv.factor_vehiculo.length + causesSelected.pesv.factor_infraestructura.length}>
+                                    <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-1">A — Factor Humano</p>
+                                    <div className="space-y-0.5 mb-4">
+                                        {PESV_FACTOR_HUMANO.map(item => (
+                                            <CauseCheckbox key={item} code="—" label={item}
+                                                checked={causesSelected.pesv.factor_humano.includes(item)}
+                                                onChange={() => toggleCause("pesv", "factor_humano", item)}
+                                                disabled={isClosed} />
+                                        ))}
+                                    </div>
+                                    <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2">B — Factor Vehículo</p>
+                                    <div className="space-y-0.5 mb-4">
+                                        {PESV_FACTOR_VEHICULO.map(item => (
+                                            <CauseCheckbox key={item} code="—" label={item}
+                                                checked={causesSelected.pesv.factor_vehiculo.includes(item)}
+                                                onChange={() => toggleCause("pesv", "factor_vehiculo", item)}
+                                                disabled={isClosed} />
+                                        ))}
+                                    </div>
+                                    <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2">C — Factor Infraestructura</p>
+                                    <div className="space-y-0.5 mb-4">
+                                        {PESV_FACTOR_INFRAESTRUCTURA.map(item => (
+                                            <CauseCheckbox key={item} code="—" label={item}
+                                                checked={causesSelected.pesv.factor_infraestructura.includes(item)}
+                                                onChange={() => toggleCause("pesv", "factor_infraestructura", item)}
+                                                disabled={isClosed} />
+                                        ))}
+                                    </div>
+                                    <div className="mt-2">
+                                        <FieldLabel>Otro factor PESV no listado</FieldLabel>
+                                        <FTextarea rows={2} value={causesSelected.pesv.otra}
+                                            onChange={(v) => { setCausesSelected(p => ({ ...p, pesv: { ...p.pesv, otra: v } })); scheduleSave(); }}
+                                            placeholder="Describe si hay otro factor PESV no listado..." disabled={isClosed} />
+                                    </div>
+                                </CausesAccordion>
+                            )}
                         </div>
                     )}
 

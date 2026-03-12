@@ -156,6 +156,8 @@ export type InspectionItem = {
 
 // ── Módulo 3 — Investigación del Accidente ────────────────────────────────
 
+export type { CausesSelected } from "./ntc3701-causes-data";
+
 export interface ImmediateCause {
     type: "acto" | "condicion";
     description: string;
@@ -201,6 +203,9 @@ export type Investigation = {
 
     // Action plan
     action_plan: ActionItem[];
+
+    // Structured causes (NTC 3701)
+    causes_selected?: import("./ntc3701-causes-data").CausesSelected;
 
     // Closure
     conclusions?: string;
