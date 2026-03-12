@@ -13,7 +13,7 @@ import {
     ArrowLeft, Save, CheckCircle2, AlertTriangle, Users,
     Search, Zap, ClipboardList, Plus, Trash2, Loader2,
     ChevronRight, ChevronDown, Lock, Clock, PenLine, Copy, Check, Share2, FileText,
-    Car, TriangleAlert, BookOpen, Camera, CalendarDays, Image
+    Car, TriangleAlert, BookOpen, Camera, CalendarDays, Image, MessageCircle, Mail
 } from "lucide-react";
 import {
     CONDICIONES_SUBESTANDAR,
@@ -710,42 +710,122 @@ export default function InvestigationPage() {
                                         Sin acciones definidas
                                     </div>
                                 )}
-                                {actionPlan.map((item, i) => (
-                                    <div key={i} className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl p-4 mb-3">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-[#F59E0B] text-xs font-bold">Acción #{i + 1}</span>
-                                            {!isClosed && (
-                                                <button onClick={() => rmAction(i)} className="p-1 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all">
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
+                                {actionPlan.map((item, i) => {
+                                    const hasContact = !!(item.responsible_phone || item.responsible_email);
+                                    const isNotified = !!item.notified_at;
+                                    const notifyDisabled = !hasContact || isClosed;
+                                    const buildMessage = () => {
+                                        const name = item.responsible || "responsable";
+                                        const deadlineStr = item.deadline ? new Date(item.deadline + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" }) : "pendiente";
+                                        const link = item.token ? `${window.location.origin}/acciones/${item.token}` : "";
+                                        return `Hola ${name}, se te ha asignado una acción correctiva en el sistema SST de FOXTECH.\n\n📋 *Acción:* ${item.action}\n📍 *Origen:* Investigación\n📅 *Fecha límite:* ${deadlineStr}${link ? `\n🔗 *Ver detalle:* ${link}` : ""}\n\nPor favor confirma recibido respondiendo este mensaje.`;
+                                    };
+                                    const handleNotify = async (via: "whatsapp" | "email") => {
+                                        // 1 — generate token if not yet created
+                                        let tok = item.token;
+                                        if (!tok) {
+                                            const { data } = await supabase.from("action_tokens").insert({
+                                                source: "investigation",
+                                                source_id: investigation!.id,
+                                                action_index: i,
+                                            }).select("token").single();
+                                            tok = data?.token ?? undefined;
+                                            updAction(i, { token: tok });
+                                        }
+                                        // 2 — open channel
+                                        const msg = buildMessage();
+                                        if (via === "whatsapp" && item.responsible_phone) {
+                                            const phone = item.responsible_phone.replace(/\D/g, "");
+                                            window.open(`https://wa.me/57${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+                                        } else if (via === "email" && item.responsible_email) {
+                                            const subj = "Acción correctiva asignada — FOXTECH SST";
+                                            window.open(`mailto:${item.responsible_email}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(msg)}`, "_blank");
+                                        }
+                                        // 3 — mark notified
+                                        const now = new Date().toISOString();
+                                        updAction(i, { notified_at: now, notified_via: via, token: tok });
+                                        await save(false);
+                                    };
+                                    return (
+                                        <div key={i} className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl p-4 mb-3">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-[#F59E0B] text-xs font-bold">Acción #{i + 1}</span>
+                                                {!isClosed && (
+                                                    <button onClick={() => rmAction(i)} className="p-1 rounded-lg text-[#64748B] hover:text-red-400 hover:bg-red-400/10 transition-all">
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div className="sm:col-span-2">
+                                                    <FieldLabel>Acción correctiva *</FieldLabel>
+                                                    <FInput value={item.action} onChange={(v) => updAction(i, { action: v })} placeholder="Describir la acción..." disabled={isClosed} />
+                                                </div>
+                                                {/* Expanded responsible fields */}
+                                                <div className="sm:col-span-2">
+                                                    <FieldLabel>Nombre del responsable *</FieldLabel>
+                                                    <FInput value={item.responsible} onChange={(v) => updAction(i, { responsible: v })} placeholder="Nombre y cargo" disabled={isClosed} />
+                                                </div>
+                                                <div>
+                                                    <FieldLabel>Teléfono (opcional)</FieldLabel>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[#64748B] text-sm px-2 py-2.5 bg-[#141824] border border-[#1E2A3B] rounded-xl">+57</span>
+                                                        <FInput value={item.responsible_phone ?? ""} onChange={(v) => updAction(i, { responsible_phone: v.replace(/\D/g, "").slice(0, 10) })} placeholder="3001234567" disabled={isClosed} />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <FieldLabel>Email (opcional)</FieldLabel>
+                                                    <FInput value={item.responsible_email ?? ""} onChange={(v) => updAction(i, { responsible_email: v })} placeholder="correo@empresa.com" disabled={isClosed} />
+                                                </div>
+                                                <div>
+                                                    <FieldLabel>Fecha límite *</FieldLabel>
+                                                    <input type="date" value={item.deadline} onChange={(e) => updAction(i, { deadline: e.target.value })} disabled={isClosed}
+                                                        className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50" />
+                                                </div>
+                                                <div>
+                                                    <FieldLabel>Estado</FieldLabel>
+                                                    <select value={item.status} onChange={(e) => updAction(i, { status: e.target.value as ActionItem["status"] })} disabled={isClosed}
+                                                        className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50">
+                                                        <option value="pendiente">Pendiente</option>
+                                                        <option value="en_curso">En Curso</option>
+                                                        <option value="cerrado">Cerrado</option>
+                                                    </select>
+                                                </div>
+                                                {/* Notify row */}
+                                                <div className="sm:col-span-2 pt-1 flex flex-wrap items-center gap-2">
+                                                    {item.responsible_phone && (
+                                                        <button onClick={() => handleNotify("whatsapp")} disabled={isClosed}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs font-semibold hover:bg-green-500/20 transition-colors disabled:opacity-50 cursor-pointer">
+                                                            <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                                                        </button>
+                                                    )}
+                                                    {item.responsible_email && (
+                                                        <button onClick={() => handleNotify("email")} disabled={isClosed}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-semibold hover:bg-blue-500/20 transition-colors disabled:opacity-50 cursor-pointer">
+                                                            <Mail className="w-3.5 h-3.5" /> Email
+                                                        </button>
+                                                    )}
+                                                    {!hasContact && !isClosed && (
+                                                        <span className="text-[#334155] text-xs italic">Agrega teléfono o email para notificar</span>
+                                                    )}
+                                                    {isNotified && (
+                                                        <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+                                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                                            Notificado vía {item.notified_via === "whatsapp" ? "WhatsApp" : "Email"} · {new Date(item.notified_at!).toLocaleString("es-CO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                        </span>
+                                                    )}
+                                                    {item.token && (
+                                                        <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/acciones/${item.token}`)}
+                                                            className="flex items-center gap-1 text-[#64748B] hover:text-white text-xs transition-colors cursor-pointer ml-auto">
+                                                            <Copy className="w-3 h-3" /> Copiar link
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            <div className="sm:col-span-2">
-                                                <FieldLabel>Acción correctiva *</FieldLabel>
-                                                <FInput value={item.action} onChange={(v) => updAction(i, { action: v })} placeholder="Describir la acción..." disabled={isClosed} />
-                                            </div>
-                                            <div>
-                                                <FieldLabel>Responsable *</FieldLabel>
-                                                <FInput value={item.responsible} onChange={(v) => updAction(i, { responsible: v })} placeholder="Nombre y cargo" disabled={isClosed} />
-                                            </div>
-                                            <div>
-                                                <FieldLabel>Fecha límite *</FieldLabel>
-                                                <input type="date" value={item.deadline} onChange={(e) => updAction(i, { deadline: e.target.value })} disabled={isClosed}
-                                                    className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50" />
-                                            </div>
-                                            <div>
-                                                <FieldLabel>Estado</FieldLabel>
-                                                <select value={item.status} onChange={(e) => updAction(i, { status: e.target.value as ActionItem["status"] })} disabled={isClosed}
-                                                    className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50">
-                                                    <option value="pendiente">Pendiente</option>
-                                                    <option value="en_curso">En Curso</option>
-                                                    <option value="cerrado">Cerrado</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
+
                                 {!isClosed && (
                                     <button onClick={addAction} className="flex items-center gap-2 px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors mt-2 cursor-pointer">
                                         <Plus className="w-4 h-4" /> Agregar acción

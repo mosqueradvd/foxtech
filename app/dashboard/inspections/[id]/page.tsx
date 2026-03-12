@@ -8,7 +8,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
     ArrowLeft, CheckCircle2, XCircle, AlertCircle,
-    Plus, Trash2, Loader2, Save, Lock, Clock, ChevronDown, ChevronUp
+    Plus, Trash2, Loader2, Save, Lock, Clock, ChevronDown, ChevronUp,
+    MessageCircle, Mail
 } from "lucide-react";
 import {
     supabase,
@@ -318,7 +319,7 @@ export default function InspectionDetailPage() {
                                             )}
                                         </div>
 
-                                        {/* Action form */}
+                                         {/* Action form */}
                                         {action && (expanded || !action.action) && (
                                             <div className="p-3 border-t border-[#1E2A3B] bg-[#141824] space-y-3">
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -331,9 +332,21 @@ export default function InspectionDetailPage() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Responsable *</label>
+                                                    {/* Expanded responsible fields */}
+                                                    <div className="sm:col-span-2">
+                                                        <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Nombre del responsable *</label>
                                                         <FInput value={action.responsible} onChange={(v) => updateAction(action.id, { responsible: v })} placeholder="Nombre y cargo" disabled={isClosed} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Teléfono (opcional)</label>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-[#64748B] text-sm px-2 py-2 bg-[#0F1420] border border-[#1E2A3B] rounded-xl">+57</span>
+                                                            <FInput value={action.responsible_phone ?? ""} onChange={(v) => updateAction(action.id, { responsible_phone: v.replace(/\D/g, "").slice(0, 10) })} placeholder="3001234567" disabled={isClosed} />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Email (opcional)</label>
+                                                        <FInput value={action.responsible_email ?? ""} onChange={(v) => updateAction(action.id, { responsible_email: v })} placeholder="correo@empresa.com" disabled={isClosed} />
                                                     </div>
                                                     <div>
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Fecha límite *</label>
@@ -343,6 +356,67 @@ export default function InspectionDetailPage() {
                                                     <div>
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Estado</label>
                                                         <ActionStatusSelect value={action.status} onChange={(v) => updateAction(action.id, { status: v as InspectionActionItem["status"] })} disabled={isClosed} />
+                                                    </div>
+                                                    {/* Notify row */}
+                                                    <div className="sm:col-span-2 flex flex-wrap items-center gap-2 pt-1">
+                                                        {action.responsible_phone && (
+                                                            <button disabled={isClosed} onClick={async () => {
+                                                                let tok = action.token;
+                                                                if (!tok) {
+                                                                    const { data } = await supabase.from("action_tokens").insert({
+                                                                        source: "inspection", source_id: id, action_index: actionPlan.findIndex(a => a.id === action.id),
+                                                                    }).select("token").single();
+                                                                    tok = data?.token ?? undefined;
+                                                                    updateAction(action.id, { token: tok });
+                                                                }
+                                                                const name = action.responsible || "responsable";
+                                                                const ddl = action.deadline ? new Date(action.deadline + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" }) : "pendiente";
+                                                                const link = tok ? `${window.location.origin}/acciones/${tok}` : "";
+                                                                const msg = `Hola ${name}, se te ha asignado una acción correctiva en el sistema SST de FOXTECH.\n\n📋 *Acción:* ${action.action}\n📍 *Origen:* Inspección\n📅 *Fecha límite:* ${ddl}${link ? `\n🔗 *Ver detalle:* ${link}` : ""}\n\nPor favor confirma recibido respondiendo este mensaje.`;
+                                                                const phone = action.responsible_phone!.replace(/\D/g, "");
+                                                                window.open(`https://wa.me/57${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+                                                                updateAction(action.id, { notified_at: new Date().toISOString(), notified_via: "whatsapp", token: tok });
+                                                                await save(false);
+                                                            }} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs font-semibold hover:bg-green-500/20 transition-colors disabled:opacity-50 cursor-pointer">
+                                                                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                                                            </button>
+                                                        )}
+                                                        {action.responsible_email && (
+                                                            <button disabled={isClosed} onClick={async () => {
+                                                                let tok = action.token;
+                                                                if (!tok) {
+                                                                    const { data } = await supabase.from("action_tokens").insert({
+                                                                        source: "inspection", source_id: id, action_index: actionPlan.findIndex(a => a.id === action.id),
+                                                                    }).select("token").single();
+                                                                    tok = data?.token ?? undefined;
+                                                                    updateAction(action.id, { token: tok });
+                                                                }
+                                                                const name = action.responsible || "responsable";
+                                                                const ddl = action.deadline ? new Date(action.deadline + "T12:00:00").toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" }) : "pendiente";
+                                                                const link = tok ? `${window.location.origin}/acciones/${tok}` : "";
+                                                                const body = `Hola ${name}, se te ha asignado una acción correctiva en el sistema SST de FOXTECH.\n\nAcción: ${action.action}\nOrigen: Inspección\nFecha límite: ${ddl}${link ? `\nVer detalle: ${link}` : ""}\n\nPor favor confirma recibido respondiendo este mensaje.`;
+                                                                window.open(`mailto:${action.responsible_email}?subject=${encodeURIComponent("Acción correctiva asignada — FOXTECH SST")}&body=${encodeURIComponent(body)}`, "_blank");
+                                                                updateAction(action.id, { notified_at: new Date().toISOString(), notified_via: "email", token: tok });
+                                                                await save(false);
+                                                            }} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-semibold hover:bg-blue-500/20 transition-colors disabled:opacity-50 cursor-pointer">
+                                                                <Mail className="w-3.5 h-3.5" /> Email
+                                                            </button>
+                                                        )}
+                                                        {!action.responsible_phone && !action.responsible_email && !isClosed && (
+                                                            <span className="text-[#334155] text-xs italic">Agrega teléfono o email para notificar</span>
+                                                        )}
+                                                        {action.notified_at && (
+                                                            <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+                                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                Notificado vía {action.notified_via === "whatsapp" ? "WhatsApp" : "Email"} · {new Date(action.notified_at).toLocaleString("es-CO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                            </span>
+                                                        )}
+                                                        {action.token && (
+                                                            <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/acciones/${action.token}`)}
+                                                                className="ml-auto text-[#64748B] hover:text-white text-xs transition-colors cursor-pointer">
+                                                                Copiar link
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     {action.status === "completada" && (
                                                         <div className="sm:col-span-2 mt-2 p-3 sm:p-4 bg-[#0F1420] border border-[#1E2A3B] rounded-xl space-y-4">
@@ -391,7 +465,6 @@ export default function InspectionDetailPage() {
                                                                     <img src={action.verification_photo_url} className="h-16 w-16 object-cover rounded-lg border border-emerald-500/30 hover:opacity-80 transition-opacity" alt="Evidencia de cierre" />
                                                                 </a>
                                                             )}
-                                                            {/* backward compatibility */}
                                                             {action.effective !== undefined && action.effective !== null && !action.verification_note && (
                                                                 <p className="text-emerald-400/80 text-xs mt-1">Eficaz: {action.effective ? "Sí" : "No"}</p>
                                                             )}
@@ -405,6 +478,7 @@ export default function InspectionDetailPage() {
                                                 )}
                                             </div>
                                         )}
+
                                     </div>
                                 );
                             })}

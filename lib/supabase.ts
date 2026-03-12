@@ -114,12 +114,17 @@ export type InspectionActionItem = {
     finding_label: string;
     action: string;
     responsible: string;
+    responsible_phone?: string;   // Colombian mobile, e.g. 3001234567
+    responsible_email?: string;
     deadline: string;
     status: "pendiente" | "en_curso" | "en_ejecucion" | "completada" | "verificada" | "cerrado";
-    effective?: boolean | null; // evaluación de eficacia
-    voice_url?: string; // audio memo url
-    verification_photo_url?: string; // foto de verificación
-    verification_note?: string;      // nota de cierre
+    effective?: boolean | null;
+    voice_url?: string;
+    verification_photo_url?: string;
+    verification_note?: string;
+    notified_at?: string;         // ISO timestamp of last notification
+    notified_via?: "whatsapp" | "email";
+    token?: string;               // action_tokens.token
 };
 
 export type Inspection = {
@@ -183,9 +188,27 @@ export interface BasicCause {
 export interface ActionItem {
     action: string;
     responsible: string;
-    deadline: string;   // ISO date string YYYY-MM-DD
+    responsible_phone?: string;   // Colombian mobile, e.g. 3001234567
+    responsible_email?: string;
+    deadline: string;             // ISO date string YYYY-MM-DD
     status: "pendiente" | "en_curso" | "cerrado";
+    notified_at?: string;         // ISO timestamp of last notification
+    notified_via?: "whatsapp" | "email";
+    token?: string;               // action_tokens.token
 }
+
+// ── Action tokens (public access table) ────────────────────────────────────────
+export type ActionToken = {
+    id: string;
+    token: string;
+    source: "inspection" | "investigation";
+    source_id: string;
+    action_index: number;
+    expires_at: string;
+    completed_at?: string;
+    completion_photo?: string;
+    created_at?: string;
+};
 
 export type InvestigationStatus =
     | "en_proceso"
