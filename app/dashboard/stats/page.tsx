@@ -12,12 +12,11 @@ import {
     ArrowLeft, BarChart2, TrendingUp, TrendingDown,
     Minus, AlertTriangle, RefreshCw, Settings, Download, Loader2, CheckCircle2,
     Activity, Zap, Shield, Users, Skull, ChevronDown, FileSpreadsheet,
-    Volume2, FlaskConical, Bug, PersonStanding, Brain, HardHat, Building, Cog
 } from "lucide-react";
+import HazardFrequencyWidget from "@/components/dashboard/HazardFrequencyWidget";
 import {
-    LineChart, Line, BarChart, Bar,
+    LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    Cell
 } from "recharts";
 import { supabase, type Event, type Company } from "@/lib/supabase";
 import {
@@ -612,67 +611,28 @@ export default function StatsPage() {
                         )}
                     </section>
 
-                    {/* Classification breakdown */}
-                    <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col">
-                        <div className="flex items-center gap-2 mb-5">
-                            <BarChart2 className="w-4 h-4 text-[#F59E0B]" />
-                            <h2 className="text-white font-semibold text-sm">Distribución por Peligros GTC-45</h2>
+
+                </div>
+
+                {/* ── HAZARD FREQUENCY WIDGET ── */}
+                <div className="mb-6">
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+                        <div>
+                            <h1 className="text-white text-3xl font-black tracking-tight leading-none uppercase">
+                                Distribución por Peligros GTC-45
+                            </h1>
+                            <p className="text-[#64748B] text-[11px] font-bold tracking-[0.2em] uppercase mt-2">
+                                Foxtech HSE Command Center // Analytics Engine
+                            </p>
                         </div>
-                        {loading ? (
-                            <div className="h-40 bg-[#0F1420] rounded-xl animate-pulse" />
-                        ) : hazardData.length === 0 ? (
-                            <div className="h-40 flex items-center justify-center">
-                                <p className="text-[#334155] text-sm">Sin eventos en este período</p>
-                            </div>
-                        ) : (
-                            <div className="flex-1 flex flex-col justify-between">
-                                <ResponsiveContainer width="100%" height={160}>
-                                    <BarChart data={hazardData} layout="vertical" margin={{ top: 0, right: 10, left: 0, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" horizontal={false} />
-                                        <XAxis type="number" tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                        <YAxis type="category" dataKey="label" tick={{ fill: "#94A3B8", fontSize: 10 }} axisLine={false} tickLine={false} width={100} />
-                                        <Tooltip content={<ChartTooltip />} />
-                                        <Bar dataKey="value" name="Eventos" radius={[0, 6, 6, 0]}>
-                                            {hazardData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={entry.color} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-
-                                {/* Top 3 Peligros Widget */}
-                                <div className="mt-4 pt-4 border-t border-[#1E2A3B]">
-                                    <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-3">Top 3 Peligros Frecuentes</p>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {hazardData.slice(0, 3).map((hz, idx) => {
-                                            const HzIcon =
-                                                hz.label === "Físico" ? Volume2 :
-                                                    hz.label === "Químico" ? FlaskConical :
-                                                        hz.label === "Biológico" ? Bug :
-                                                            hz.label === "Ergonómico" ? PersonStanding :
-                                                                hz.label === "Psicosocial" ? Brain :
-                                                                    hz.label === "Seguridad" ? HardHat :
-                                                                        hz.label === "Eléctrico" ? Zap :
-                                                                            hz.label === "Locativo" ? Building :
-                                                                                hz.label === "Mecánico" ? Cog : Shield;
-
-                                            return (
-                                                <div key={hz.label} className="bg-[#0F1420] rounded-lg p-2 flex items-center gap-2 border border-[#1E2A3B]">
-                                                    <div className="w-7 h-7 rounded-md bg-[#1E2A3B] flex items-center justify-center flex-shrink-0">
-                                                        <HzIcon className="w-3.5 h-3.5" style={{ color: hz.color }} />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-white text-[10px] font-bold truncate">{hz.label}</p>
-                                                        <p className="text-[#64748B] text-[9px]">{hz.value} eventos</p>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </section>
+                        <div className="text-right">
+                            <p className="text-[#475569] text-[10px] font-bold tracking-widest uppercase mb-1">Última Actualización</p>
+                            <p className="text-[#F59E0B] text-sm font-black tracking-widest leading-none">
+                                {new Date().toISOString().split('T')[0]} {new Date().toLocaleTimeString('es-CO', { hour12: false })}
+                            </p>
+                        </div>
+                    </div>
+                    <HazardFrequencyWidget hazardData={hazardData} loading={loading} />
                 </div>
 
                 {/* ── EVENTS TABLE ── */}
