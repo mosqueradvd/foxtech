@@ -15,6 +15,7 @@ import {
     LayoutDashboard, User, MoreVertical, Bell, ClipboardList, Building2, FileText,
 } from "lucide-react";
 import HazardFrequencyWidget from "@/components/dashboard/HazardFrequencyWidget";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import {
     LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -441,154 +442,69 @@ export function StatsPage() {
         }
     }, [historicalData, selectedCompany, workerCount]);
 
-    // Nav items
-    const navItems = [
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-        { id: "incidents", label: "Incidentes", icon: AlertTriangle, href: "/dashboard" },
-        { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard/inspections" },
-        { id: "companies", label: "Empresas", icon: Building2, href: "/dashboard" },
-        { id: "reports", label: "Reportes", icon: FileText, href: "/dashboard" },
-    ];
 
     // ── Render ────────────────────────────────────────────────────────────
     return (
-        <div className="flex h-screen bg-[#0F1219] overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {/* ── LEFT SIDEBAR ── */}
-            <aside className="w-64 flex-shrink-0 bg-[#1A1F2E] border-r border-[#1E2A3B] flex flex-col">
-                {/* Logo */}
-                <div className="px-6 py-8">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                            <Shield className="w-6 h-6 text-amber-500" />
-                        </div>
-                        <div>
-                            <p className="text-white font-black text-lg leading-none tracking-tight">FOXTECH</p>
-                            <p className="text-[#64748B] text-[10px] font-bold tracking-[0.2em] uppercase mt-1">
-                                Command Center
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Nav items */}
-                <nav className="flex-1 px-4 py-4 space-y-2">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = item.id === "stats";
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={() => router.push(item.href)}
-                                className={[
-                                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer",
-                                    isActive
-                                        ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                                        : "text-[#64748B] hover:bg-white/5 hover:text-white",
-                                ].join(" ")}
+        <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+            {/* ── TOP HEADER (FILTERS) ── */}
+            <DashboardHeader onRefresh={fetchData} loading={loading}>
+                <div className="flex items-center gap-8">
+                    {/* Period Filter */}
+                    <div>
+                        <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
+                            Período
+                        </label>
+                        <div className="relative">
+                            <select
+                                value={period}
+                                onChange={(e) => setPeriod(e.target.value as PeriodPreset)}
+                                className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10"
                             >
-                                <Icon className="w-4 h-4" />
-                                <span>{item.label}</span>
-                            </button>
-                        );
-                    })}
-                    {/* Add Stats item since it's the active one */}
-                    <button
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                    >
-                        <BarChart2 className="w-4 h-4" />
-                        <span>Estadísticas</span>
-                    </button>
-                </nav>
+                                <option value="year">2026</option>
+                                <option value="quarter">Trimestre Actual</option>
+                                <option value="month">Marzo 2026</option>
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                    </div>
 
-                {/* User profile at bottom */}
-                <div className="p-4 border-t border-[#1E2A3B] flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                        <User className="w-5 h-5 text-emerald-500" />
+                    {/* Company Filter */}
+                    <div>
+                        <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
+                            Empresa
+                        </label>
+                        <div className="relative">
+                            <select
+                                value={selectedCompanyId}
+                                onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10 min-w-[200px]"
+                            >
+                                <option value="all">TODAS LAS ENTIDADES</option>
+                                {companies.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-bold leading-none truncate">Carlos Mendez</p>
-                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1 truncate">Senior Consultant</p>
+
+                    {/* Workers Filter */}
+                    <div>
+                        <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
+                            Trabajadores
+                        </label>
+                        <input
+                            type="number"
+                            placeholder={dbWorkerCount.toString()}
+                            value={workerOverride}
+                            onChange={(e) => setWorkerOverride(e.target.value)}
+                            className="bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 w-24"
+                        />
                     </div>
-                    <button className="text-[#64748B] hover:text-white transition-colors">
-                        <MoreVertical className="w-4 h-4" />
-                    </button>
                 </div>
-            </aside>
+            </DashboardHeader>
 
-            {/* ── MAIN CONTENT ── */}
-            <main className="flex-1 overflow-y-auto flex flex-col">
-                {/* ── TOP HEADER (FILTERS) ── */}
-                <header className="bg-[#1A1F2E] border-b border-[#1E2A3B] px-8 py-5 flex items-center justify-between sticky top-0 z-30">
-                    <div className="flex items-center gap-8">
-                        {/* Period Filter */}
-                        <div>
-                            <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
-                                Período
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={period}
-                                    onChange={(e) => setPeriod(e.target.value as PeriodPreset)}
-                                    className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10"
-                                >
-                                    <option value="year">2026</option>
-                                    <option value="quarter">Trimestre Actual</option>
-                                    <option value="month">Marzo 2026</option>
-                                </select>
-                                <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        {/* Company Filter */}
-                        <div>
-                            <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
-                                Empresa
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={selectedCompanyId}
-                                    onChange={(e) => setSelectedCompanyId(e.target.value)}
-                                    className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10 min-w-[200px]"
-                                >
-                                    <option value="all">TODAS LAS ENTIDADES</option>
-                                    {companies.map((c) => (
-                                        <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                        </div>
-
-                        {/* Workers Filter */}
-                        <div>
-                            <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
-                                Trabajadores
-                            </label>
-                            <input
-                                type="number"
-                                placeholder={dbWorkerCount.toString()}
-                                value={workerOverride}
-                                onChange={(e) => setWorkerOverride(e.target.value)}
-                                className="bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 w-24"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={fetchData}
-                            className="p-2.5 rounded-xl bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] hover:text-white hover:border-amber-500/50 transition-all"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                        </button>
-                        <button className="relative p-2.5 rounded-xl bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] hover:text-white hover:border-amber-500/50 transition-all">
-                            <Bell className="w-4 h-4" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0F1219]" />
-                        </button>
-                    </div>
-                </header>
-
-                <div className="p-8 space-y-8">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
                     {/* ── KPI SECTION ── */}
                     <div id="kpi-section" className="grid grid-cols-4 gap-6">
                         <StatCard
@@ -826,7 +742,6 @@ export function StatsPage() {
                         </div>
                     </div>
                 </div>
-            </main>
         </div>
     );
 

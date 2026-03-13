@@ -12,6 +12,7 @@ import {
     AlertTriangle, RefreshCw, ChevronRight, User
 } from "lucide-react";
 import { supabase, type Investigation, type Event } from "@/lib/supabase";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -87,30 +88,25 @@ export default function InvestigationsPage() {
     const openCount = investigations.filter((i) => i.status !== "cerrado").length;
 
     return (
-        <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* Header */}
-            <header className="bg-[#141824] border-b border-[#1E2A3B] px-6 py-4 flex items-center gap-4 sticky top-0 z-30">
-                <button onClick={() => router.push("/dashboard")} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all">
-                    <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-3">
-                    <ClipboardList className="w-5 h-5 text-[#F59E0B]" />
+            <DashboardHeader onRefresh={fetchData} loading={loading}>
+                <div className="flex items-center gap-6 flex-1">
                     <div>
-                        <h1 className="text-white font-bold text-base leading-none">INVESTIGACIONES</h1>
-                        <p className="text-[#64748B] text-xs mt-0.5">Res. 1401/2007 — proceso post-evento</p>
+                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Investigaciones</h1>
+                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
+                            Res. 1401/2007 — PROCESO POST-EVENTO
+                        </p>
                     </div>
+                    {openCount > 0 && (
+                        <span className="px-3 py-1 bg-amber-500/10 text-amber-400 rounded-full text-[10px] font-black border border-amber-500/20 uppercase tracking-wider">
+                            {openCount} abiertas
+                        </span>
+                    )}
                 </div>
-                {openCount > 0 && (
-                    <span className="ml-3 px-2.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-full text-xs font-bold border border-amber-500/30">
-                        {openCount} abiertas
-                    </span>
-                )}
-                <button onClick={fetchData} className="ml-auto p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all">
-                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                </button>
-            </header>
+            </DashboardHeader>
 
-            <div className="max-w-5xl mx-auto px-6 py-6 space-y-4">
+            <div className="flex-1 max-w-5xl mx-auto px-8 py-8 space-y-6 w-full overflow-y-auto">
                 {/* Filters */}
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Search */}
@@ -120,7 +116,7 @@ export default function InvestigationsPage() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar por trabajador, ciudad, investigador…"
-                            className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl pl-9 pr-4 py-2.5 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
+                            className="w-full bg-[#1A1F2E] border border-[#1E2A3B] rounded-xl pl-9 pr-4 py-2.5 text-white text-xs font-bold placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
                         />
                     </div>
                     {/* Status filter */}
@@ -137,7 +133,7 @@ export default function InvestigationsPage() {
                                     "px-4 py-2 text-xs font-semibold transition-colors cursor-pointer",
                                     filterStatus === opt.value
                                         ? "bg-[#F59E0B] text-black"
-                                        : "bg-[#0F1420] text-[#64748B] hover:text-white",
+                                        : "bg-[#0F1219] text-[#64748B] hover:text-white",
                                 ].join(" ")}
                             >
                                 {opt.label}
@@ -150,11 +146,11 @@ export default function InvestigationsPage() {
                 {loading ? (
                     <div className="space-y-3">
                         {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="h-24 bg-[#141824] border border-[#1E2A3B] rounded-2xl animate-pulse" />
+                            <div key={i} className="h-24 bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl animate-pulse" />
                         ))}
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-12 text-center">
+                    <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-12 text-center">
                         <ClipboardList className="w-10 h-10 text-[#334155] mx-auto mb-3" />
                         <p className="text-[#64748B] font-semibold">
                             {investigations.length === 0
@@ -175,10 +171,10 @@ export default function InvestigationsPage() {
                                 <div
                                     key={inv.id}
                                     onClick={() => router.push(`/dashboard/events/${inv.incident_id}/investigation`)}
-                                    className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex items-center gap-5 cursor-pointer hover:border-[#F59E0B]/30 hover:bg-[#141824]/80 transition-all group"
+                                    className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 flex items-center gap-6 cursor-pointer hover:border-[#F59E0B]/30 hover:bg-white/[0.02] transition-all group"
                                 >
                                     {/* Icon */}
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isClosed ? "bg-emerald-400/10" : "bg-amber-400/10"}`}>
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isClosed ? "bg-emerald-400/10" : "bg-amber-400/10"}`}>
                                         {isClosed
                                             ? <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                                             : <AlertTriangle className="w-5 h-5 text-amber-400" />

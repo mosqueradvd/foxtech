@@ -7,6 +7,7 @@ import {
     FileText, Download, Building2, Send, Mail
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import {
     db,
     type LocalIncident,
@@ -454,53 +455,45 @@ export default function NotificationsPage() {
     // ── Render ────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* Top bar */}
-            <header className="bg-[#141824] border-b border-[#1E2A3B] px-6 py-4 flex items-center gap-4 sticky top-0 z-30">
-                <button
-                    onClick={() => router.push("/dashboard")}
-                    className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-                    aria-label="Volver al dashboard"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-3">
-                    <Bell className="w-5 h-5 text-[#F59E0B]" />
+            <DashboardHeader onRefresh={loadData} loading={loading}>
+                <div className="flex items-center gap-8 flex-1">
                     <div>
-                        <h1 className="text-white font-bold text-base leading-none">NOTIFICACIONES LEGALES</h1>
-                        <p className="text-[#64748B] text-xs mt-0.5">
-                            Cartas Mintrabajo · ARL · EPS para accidentes graves y mortales
+                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Notificaciones Legales</h1>
+                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
+                            Cartas Mintrabajo · ARL · EPS
                         </p>
                     </div>
+                    {pendingCount > 0 && (
+                        <div className="flex items-center gap-2">
+                            {selected && !isNotified("mintrabajo") ? (
+                                <div className={[
+                                    "flex items-center gap-2 border px-3 py-1.5 rounded-full font-bold text-xs shadow-sm shadow-black/20",
+                                    selected.urgency === "overdue" ? "bg-red-500/15 border-red-500/30 text-red-400" :
+                                        selected.urgency === "warning" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" :
+                                            "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                ].join(" ")}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${selected.urgency === "overdue" ? "bg-red-400" : selected.urgency === "warning" ? "bg-amber-400" : "bg-emerald-400"} animate-pulse`} />
+                                    {selected.urgency === "overdue"
+                                        ? `Vencido hace ${Math.abs(selected.daysRemaining)} día${Math.abs(selected.daysRemaining) !== 1 ? "s" : ""}`
+                                        : `${selected.daysRemaining} día${selected.daysRemaining !== 1 ? "s" : ""} hábil${selected.daysRemaining !== 1 ? "es" : ""}`
+                                    } para notificar
+                                </div>
+                            ) : (
+                                <span className="flex items-center gap-2 bg-red-500/15 border border-red-500/25 text-red-400 text-xs font-bold px-3 py-1.5 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                                    {pendingCount} sin notificar
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
-                {pendingCount > 0 && (
-                    <div className="ml-auto flex items-center gap-2">
-                        {selected && !isNotified("mintrabajo") ? (
-                            <div className={[
-                                "flex items-center gap-2 border px-3 py-1.5 rounded-full font-bold text-xs shadow-sm shadow-black/20",
-                                selected.urgency === "overdue" ? "bg-red-500/15 border-red-500/30 text-red-400" :
-                                    selected.urgency === "warning" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" :
-                                        "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                            ].join(" ")}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${selected.urgency === "overdue" ? "bg-red-400" : selected.urgency === "warning" ? "bg-amber-400" : "bg-emerald-400"} animate-pulse`} />
-                                {selected.urgency === "overdue"
-                                    ? `Vencido hace ${Math.abs(selected.daysRemaining)} día${Math.abs(selected.daysRemaining) !== 1 ? "s" : ""}`
-                                    : `${selected.daysRemaining} día${selected.daysRemaining !== 1 ? "s" : ""} hábil${selected.daysRemaining !== 1 ? "es" : ""}`
-                                } para notificar
-                            </div>
-                        ) : (
-                            <span className="flex items-center gap-2 bg-red-500/15 border border-red-500/25 text-red-400 text-xs font-bold px-3 py-1.5 rounded-full">
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                                {pendingCount} sin notificar a Mintrabajo
-                            </span>
-                        )}
-                    </div>
-                )}
-            </header>
+            </DashboardHeader>
 
-            <div className="flex h-[calc(100vh-73px)]">
+            <div className="flex-1 flex overflow-hidden">
                 {/* ── LEFT: event list ────────────────────────────────────────── */}
-                <aside className="w-80 flex-shrink-0 border-r border-[#1E2A3B] bg-[#141824] overflow-y-auto">
+                <aside className="w-80 flex-shrink-0 border-r border-[#1E2A3B] bg-[#1A1F2E] overflow-y-auto">
                     <div className="px-4 pt-4 pb-2">
                         <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider">
                             Eventos graves / mortales

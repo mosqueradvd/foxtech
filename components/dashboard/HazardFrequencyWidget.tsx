@@ -68,8 +68,7 @@ const ALL_GTC45_HAZARDS = [
     "Seguridad",
     "Eléctrico",
     "Locativo",
-    "Mecánico",
-    "Locativo"
+    "Mecánico"
 ];
 
 // ── Main Component ───────────────────────────────────────────────────────────

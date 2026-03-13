@@ -21,6 +21,7 @@ import {
     Loader2,
 } from "lucide-react";
 import { supabase, type Event } from "@/lib/supabase";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import {
     generateRUCExport,
     downloadBlob,
@@ -312,25 +313,23 @@ export default function ExportsPage() {
     if (!isMounted) return null;
 
     return (
-        <div className="min-h-screen bg-[#1A1F2E]">
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]">
             {/* ── Top bar ── */}
-            <div className="sticky top-0 z-10 bg-[#1A1F2E]/95 backdrop-blur border-b border-[#334155] px-6 py-4 flex items-center gap-3">
-                <Link
-                    href="/dashboard"
-                    className="w-9 h-9 rounded-xl bg-[#252B3B] border border-[#334155] flex items-center justify-center text-[#64748B] hover:text-white transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                </Link>
-                <div>
-                    <h1 className="text-white font-black text-lg tracking-tight">EXPORTACIONES</h1>
-                    <p className="text-[#64748B] text-xs">Excel RUC/CCS y PDF de eventos laborales</p>
+            <DashboardHeader onRefresh={() => window.location.reload()} loading={loading}>
+                <div className="flex items-center gap-4 flex-1">
+                    <div>
+                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Exportaciones</h1>
+                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
+                            Excel RUC/CCS y PDF de eventos laborales
+                        </p>
+                    </div>
                 </div>
-            </div>
+            </DashboardHeader>
 
-            <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+            <div className="flex-1 max-w-4xl mx-auto px-8 py-8 space-y-8 w-full overflow-y-auto">
 
                 {/* ── Company Profile ── */}
-                <section className="bg-[#252B3B] border border-[#334155] rounded-2xl p-6">
+                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6">
                     <SectionHeader
                         icon={<Building2 className="w-5 h-5" />}
                         title="Perfil de la Empresa"
@@ -358,7 +357,7 @@ export default function ExportsPage() {
                                     onChange={(e) =>
                                         setProfile((p) => ({ ...p, [key]: e.target.value }))
                                     }
-                                    className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-[#475569] outline-none focus:border-[#F59E0B] transition-colors"
+                                    className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold placeholder:text-[#334155] outline-none focus:border-[#F59E0B] transition-colors"
                                 />
                             </div>
                         ))}
@@ -371,7 +370,7 @@ export default function ExportsPage() {
                                 onChange={(e) =>
                                     setProfile((p) => ({ ...p, riskClass: Number(e.target.value) }))
                                 }
-                                className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors"
+                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B] transition-colors"
                             >
                                 {[1, 2, 3, 4, 5].map((r) => (
                                     <option key={r} value={r}>
@@ -396,7 +395,7 @@ export default function ExportsPage() {
                 </section>
 
                 {/* ── Excel RUC/CCS ── */}
-                <section className="bg-[#252B3B] border border-[#334155] rounded-2xl p-6">
+                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6">
                     <SectionHeader
                         icon={<FileSpreadsheet className="w-5 h-5" />}
                         title="Archivo Plano RUC — CCS"
@@ -419,7 +418,7 @@ export default function ExportsPage() {
                                 <select
                                     value={rucMonth}
                                     onChange={(e) => setRucMonth(Number(e.target.value))}
-                                    className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] appearance-none pr-8"
+                                    className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B] appearance-none pr-8"
                                 >
                                     {MONTHS.map((m, i) => (
                                         <option key={i} value={i + 1}>{m}</option>
@@ -438,7 +437,7 @@ export default function ExportsPage() {
                                 max="2099"
                                 value={rucYear}
                                 onChange={(e) => setRucYear(Number(e.target.value))}
-                                className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
                             />
                         </div>
                         <div>
@@ -450,7 +449,7 @@ export default function ExportsPage() {
                                 min="0"
                                 value={rucWorkersCount}
                                 onChange={(e) => setRucWorkersCount(Number(e.target.value))}
-                                className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
                             />
                         </div>
                         <div>
@@ -462,7 +461,7 @@ export default function ExportsPage() {
                                 min="0"
                                 value={rucHHT}
                                 onChange={(e) => setRucHHT(Number(e.target.value))}
-                                className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
                             />
                         </div>
                     </div>
@@ -512,7 +511,7 @@ export default function ExportsPage() {
                 </section>
 
                 {/* ── PDF by event ── */}
-                <section className="bg-[#252B3B] border border-[#334155] rounded-2xl p-6">
+                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6">
                     <SectionHeader
                         icon={<FileText className="w-5 h-5" />}
                         title="Reporte PDF por Evento"
@@ -552,7 +551,7 @@ export default function ExportsPage() {
                                 return (
                                     <div
                                         key={inc.id}
-                                        className="flex items-center gap-4 p-4 bg-[#1A1F2E] rounded-xl border border-[#334155]"
+                                        className="flex items-center gap-6 p-4 bg-[#0F1219] rounded-xl border border-[#1E2A3B]"
                                     >
                                         {/* Icon */}
                                         <div className={[

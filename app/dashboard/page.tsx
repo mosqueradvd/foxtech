@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 
 import { supabase, type Incident, type Company } from "@/lib/supabase";
-import { KPICard } from "@/components/dashboard/KPICard";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { IncidentRow } from "@/components/dashboard/IncidentRow";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StatusVariant } from "@/components/ui/StatusBadge";
@@ -49,6 +50,8 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [activeNav, setActiveNav] = useState("dashboard");
     const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 6;
 
     // Derived KPIs
     const thisMonth = incidents.filter((i) => {
@@ -104,20 +107,18 @@ export default function DashboardPage() {
         );
     });
 
-    // Nav items
-    const navItems = [
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-        { id: "incidents", label: "Incidentes", icon: AlertTriangle, badge: totalIncidents || undefined, href: "/dashboard" },
-        { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard/inspections" },
-        { id: "companies", label: "Empresas", icon: Building2, href: "/dashboard" },
-        { id: "investigations", label: "Investigaciones", icon: Search, href: "/dashboard/investigations" },
-        { id: "stats", label: "Estadísticas", icon: BarChart2, href: "/dashboard/stats" },
-        { id: "notifications", label: "Notificaciones", icon: Bell, href: "/dashboard/notifications" },
-        { id: "exports", label: "Exportaciones", icon: Download, href: "/dashboard/exports" },
-        { id: "reports", label: "Reportes PDF", icon: FileText, href: "/dashboard" },
-    ];
+    // Pagination logic
+    const displayData = filtered; // Removed `demoRows` as it's not defined and filtered data should be primary
+    const totalPages = Math.ceil(displayData.length / itemsPerPage);
+    const paginatedItems = displayData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-    const mapIncidents = (filtered.length > 0 ? filtered : demoRows).map(inc => {
+    // Reset pagination on search
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
+
+    const mapIncidents = displayData.map(inc => {
         // Enforce fallback location in Colombia if missing GPS
         const incAny = inc as any;
         const lat = incAny.photo_lat || incAny.lat || (4.0 + Math.random() * 6);
@@ -132,242 +133,212 @@ export default function DashboardPage() {
     });
 
     return (
-        <div className="flex h-screen bg-[#1A1F2E] overflow-hidden">
-            {/* ── LEFT SIDEBAR ── */}
-            <aside className="w-60 flex-shrink-0 bg-[#252B3B] border-r border-[#334155] flex flex-col">
-                {/* Logo */}
-                <div className="px-5 py-5 border-b border-[#334155]">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-[#F59E0B] flex items-center justify-center">
-                            <span className="text-black font-black text-sm">FT</span>
-                        </div>
-                        <div>
-                            <p className="text-white font-black text-sm leading-none">FOXTECH</p>
-                            <p className="text-[#64748B] text-[10px] font-semibold tracking-wider uppercase">
-                                Consultant Center
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Nav items */}
-                <nav className="flex-1 px-3 py-4 space-y-1">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeNav === item.id;
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={() => {
-                                    setActiveNav(item.id);
-                                    if (item.href) router.push(item.href);
-                                }}
-                                className={[
-                                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer",
-                                    isActive
-                                        ? "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/20"
-                                        : "text-[#64748B] hover:bg-white/5 hover:text-white",
-                                ].join(" ")}
-                            >
-                                <Icon className="w-4 h-4 flex-shrink-0" />
-                                <span className="flex-1 text-left">{item.label}</span>
-                                {item.badge !== undefined && (
-                                    <span className="bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                                        {item.badge}
-                                    </span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </nav>
-
-
-                {/* User profile at bottom */}
-                <div className="px-4 py-4 border-t border-[#334155] flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-green-700 flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-semibold leading-none truncate">Carlos Mendez</p>
-                        <p className="text-[#64748B] text-xs truncate">Senior Consultant</p>
-                    </div>
-                    <button className="text-[#64748B] hover:text-white transition-colors">
-                        <MoreVertical className="w-4 h-4" />
-                    </button>
-                </div>
-            </aside>
-
-            {/* ── MAIN CONTENT ── */}
-            <main className="flex-1 overflow-y-auto">
-                {/* Top bar */}
-                <div className="flex items-center justify-between px-8 py-4 border-b border-[#334155] sticky top-0 bg-[#1A1F2E] z-10">
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]">
+            {/* Top bar */}
+            <DashboardHeader onRefresh={fetchData} loading={loading}>
+                <div className="flex items-center justify-between flex-1">
                     <div>
-                        <h1 className="text-white font-black text-xl tracking-tight">VISTA GENERAL</h1>
-                        <p className="text-[#64748B] text-xs mt-0.5">
-                            Monitoreo de seguridad y cumplimiento normativo en tiempo real
+                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Vista General</h1>
+                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
+                            Consultant Command Center
                         </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                        {/* Search */}
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
-                            <input
-                                type="text"
-                                placeholder="Buscar empresa, incidente..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="bg-[#252B3B] border border-[#334155] rounded-xl pl-9 pr-4 py-2 text-white text-sm placeholder:text-[#64748B] outline-none focus:border-[#F59E0B] w-64"
-                            />
-                        </div>
-                        {/* Notifications */}
-                        <button className="relative w-9 h-9 rounded-xl bg-[#252B3B] border border-[#334155] flex items-center justify-center hover:border-[#F59E0B] transition-colors">
-                            <Bell className="w-4 h-4 text-[#64748B]" />
-                            {totalIncidents > 0 && (
-                                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-600 rounded-full text-[8px] text-white font-bold flex items-center justify-center">
-                                    {Math.min(totalIncidents, 9)}
-                                </span>
-                            )}
-                        </button>
+
+                    {/* Search */}
+                    <div className="relative max-w-xs w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                        <input
+                            type="text"
+                            placeholder="Buscar empresa, incidente..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-[#0F1219] border border-[#1E2A3B] rounded-xl pl-9 pr-4 py-2.5 text-white text-xs font-bold outline-none focus:border-amber-500/50 w-full placeholder:text-[#334155]"
+                        />
                     </div>
                 </div>
+            </DashboardHeader>
 
-                <div className="px-8 py-6 space-y-6">
-                    {/* ── KPI CARDS ── */}
-                    <div className="grid grid-cols-3 gap-6">
-                        <KPICard
-                            title="Incidentes este mes"
-                            value={loading ? "—" : totalIncidents || 12}
-                            delta={{ value: "-2%", direction: "down" }}
-                            icon={<AlertTriangle className="w-4 h-4" />}
-                            accentColor="#F59E0B"
-                        />
-                        <KPICard
-                            title="Inspecciones completadas"
-                            value={loading ? "—" : 45}
-                            delta={{ value: "+5%", direction: "up" }}
-                            icon={<ClipboardList className="w-4 h-4" />}
-                            accentColor="#3B82F6"
-                        />
-                        <KPICard
-                            title="Promedio de cumplimiento %"
-                            value={`${avgCompliance}%`}
-                            delta={{ value: "-1%", direction: "down" }}
-                            icon={<Building2 className="w-4 h-4" />}
-                            accentColor="#22C55E"
-                        />
-                    </div>
+            <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
+                {/* ── KPI CARDS ── */}
+                <div className="grid grid-cols-3 gap-6">
+                    <StatCard
+                        title="INCIDENTES"
+                        subtitle="Este mes"
+                        value={loading ? "—" : totalIncidents}
+                        trend={2}
+                        trendIsUp={false}
+                        color="#F59E0B"
+                        icon={AlertTriangle}
+                    />
+                    <StatCard
+                        title="INSPECCIONES"
+                        subtitle="Completadas"
+                        value={45}
+                        trend={5}
+                        trendIsUp={true}
+                        color="#3B82F6"
+                        icon={ClipboardList}
+                    />
+                    <StatCard
+                        title="CUMPLIMIENTO"
+                        subtitle="Promedio %"
+                        value={avgCompliance}
+                        unit="%"
+                        trend={1}
+                        trendIsUp={false}
+                        color="#22C55E"
+                        icon={Building2}
+                    />
+                </div>
 
-                    {/* ── BOTTOM SECTION: Table + Map ── */}
-                    <div className="grid grid-cols-[1fr_300px] gap-4">
-                        {/* Incidents Table */}
-                        <div className="bg-[#252B3B] border border-[#334155] rounded-xl overflow-hidden">
-                            <div className="flex items-center justify-between px-5 py-4 border-b border-[#334155]">
-                                <div className="flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                                    <h2 className="text-white font-bold text-sm uppercase tracking-wider">
-                                        Últimos Incidentes
-                                    </h2>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={fetchData}
-                                        className="text-[#64748B] hover:text-white transition-colors"
-                                        title="Actualizar"
-                                    >
-                                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                                    </button>
-                                    <button className="text-[#F59E0B] text-xs font-bold hover:underline">
-                                        VER TODOS
-                                    </button>
-                                </div>
-                            </div>
-
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="border-b border-[#334155]">
-                                        {["EMPRESA", "TIPO DE EVENTO", "HORA", "CLASIFICACIÓN", "ESTADO", ""].map((h) => (
-                                            <th
-                                                key={h}
-                                                className="text-left text-[#64748B] text-[10px] font-bold uppercase tracking-wider px-4 py-3"
-                                            >
-                                                {h}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {loading ? (
-                                        <tr>
-                                            <td colSpan={5} className="py-8 text-center text-[#64748B] text-sm">
-                                                Cargando...
-                                            </td>
-                                        </tr>
-                                    ) : filtered.length > 0 ? (
-                                        filtered.slice(0, 8).map((inc) => (
-                                            <IncidentRow
-                                                key={inc.id}
-                                                incident={inc}
-                                                onClick={() => router.push(`/dashboard/events/${inc.id}`)}
-                                            />
-                                        ))
-                                    ) : (
-                                        // Demo rows when no real data
-                                        demoRows.map((row, i) => (
-                                            <tr key={i} className="border-b border-[#334155] hover:bg-white/5 cursor-pointer transition-colors">
-                                                <td className="py-4 px-4">
-                                                    <p className="text-white font-semibold text-sm">{row.company}</p>
-                                                    <p className="text-[#64748B] text-xs">{row.location}</p>
-                                                </td>
-                                                <td className="py-4 px-4">
-                                                    <StatusBadge variant={row.type as StatusVariant} />
-                                                </td>
-                                                <td className="py-4 px-4 text-[#64748B] text-sm">{row.time}</td>
-                                                <td className="py-4 px-4">
-                                                    <StatusBadge variant={row.status as StatusVariant} label={row.status === "synced" ? "Sync" : row.status === "error" ? "Error" : "Pendiente"} />
-                                                </td>
-                                                <td className="py-4 px-4 text-[#64748B] text-sm">›</td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Geolocation Panel */}
-                        <div className="bg-[#252B3B] border border-[#334155] rounded-xl overflow-hidden flex flex-col">
-                            <div className="flex items-center justify-between px-4 py-4 border-b border-[#334155]">
+                {/* ── BOTTOM SECTION: Table + Map ── */}
+                <div className="grid grid-cols-[1fr_300px] gap-4">
+                    {/* Incidents Table */}
+                    <div className="bg-[#252B3B] border border-[#334155] rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#334155]">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                                 <h2 className="text-white font-bold text-sm uppercase tracking-wider">
-                                    GEOLOCALIZACIÓN
+                                    Últimos Incidentes
                                 </h2>
-                                <div className="flex gap-1.5">
-                                    <button className="p-1.5 rounded-lg bg-[#2E3547] text-[#64748B] hover:text-white transition-colors" title="Vista mapa">
-                                        <MapPin className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={fetchData}
+                                    className="text-[#64748B] hover:text-white transition-colors"
+                                    title="Actualizar"
+                                >
+                                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                                </button>
+                                <button className="text-[#F59E0B] text-xs font-bold hover:underline">
+                                    VER TODOS
+                                </button>
+                            </div>
+                        </div>
+
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b border-[#334155]">
+                                    {["EMPRESA", "TIPO DE EVENTO", "HORA", "CLASIFICACIÓN", "ESTADO", ""].map((h) => (
+                                        <th
+                                            key={h}
+                                            className="text-left text-[#64748B] text-[10px] font-bold uppercase tracking-wider px-4 py-3"
+                                        >
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-8 text-center text-[#64748B] text-sm">
+                                            Cargando...
+                                        </td>
+                                    </tr>
+                                ) : paginatedItems.length > 0 ? (
+                                    paginatedItems.map((inc, i) => {
+                                        if ('id' in inc && inc.id && !('time' in inc)) {
+                                            return (
+                                                <IncidentRow
+                                                    key={inc.id}
+                                                    incident={inc as EnrichedIncident}
+                                                    onClick={() => router.push(`/dashboard/events/${inc.id}`)}
+                                                />
+                                            );
+                                        } else {
+                                            const row = inc as any;
+                                            return (
+                                                <tr key={i} className="border-b border-[#334155] hover:bg-white/5 cursor-pointer transition-colors" onClick={() => router.push("/dashboard")}>
+                                                    <td className="py-4 px-4">
+                                                        <p className="text-white font-semibold text-sm">{row.company}</p>
+                                                        <p className="text-[#64748B] text-xs">{row.location}</p>
+                                                    </td>
+                                                    <td className="py-4 px-4">
+                                                        <StatusBadge variant={row.type as StatusVariant} />
+                                                    </td>
+                                                    <td className="py-4 px-4 text-[#64748B] text-sm">{row.time}</td>
+                                                    <td className="py-4 px-4">
+                                                        <StatusBadge variant={row.status as StatusVariant} label={row.status === "synced" ? "Sync" : row.status === "error" ? "Error" : "Pendiente"} />
+                                                    </td>
+                                                    <td className="py-4 px-4 text-emerald-400 font-bold text-xs uppercase tracking-widest text-center">
+                                                        {row.status === "synced" ? "Sync" : "—"}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-[#64748B] text-sm">›</td>
+                                                </tr>
+                                            );
+                                        }
+                                    })
+                                ) : (
+                                    <tr>
+                                        <td colSpan={6} className="py-12 text-center text-[#64748B] text-sm">
+                                            No se encontraron resultados
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="px-5 py-4 border-t border-[#334155] flex items-center justify-between">
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-widest">
+                                    Pág {currentPage} de {totalPages}
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="px-3 py-1.5 rounded-lg bg-[#2E3547] text-[#64748B] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                    >
+                                        Anterior
+                                    </button>
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="px-3 py-1.5 rounded-lg bg-[#2E3547] text-[#64748B] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                    >
+                                        Siguiente
                                     </button>
                                 </div>
                             </div>
+                        )}
+                    </div>
 
-                            {/* Interactive Map from react-leaflet */}
-                            <div className="flex-1 relative bg-[#1A2538] min-h-[260px] overflow-hidden" style={{ zIndex: 0 }}>
-                                <IncidentMap incidents={mapIncidents} />
+                    {/* Geolocation Panel */}
+                    <div className="bg-[#252B3B] border border-[#334155] rounded-xl overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between px-4 py-4 border-b border-[#334155]">
+                            <h2 className="text-white font-bold text-sm uppercase tracking-wider">
+                                GEOLOCALIZACIÓN
+                            </h2>
+                            <div className="flex gap-1.5">
+                                <button className="p-1.5 rounded-lg bg-[#2E3547] text-[#64748B] hover:text-white transition-colors" title="Vista mapa">
+                                    <MapPin className="w-3.5 h-3.5" />
+                                </button>
                             </div>
+                        </div>
 
-                            {/* Legend */}
-                            <div className="px-4 py-3 border-t border-[#334155] space-y-1.5">
-                                {[
-                                    { color: "bg-red-500", label: "Accidente" },
-                                    { color: "bg-amber-400", label: "Casi Accidente" },
-                                    { color: "bg-slate-400", label: "Condición Insegura" },
-                                ].map((leg) => (
-                                    <div key={leg.label} className="flex items-center gap-2">
-                                        <div className={`w-2.5 h-2.5 rounded-full ${leg.color}`} />
-                                        <span className="text-[#64748B] text-xs">{leg.label}</span>
-                                    </div>
-                                ))}
-                            </div>
+                        {/* Interactive Map from react-leaflet */}
+                        <div className="flex-1 relative bg-[#1A2538] min-h-[260px] overflow-hidden" style={{ zIndex: 0 }}>
+                            <IncidentMap incidents={mapIncidents} />
+                        </div>
+
+                        {/* Legend */}
+                        <div className="px-4 py-3 border-t border-[#334155] space-y-1.5">
+                            {[
+                                { color: "bg-red-500", label: "Accidente" },
+                                { color: "bg-amber-400", label: "Casi Accidente" },
+                                { color: "bg-slate-400", label: "Condición Insegura" },
+                            ].map((leg) => (
+                                <div key={leg.label} className="flex items-center gap-2">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${leg.color}`} />
+                                    <span className="text-[#64748B] text-xs">{leg.label}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }
