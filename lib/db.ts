@@ -91,6 +91,11 @@ export interface LocalIncident {
     witness_description?: string;
     /** base64 webm/ogg audio recorded by the witness */
     witness_voice_blob?: string;
+
+    /** FECHA DE CONOCIMIENTO DEL DIAGNÓSTICO (Module 4) */
+    diagnosis_date?: string;
+    /** N.° FURAT (Module 4) */
+    furat_number?: string;
 }
 
 export interface LocalInspection {
@@ -170,6 +175,13 @@ class FoxtechDB extends Dexie {
         // v3: Module 4 — notifications table (new, backward-compatible)
         this.version(3).stores({
             incidents: "id, sync_status, created_at, classification_status, severity",
+            inspections: "id, sync_status, created_at",
+            notifications: "id, incident_id, type, status, created_at",
+        });
+
+        // v4: Add diagnosis_date and furat_number to incidents
+        this.version(4).stores({
+            incidents: "id, sync_status, created_at, classification_status, severity, diagnosis_date, furat_number",
             inspections: "id, sync_status, created_at",
             notifications: "id, incident_id, type, status, created_at",
         });

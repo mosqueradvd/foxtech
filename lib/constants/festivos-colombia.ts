@@ -82,7 +82,7 @@ export function isBusinessDay(date: Date): boolean {
  * Used to check if the 2-day notification deadline has passed.
  */
 export function businessDaysElapsed(fromIso: string): number {
-    const start = new Date(fromIso + 'T00:00:00');
+    const start = new Date(fromIso.split('T')[0] + 'T00:00:00');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -100,9 +100,11 @@ export function businessDaysElapsed(fromIso: string): number {
  * Business days remaining before the 2-day Mintrabajo deadline expires.
  * Negative means overdue.
  * Legal basis: Dec. 1072/2015 Art. 2.2.4.1.6
+ * Falls back to accidentDateIso if startDateIso is empty.
  */
-export function businessDaysRemaining(accidentDateIso: string): number {
-    return 2 - businessDaysElapsed(accidentDateIso);
+export function businessDaysRemaining(accidentDateIso: string, startDateIso?: string): number {
+    const referenceDate = startDateIso || accidentDateIso;
+    return 2 - businessDaysElapsed(referenceDate);
 }
 
 /** Urgency level based on remaining business days */

@@ -14,6 +14,7 @@ import {
     type NotificationType,
     getNotificationsForIncident,
     upsertNotification,
+    saveIncidentDraft,
 } from "@/lib/db";
 import {
     businessDaysRemaining,
@@ -169,6 +170,7 @@ export default function NotificationsPage() {
     });
 
     // Mintrabajo-specific extra fields
+    const [diagnosisDate, setDiagnosisDate] = useState("");
     const [furatNumber, setFuratNumber] = useState("");
     const [actions, setActions] = useState<ImmediateAction[]>([
         { description: "Atención médica inmediata al trabajador" },
@@ -236,9 +238,17 @@ export default function NotificationsPage() {
             const enriched: EnrichedIncident[] = await Promise.all(
                 mappedIncidents.map(async (inc) => {
                     const notifications = await getNotificationsForIncident(inc.id);
-                    const days = businessDaysRemaining(inc.created_at);
+                    // Check local overrides in IndexedDB
+                    const localInc = await db.incidents.get(inc.id);
+                    const finalInc = {
+                        ...inc,
+                        diagnosis_date: localInc?.diagnosis_date || inc.diagnosis_date,
+                        furat_number: localInc?.furat_number || inc.furat_number
+                    };
+
+                    const days = businessDaysRemaining(finalInc.created_at, finalInc.diagnosis_date);
                     const urgency = urgencyLevel(days);
-                    return { ...inc, notifications, daysRemaining: days, urgency };
+                    return { ...finalInc, notifications, daysRemaining: days, urgency };
                 })
             );
 
@@ -268,6 +278,10 @@ export default function NotificationsPage() {
             } else if (selected) {
                 const refreshed = enriched.find((e) => e.id === selected.id) ?? null;
                 setSelected(refreshed);
+                if (refreshed) {
+                    setFuratNumber(refreshed.furat_number || "");
+                    setDiagnosisDate(refreshed.diagnosis_date || "");
+                }
             }
         } finally {
             setLoading(false);
@@ -330,6 +344,7 @@ export default function NotificationsPage() {
             await downloadMintrabajoLetterPDF({
                 company,
                 incident: selected,
+                diagnosisDate: diagnosisDate || undefined,
                 furatNumber: furatNumber || undefined,
                 immediateActions: actions.filter((a) => a.description.trim()),
             });
@@ -459,10 +474,27 @@ export default function NotificationsPage() {
                     </div>
                 </div>
                 {pendingCount > 0 && (
-                    <span className="ml-auto flex items-center gap-2 bg-red-500/15 border border-red-500/25 text-red-400 text-xs font-bold px-3 py-1.5 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                        {pendingCount} sin notificar a Mintrabajo
-                    </span>
+                    <div className="ml-auto flex items-center gap-2">
+                        {selected && !isNotified("mintrabajo") ? (
+                            <div className={[
+                                "flex items-center gap-2 border px-3 py-1.5 rounded-full font-bold text-xs shadow-sm shadow-black/20",
+                                selected.urgency === "overdue" ? "bg-red-500/15 border-red-500/30 text-red-400" :
+                                    selected.urgency === "warning" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" :
+                                        "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                            ].join(" ")}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${selected.urgency === "overdue" ? "bg-red-400" : selected.urgency === "warning" ? "bg-amber-400" : "bg-emerald-400"} animate-pulse`} />
+                                {selected.urgency === "overdue"
+                                    ? `Vencido hace ${Math.abs(selected.daysRemaining)} día${Math.abs(selected.daysRemaining) !== 1 ? "s" : ""}`
+                                    : `${selected.daysRemaining} día${selected.daysRemaining !== 1 ? "s" : ""} hábil${selected.daysRemaining !== 1 ? "es" : ""}`
+                                } para notificar
+                            </div>
+                        ) : (
+                            <span className="flex items-center gap-2 bg-red-500/15 border border-red-500/25 text-red-400 text-xs font-bold px-3 py-1.5 rounded-full">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                                {pendingCount} sin notificar a Mintrabajo
+                            </span>
+                        )}
+                    </div>
                 )}
             </header>
 
@@ -497,7 +529,11 @@ export default function NotificationsPage() {
                                 return (
                                     <button
                                         key={inc.id}
-                                        onClick={() => setSelected(inc)}
+                                        onClick={() => {
+                                            setSelected(inc);
+                                            setFuratNumber(inc.furat_number || "");
+                                            setDiagnosisDate(inc.diagnosis_date || "");
+                                        }}
                                         className={[
                                             "w-full text-left rounded-xl p-3 transition-all border",
                                             isSelected
@@ -572,6 +608,13 @@ export default function NotificationsPage() {
                                             })}
                                         </div>
                                     )}
+
+                                    {/* Diagnosis Date Warning */}
+                                    {!diagnosisDate && (
+                                        <div className="mt-3 flex items-center gap-2 bg-amber-500/15 border border-amber-500/25 text-amber-500 text-[10px] font-bold px-2 py-1 rounded-lg w-fit">
+                                            <span>⚠️ Agrega la fecha de diagnóstico para un cálculo preciso del plazo.</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -643,13 +686,48 @@ export default function NotificationsPage() {
                                 <div className="space-y-3">
                                     <div>
                                         <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1">
+                                            Fecha de conocimiento del diagnóstico
+                                            <span className="text-red-400 ml-1">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={diagnosisDate}
+                                            placeholder="¿Cuándo se conoció el diagnóstico de gravedad?"
+                                            onChange={async (e) => {
+                                                const val = e.target.value;
+                                                setDiagnosisDate(val);
+                                                if (selected) {
+                                                    // Save locally
+                                                    await saveIncidentDraft(selected.id, { diagnosis_date: val });
+                                                    // Save to Supabase for immediate persistence
+                                                    await supabase.from('incidents').update({ diagnosis_date: val }).eq('id', selected.id);
+                                                    await loadData();
+                                                }
+                                            }}
+                                            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors mb-1 cursor-pointer"
+                                        />
+                                        <p className="text-[#64748B] text-[10px] italic">
+                                            El plazo de 2 días hábiles se cuenta desde esta fecha — Dec. Ley 1295/1994, no desde la fecha del evento.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1">
                                             N.° FURAT (si ya se tiene)
                                         </label>
                                         <input
                                             type="text"
                                             placeholder="Ej: ARL-2026-000123"
                                             value={furatNumber}
-                                            onChange={(e) => setFuratNumber(e.target.value)}
+                                            onChange={async (e) => {
+                                                const val = e.target.value;
+                                                setFuratNumber(val);
+                                                if (selected) {
+                                                    // Save locally
+                                                    await saveIncidentDraft(selected.id, { furat_number: val });
+                                                    // Save to Supabase
+                                                    await supabase.from('incidents').update({ furat_number: val }).eq('id', selected.id);
+                                                }
+                                            }}
                                             className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
                                         />
                                     </div>
@@ -683,7 +761,7 @@ export default function NotificationsPage() {
                                             ))}
                                             <button
                                                 onClick={() => setActions([...actions, { description: "" }])}
-                                                className="text-[#F59E0B] text-xs font-semibold hover:text-amber-300 transition-colors mt-1"
+                                                className="text-[#F59E0B] text-xs font-semibold hover:text-amber-300 transition-colors mt-1 cursor-pointer"
                                             >
                                                 + Agregar acción
                                             </button>

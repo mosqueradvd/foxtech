@@ -38,6 +38,7 @@ export interface ImmediateAction {
 export interface MintrabajoLetterInput {
     company: CompanyLegal;
     incident: LocalIncident;
+    diagnosisDate?: string;
     furatNumber?: string;
     immediateActions: ImmediateAction[];
     attachments?: string[];
@@ -251,8 +252,10 @@ function MintrabajoLetterDocument({ input }: { input: MintrabajoLetterInput }) {
                 <Text style={S.paragraph}>
                     {company.name}, identificada con NIT {company.nitWithDv}, en cumplimiento de
                     lo establecido en el Artículo 2.2.4.1.7 del Decreto 1072 de 2015 y el Artículo
-                    3 de la Resolución 1401 de 2007, se permite notificar ante su Despacho el
-                    siguiente evento laboral:
+                    3 de la Resolución 1401 de 2007, notificamos el presente accidente de trabajo
+                    {incident.severity === "mortal" ? " mortal" : " grave"} ocurrido el {shortDateCO(incident.created_at)},
+                    cuyo diagnóstico de gravedad fue conocido el {shortDateCO(input.diagnosisDate || incident.created_at)},
+                    dentro del plazo establecido en el Art. 2.2.4.1.7 del Dec. 1072/2015:
                 </Text>
 
                 {/* Worker data */}
