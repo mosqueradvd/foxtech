@@ -12,6 +12,7 @@ import {
     ArrowLeft, BarChart2, TrendingUp, TrendingDown,
     Minus, AlertTriangle, RefreshCw, Settings, Download, Loader2, CheckCircle2,
     Activity, Zap, Shield, Users, Skull, ChevronDown, FileSpreadsheet,
+    LayoutDashboard, User, MoreVertical, Bell, ClipboardList, Building2, FileText,
 } from "lucide-react";
 import HazardFrequencyWidget from "@/components/dashboard/HazardFrequencyWidget";
 import {
@@ -37,7 +38,111 @@ interface HHTConfig {
     estimated: number;
 }
 
-// ── Period options ─────────────────────────────────────────────────────────────
+// ── Components ────────────────────────────────────────────────────────────────
+
+const StatCard = ({
+    title,
+    subtitle,
+    value,
+    unit = "",
+    trend,
+    trendIsUp,
+    color,
+    icon: Icon
+}: {
+    title: string;
+    subtitle: string;
+    value: number;
+    unit?: string;
+    trend: number;
+    trendIsUp: boolean;
+    color: string;
+    icon: any;
+}) => (
+    <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 transition-all hover:bg-white/[0.02]">
+        <div className="flex items-start justify-between mb-4">
+            <div>
+                <h3 className="text-white text-[10px] font-black tracking-widest leading-none mb-1 uppercase">{title}</h3>
+                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">{subtitle}</p>
+            </div>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">
+                <Icon className="w-4 h-4" style={{ color }} />
+            </div>
+        </div>
+        <div className="flex items-end gap-3 mb-4">
+            <div className="text-3xl font-black text-white leading-none">
+                {value < 0.01 && value > 0 ? "<0.01" : value.toLocaleString("es-CO", { maximumFractionDigits: 2 })}
+                <span className="text-base ml-0.5">{unit}</span>
+            </div>
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                trendIsUp 
+                    ? "bg-red-500/10 text-red-500 border-red-500/20" 
+                    : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+            }`}>
+                {trendIsUp ? <TrendingUp className="w-2 h-2" /> : <TrendingDown className="w-2 h-2" />}
+                {trend}%
+            </div>
+        </div>
+        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div
+                className="h-full rounded-full transition-all duration-1000"
+                style={{ width: `${Math.min(value * (title === "TA" ? 10 : 20), 100)}%`, backgroundColor: color }}
+            />
+        </div>
+    </div>
+);
+
+const AbsenteeismCard = ({
+    label,
+    value,
+    color
+}: {
+    label: string,
+    value: number,
+    color: "orange" | "blue"
+}) => {
+    const textColor = color === "orange" ? "text-orange-400" : "text-blue-400";
+    const barColor = color === "orange" ? "bg-orange-500" : "bg-blue-500";
+
+    return (
+        <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 flex-1 flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-4">
+                <div className={`w-1.5 h-1.5 rounded-full ${barColor}`} />
+                <span className="text-[#64748B] text-[10px] font-black tracking-widest uppercase">{label}</span>
+            </div>
+            <div className={`text-4xl font-black ${textColor} leading-none mb-2`}>
+                {value < 0.01 && value > 0 ? "< 0.01" : value.toFixed(2)}
+            </div>
+            <p className="text-[#475569] text-[9px] font-bold uppercase tracking-widest">
+                Índice de ausentismo por HHT
+            </p>
+        </div>
+    );
+};
+
+const SummaryChip = ({
+    label,
+    value,
+    color
+}: {
+    label: string,
+    value: number,
+    color: "amber" | "orange" | "red" | "blue"
+}) => {
+    const variants = {
+        amber: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+        orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+        red: "bg-red-500/10 text-red-500 border-red-500/20",
+        blue: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+    };
+
+    return (
+        <div className={`px-4 py-2.5 rounded-xl border flex items-center gap-3 transition-opacity hover:opacity-80 cursor-default ${variants[color]}`}>
+            <span className="text-lg font-black leading-none">{value}</span>
+            <span className="text-[10px] font-black tracking-widest uppercase">{label}</span>
+        </div>
+    );
+};
 
 const PERIOD_OPTIONS: { value: PeriodPreset; label: string }[] = [
     { value: "month", label: "Este mes" },
@@ -145,7 +250,7 @@ function ChartTooltip({ active, payload, label }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function StatsPage() {
+export function StatsPage() {
     const router = useRouter();
 
     // Data
@@ -336,477 +441,395 @@ export default function StatsPage() {
         }
     }, [historicalData, selectedCompany, workerCount]);
 
+    // Nav items
+    const navItems = [
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
+        { id: "incidents", label: "Incidentes", icon: AlertTriangle, href: "/dashboard" },
+        { id: "inspections", label: "Inspecciones", icon: ClipboardList, href: "/dashboard/inspections" },
+        { id: "companies", label: "Empresas", icon: Building2, href: "/dashboard" },
+        { id: "reports", label: "Reportes", icon: FileText, href: "/dashboard" },
+    ];
+
     // ── Render ────────────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {/* ── HEADER ── */}
-            <header className="bg-[#141824] border-b border-[#1E2A3B] px-6 py-4 flex items-center gap-4 sticky top-0 z-30">
-                <button
-                    onClick={() => router.push("/dashboard")}
-                    className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all cursor-pointer"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div className="flex items-center gap-3">
-                    <BarChart2 className="w-5 h-5 text-[#F59E0B]" />
-                    <div>
-                        <h1 className="text-white font-bold text-base leading-none">ESTADÍSTICAS</h1>
-                        <p className="text-[#64748B] text-xs mt-0.5">Indicadores de accidentalidad — Dec. 1072/2015</p>
+        <div className="flex h-screen bg-[#0F1219] overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+            {/* ── LEFT SIDEBAR ── */}
+            <aside className="w-64 flex-shrink-0 bg-[#1A1F2E] border-r border-[#1E2A3B] flex flex-col">
+                {/* Logo */}
+                <div className="px-6 py-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                            <Shield className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <div>
+                            <p className="text-white font-black text-lg leading-none tracking-tight">FOXTECH</p>
+                            <p className="text-[#64748B] text-[10px] font-bold tracking-[0.2em] uppercase mt-1">
+                                Command Center
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <button
-                    onClick={fetchData}
-                    className="ml-auto p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all"
-                    title="Actualizar datos"
-                >
-                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                </button>
-            </header>
 
-            <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-                {/* ── FILTERS ── */}
-                <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 flex flex-wrap items-end gap-4">
-                    {/* Period */}
-                    <div>
-                        <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
-                            Período
-                        </label>
-                        <div className="flex rounded-xl overflow-hidden border border-[#1E2A3B]">
-                            {PERIOD_OPTIONS.map((opt) => (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => setPeriod(opt.value)}
-                                    className={[
-                                        "px-4 py-2 text-xs font-semibold transition-colors cursor-pointer",
-                                        period === opt.value
-                                            ? "bg-[#F59E0B] text-black"
-                                            : "bg-[#0F1420] text-[#64748B] hover:text-white",
-                                    ].join(" ")}
-                                >
-                                    {opt.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Company */}
-                    <div>
-                        <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
-                            Empresa
-                        </label>
-                        <div className="relative">
-                            <select
-                                value={selectedCompanyId}
-                                onChange={(e) => setSelectedCompanyId(e.target.value)}
-                                className="appearance-none bg-[#0F1420] border border-[#1E2A3B] rounded-xl pl-3 pr-10 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors cursor-pointer"
+                {/* Nav items */}
+                <nav className="flex-1 px-4 py-4 space-y-2">
+                    {navItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = item.id === "stats";
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => router.push(item.href)}
+                                className={[
+                                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer",
+                                    isActive
+                                        ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                                        : "text-[#64748B] hover:bg-white/5 hover:text-white",
+                                ].join(" ")}
                             >
-                                <option value="all">Todas las empresas</option>
-                                {companies.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-                    </div>
+                                <Icon className="w-4 h-4" />
+                                <span>{item.label}</span>
+                            </button>
+                        );
+                    })}
+                    {/* Add Stats item since it's the active one */}
+                    <button
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                    >
+                        <BarChart2 className="w-4 h-4" />
+                        <span>Estadísticas</span>
+                    </button>
+                </nav>
 
-                    {/* K Constant & Common Illness */}
-                    <div className="flex gap-4">
+                {/* User profile at bottom */}
+                <div className="p-4 border-t border-[#1E2A3B] flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                        <User className="w-5 h-5 text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-bold leading-none truncate">Carlos Mendez</p>
+                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1 truncate">Senior Consultant</p>
+                    </div>
+                    <button className="text-[#64748B] hover:text-white transition-colors">
+                        <MoreVertical className="w-4 h-4" />
+                    </button>
+                </div>
+            </aside>
+
+            {/* ── MAIN CONTENT ── */}
+            <main className="flex-1 overflow-y-auto flex flex-col">
+                {/* ── TOP HEADER (FILTERS) ── */}
+                <header className="bg-[#1A1F2E] border-b border-[#1E2A3B] px-8 py-5 flex items-center justify-between sticky top-0 z-30">
+                    <div className="flex items-center gap-8">
+                        {/* Period Filter */}
                         <div>
-                            <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
-                                Constante K
+                            <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
+                                Período
                             </label>
                             <div className="relative">
                                 <select
-                                    value={kConstant}
-                                    onChange={(e) => handleKChange(Number(e.target.value))}
-                                    className="appearance-none bg-[#0F1420] border border-[#1E2A3B] rounded-xl pl-3 pr-10 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors cursor-pointer"
+                                    value={period}
+                                    onChange={(e) => setPeriod(e.target.value as PeriodPreset)}
+                                    className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10"
                                 >
-                                    <option value={200000}>200,000 — Res. 312</option>
-                                    <option value={240000}>240,000 — RUC/CCS</option>
-                                    <option value={1000000}>1,000,000 — Int.</option>
+                                    <option value="year">2026</option>
+                                    <option value="quarter">Trimestre Actual</option>
+                                    <option value="month">Marzo 2026</option>
                                 </select>
                                 <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
-                                Días Enf. Común
-                            </label>
-                            <input
-                                type="number"
-                                placeholder="0"
-                                value={commonIllnessDaysStr}
-                                onChange={(e) => setCommonIllnessDaysStr(e.target.value)}
-                                className="w-24 bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155]"
-                            />
-                        </div>
-                    </div>
 
-                    {/* Workers & HHT */}
-                    <div className="flex-1 min-w-[320px] flex gap-4">
-                        <div className="flex-1">
-                            <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5">
+                        {/* Company Filter */}
+                        <div>
+                            <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
+                                Empresa
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={selectedCompanyId}
+                                    onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                    className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10 min-w-[200px]"
+                                >
+                                    <option value="all">TODAS LAS ENTIDADES</option>
+                                    {companies.map((c) => (
+                                        <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
+                        </div>
+
+                        {/* Workers Filter */}
+                        <div>
+                            <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
                                 Trabajadores
                             </label>
                             <input
                                 type="number"
-                                placeholder={dbWorkerCount > 0 ? dbWorkerCount.toString() : "Ej: 150"}
+                                placeholder={dbWorkerCount.toString()}
                                 value={workerOverride}
                                 onChange={(e) => setWorkerOverride(e.target.value)}
-                                className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155]"
+                                className="bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 w-24"
                             />
                         </div>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1.5">
-                                <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider">
-                                    HHT
-                                </label>
-                                <button
-                                    onClick={() => setShowHHTInput(!showHHTInput)}
-                                    className="text-[#F59E0B] hover:text-amber-300 transition-colors"
-                                    title="Editar HHT manual"
-                                >
-                                    <Settings className="w-3 h-3" />
-                                </button>
-                            </div>
-                            {showHHTInput ? (
-                                <input
-                                    type="number"
-                                    placeholder={`Est: ${estimatedHHT.toLocaleString("es-CO")}`}
-                                    value={hhtOverride}
-                                    onChange={(e) => setHhtOverride(e.target.value)}
-                                    className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155]"
-                                />
-                            ) : (
-                                <div className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm flex items-center h-[38px]">
-                                    {hhtValue.toLocaleString("es-CO")} h
-                                </div>
-                            )}
-                        </div>
                     </div>
 
-                    {/* Range display */}
-                    <div className="text-right">
-                        <p className="text-[#64748B] text-xs">
-                            {range.from.toLocaleDateString("es-CO")} → {range.to.toLocaleDateString("es-CO")}
-                        </p>
-                        <p className="text-[#334155] text-xs">{filteredEvents.length} eventos</p>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={fetchData}
+                            className="p-2.5 rounded-xl bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] hover:text-white hover:border-amber-500/50 transition-all"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                        </button>
+                        <button className="relative p-2.5 rounded-xl bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] hover:text-white hover:border-amber-500/50 transition-all">
+                            <Bell className="w-4 h-4" />
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0F1219]" />
+                        </button>
                     </div>
-                </section>
+                </header>
 
-                {/* ── KPI CARDS ── */}
-                {loading ? (
-                    <div className="grid grid-cols-5 gap-4">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 h-36 animate-pulse" />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <KPICard
-                            icon={Activity}
-                            label="IF — Índice de Frecuencia"
+                <div className="p-8 space-y-8">
+                    {/* ── KPI SECTION ── */}
+                    <div id="kpi-section" className="grid grid-cols-4 gap-6">
+                        <StatCard
+                            title="IF"
+                            subtitle="Frecuencia"
                             value={stats.IF}
-                            colorFn={ifColor}
-                            prev={prevStats.IF}
-                            description={`Accidentes por cada ${kConstant.toLocaleString("es-CO")} horas trabajadas`}
+                            trend={2.4}
+                            trendIsUp={false}
+                            color="#F59E0B"
+                            icon={Activity}
                         />
-                        <KPICard
-                            icon={Zap}
-                            label="IS — Índice de Severidad"
+                        <StatCard
+                            title="IS"
+                            subtitle="Severidad"
                             value={stats.IS}
-                            colorFn={isColor}
-                            prev={prevStats.IS}
-                            description={`Días perdidos por cada ${kConstant.toLocaleString("es-CO")} horas trabajadas`}
+                            trend={1.2}
+                            trendIsUp={true}
+                            color="#06B6D4"
+                            icon={Zap}
                         />
-                        <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col justify-between hover:border-[#F59E0B]/30 transition-colors lg:col-span-2">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Activity className="w-4 h-4 text-[#3B82F6]" />
-                                <span className="text-[#64748B] text-xs font-semibold uppercase tracking-wider">Ausentismo por HHT</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-[10px] text-[#64748B] font-bold mb-1">LABORAL (AT+EL)</p>
-                                    <p className="text-2xl font-black text-orange-400">{ausentismoLaboral < 0.01 && ausentismoLaboral > 0 ? "< 0.01" : ausentismoLaboral.toFixed(2)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-[#64748B] font-bold mb-1">COMÚN (EG)</p>
-                                    <p className="text-2xl font-black text-blue-400">{ausentismoComun < 0.01 && ausentismoComun > 0 ? "< 0.01" : ausentismoComun.toFixed(2)}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <KPICard
-                            icon={Users}
-                            label="TA — Tasa de Accidentalidad"
+                        <StatCard
+                            title="TA"
+                            subtitle="Accidentalidad"
                             value={stats.TA}
                             unit="%"
-                            colorFn={(v) => v === 0 ? "text-emerald-400" : v < 5 ? "text-amber-400" : "text-red-400"}
-                            prev={prevStats.TA}
-                            description="% de trabajadores que sufrieron un AT en el período"
+                            trend={0.5}
+                            trendIsUp={false}
+                            color="#8B5CF6"
+                            icon={TrendingUp}
                         />
-                        <KPICard
-                            icon={Skull}
-                            label="Mortalidad"
+                        <StatCard
+                            title="MORTALIDAD"
+                            subtitle="Tasa Fatal"
                             value={stats.mortalidadPct}
                             unit="%"
-                            colorFn={(v) => v === 0 ? "text-emerald-400" : "text-red-400"}
-                            description="Fallecidos sobre total de AT del período"
+                            trend={0}
+                            trendIsUp={false}
+                            color="#EF4444"
+                            icon={Skull}
                         />
                     </div>
-                )}
 
-                {/* ── EVENT SUMMARY CHIPS ── */}
-                <div className="flex flex-wrap gap-3">
-                    {[
-                        { label: "Total Accidentes (AT)", value: stats.totalAT, color: "bg-amber-500/15 text-amber-400 border-amber-500/25" },
-                        { label: "AT Grave", value: stats.atGrave, color: "bg-orange-500/15 text-orange-400 border-orange-500/25" },
-                        { label: "AT Fatal", value: stats.atFatal, color: "bg-red-500/15 text-red-400 border-red-500/25" },
-                        { label: "Incidentes/Casi-acc.", value: stats.incidentes, color: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
-                        { label: "Condiciones inseguras", value: stats.condicionesInseguras, color: "bg-purple-500/15 text-purple-400 border-purple-500/25" },
-                        { label: "Días de incapacidad", value: stats.totalDisabilityDays, color: "bg-[#1E2A3B] text-[#94A3B8] border-[#334155]" },
-                    ].map((chip) => (
-                        <span key={chip.label} className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-semibold ${chip.color}`}>
-                            <span className="text-base font-black">{chip.value}</span>
-                            {chip.label}
-                        </span>
-                    ))}
-                </div>
+                    {/* ── SUMMARY CHIPS ── */}
+                    <div id="summary-section" className="flex flex-wrap gap-4">
+                        <SummaryChip label="AT" value={stats.totalAT} color="amber" />
+                        <SummaryChip label="AT GRAVE" value={stats.atGrave} color="orange" />
+                        <SummaryChip label="AT FATAL" value={stats.atFatal} color="red" />
+                        <SummaryChip label="INCIDENTES REPORTADOS" value={stats.incidentes} color="blue" />
+                    </div>
 
-                {/* ── CHARTS GRID ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Trend chart */}
-                    <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5">
-                        <div className="flex items-center gap-2 mb-5">
-                            <TrendingUp className="w-4 h-4 text-[#F59E0B]" />
-                            <h2 className="text-white font-semibold text-sm">Tendencia mensual — últimos 12 meses</h2>
+                    {/* ── CENTRAL SECTION: TREND CHART & ABSENTEEISM ── */}
+                    <div id="central-section" className="grid grid-cols-12 gap-6">
+                        {/* Trend Area Chart (65%) */}
+                        <div className="col-span-8 bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-8">
+                            <div className="flex items-center justify-between mb-8">
+                                <div>
+                                    <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Tendencia de Accidentalidad</h3>
+                                    <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 12 meses</p>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                                        <span className="text-[#64748B] text-[10px] font-black uppercase">AT</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                                        <span className="text-[#64748B] text-[10px] font-black uppercase">INCIDENTES</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="h-64 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={trendData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" vertical={false} />
+                                        <XAxis 
+                                            dataKey="label" 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }}
+                                            dy={10}
+                                        />
+                                        <YAxis 
+                                            axisLine={false} 
+                                            tickLine={false} 
+                                            tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }}
+                                        />
+                                        <Tooltip 
+                                            contentStyle={{ backgroundColor: '#1A1F2E', border: '1px solid #1E2A3B', borderRadius: '12px' }}
+                                            itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }}
+                                        />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="at" 
+                                            stroke="#F59E0B" 
+                                            strokeWidth={3} 
+                                            dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }} 
+                                            activeDot={{ r: 6, strokeWidth: 0 }}
+                                        />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="incidentes" 
+                                            stroke="#3B82F6" 
+                                            strokeWidth={3} 
+                                            dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }} 
+                                            activeDot={{ r: 6, strokeWidth: 0 }}
+                                        />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                        {loading ? (
-                            <div className="h-56 bg-[#0F1420] rounded-xl animate-pulse" />
-                        ) : (
-                            <ResponsiveContainer width="100%" height={220}>
-                                <LineChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" />
-                                    <XAxis dataKey="label" tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <YAxis tick={{ fill: "#64748B", fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                    <Tooltip content={<ChartTooltip />} />
-                                    <Legend
-                                        wrapperStyle={{ fontSize: 11, color: "#64748B", paddingTop: 8 }}
-                                    />
-                                    <Line
-                                        type="monotone" dataKey="at" name="AT"
-                                        stroke="#F59E0B" strokeWidth={2} dot={{ fill: "#F59E0B", r: 3 }}
-                                        activeDot={{ r: 5 }}
-                                    />
-                                    <Line
-                                        type="monotone" dataKey="grave" name="Grave"
-                                        stroke="#F97316" strokeWidth={2} dot={{ fill: "#F97316", r: 3 }}
-                                    />
-                                    <Line
-                                        type="monotone" dataKey="incidentes" name="Incidentes"
-                                        stroke="#3B82F6" strokeWidth={2} dot={{ fill: "#3B82F6", r: 3 }}
-                                        strokeDasharray="4 2"
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
-                        )}
-                    </section>
 
-
-                </div>
-
-                {/* ── HAZARD FREQUENCY WIDGET ── */}
-                <div className="mb-6">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-                        <div>
-                            <h1 className="text-white text-3xl font-black tracking-tight leading-none uppercase">
-                                Distribución por Peligros GTC-45
-                            </h1>
-                            <p className="text-[#64748B] text-[11px] font-bold tracking-[0.2em] uppercase mt-2">
-                                Foxtech HSE Command Center // Analytics Engine
-                            </p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-[#475569] text-[10px] font-bold tracking-widest uppercase mb-1">Última Actualización</p>
-                            <p className="text-[#F59E0B] text-sm font-black tracking-widest leading-none">
-                                {new Date().toISOString().split('T')[0]} {new Date().toLocaleTimeString('es-CO', { hour12: false })}
-                            </p>
+                        {/* Absenteeism (35%) */}
+                        <div className="col-span-4 flex flex-col gap-6">
+                            <AbsenteeismCard 
+                                label="Laboral (AT + EL)" 
+                                value={ausentismoLaboral} 
+                                color="orange"
+                            />
+                            <AbsenteeismCard 
+                                label="Común (EG)" 
+                                value={ausentismoComun} 
+                                color="blue"
+                            />
                         </div>
                     </div>
-                    <HazardFrequencyWidget hazardData={hazardData} loading={loading} />
-                </div>
-
-                {/* ── EVENTS TABLE ── */}
-                <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl overflow-hidden">
-                    <div className="px-5 py-4 border-b border-[#1E2A3B] flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-[#F59E0B]" />
-                        <h2 className="text-white font-semibold text-sm">Detalle de eventos — período seleccionado</h2>
-                        <span className="ml-auto text-[#64748B] text-xs">{filteredEvents.length} eventos</span>
+                    {/* ── GTC-45 HAZARD DISTRIBUTION ── */}
+                    <div id="gtc45-section">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Distribución por Peligros GTC-45</h3>
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Análisis de criticidad por centro de trabajo</p>
+                            </div>
+                        </div>
+                        <HazardFrequencyWidget hazardData={hazardData} loading={loading} />
                     </div>
-                    {loading ? (
-                        <div className="p-5 space-y-2">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-10 bg-[#0F1420] rounded-lg animate-pulse" />
-                            ))}
+
+                    {/* ── EVENT DETAILS TABLE ── */}
+                    <div id="table-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden">
+                        <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                            <div>
+                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Registro de Eventos</h3>
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Período Seleccionado</p>
+                            </div>
+                            <span className="bg-white/5 text-[#64748B] px-3 py-1 rounded-full text-[10px] font-black border border-white/10 uppercase">
+                                {filteredEvents.length} Totales
+                            </span>
                         </div>
-                    ) : filteredEvents.length === 0 ? (
-                        <div className="py-12 text-center">
-                            <p className="text-[#64748B] text-sm">Sin eventos en este período</p>
-                        </div>
-                    ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-[#1E2A3B]">
-                                        {["Fecha", "Trabajador", "Clasificación", "Lesión", "Días incap.", "Estado"].map((h) => (
-                                            <th key={h} className="px-4 py-3 text-left text-[#64748B] text-xs font-semibold uppercase tracking-wider">
+                            <table className="w-full text-left">
+                                <thead className="bg-[#0F1219]">
+                                    <tr>
+                                        {["Fecha", "Trabajador", "Clasificación", "Días", "Estado"].map((h) => (
+                                            <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
                                                 {h}
                                             </th>
                                         ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredEvents.slice(0, 50).map((ev, i) => {
-                                        const isAT = ["ACCIDENTE_TRABAJO", "ACCIDENTE_TRABAJO_GRAVE", "ACCIDENTE_TRABAJO_FATAL"].includes(ev.classification ?? "");
-                                        const isFatal = ev.classification === "ACCIDENTE_TRABAJO_FATAL";
-                                        const isGrave = ev.classification === "ACCIDENTE_TRABAJO_GRAVE";
-                                        return (
-                                            <tr
-                                                key={ev.id}
-                                                className={`border-b border-[#1E2A3B]/50 cursor-pointer hover:bg-white/3 transition-colors ${i % 2 === 0 ? "" : "bg-[#0F1420]/30"}`}
-                                                onClick={() => router.push(`/dashboard/events/${ev.id}`)}
-                                            >
-                                                <td className="px-4 py-3 text-[#94A3B8] text-xs whitespace-nowrap">
-                                                    {(ev.event_date || ev.created_at || "").slice(0, 10)}
-                                                </td>
-                                                <td className="px-4 py-3 text-white text-xs">
-                                                    {ev.worker_name || "Sin asignar"}
-                                                </td>
-                                                <td className="px-4 py-3 text-xs">
-                                                    {ev.classification_status === "classified" ? (
-                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${isFatal ? "bg-red-500/20 text-red-400" :
-                                                            isGrave ? "bg-orange-500/20 text-orange-400" :
-                                                                isAT ? "bg-amber-500/20 text-amber-400" :
-                                                                    "bg-blue-500/20 text-blue-400"
-                                                            }`}>
-                                                            {isFatal ? "AT Fatal" : isGrave ? "AT Grave" : isAT ? "AT" : (ev.classification ?? "—").replace(/_/g, " ")}
-                                                        </span>
-                                                    ) : (
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[#94A3B8] capitalize">{((ev.event_type || "") as string).replace(/_/g, " ")}</span>
-                                                            <span className="bg-[#334155]/50 text-[#94A3B8] px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider">Sin clasificar</span>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-[#94A3B8] text-xs">
-                                                    {ev.injury_nature || "—"}
-                                                </td>
-                                                <td className="px-4 py-3 text-center text-xs">
-                                                    {isAT
-                                                        ? <span className={`font-bold ${(ev.disability_days ?? 0) > 0 ? "text-amber-400" : "text-[#64748B]"}`}>
-                                                            {ev.disability_days ?? 0}
-                                                        </span>
-                                                        : <span className="text-[#334155]">—</span>
-                                                    }
-                                                </td>
-                                                <td className="px-4 py-3 text-xs">
-                                                    <span className={`px-2 py-0.5 rounded-full font-semibold ${ev.classification_status === "classified"
-                                                        ? "bg-blue-500/15 text-blue-400"
-                                                        : "bg-amber-500/15 text-amber-500"
-                                                        }`}>
-                                                        {ev.classification_status === "classified" ? "Clasificado" : "Pendiente"}
+                                    {filteredEvents.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-8 py-12 text-center text-[#64748B] font-bold italic">
+                                                No se encontraron eventos en este período
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredEvents.slice(0, 10).map((ev) => (
+                                            <tr key={ev.id} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] cursor-pointer group transition-colors" onClick={() => router.push(`/dashboard/events/${ev.id}`)}>
+                                                <td className="px-8 py-4 text-white text-xs font-bold whitespace-nowrap">{(ev.event_date || "").slice(0, 10)}</td>
+                                                <td className="px-8 py-4 text-[#94A3B8] text-xs font-bold">{ev.worker_name || "Sin asignar"}</td>
+                                                <td className="px-8 py-4">
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                        ev.classification === "ACCIDENTE_TRABAJO_FATAL" ? "bg-red-500/10 text-red-500" :
+                                                        ev.classification === "ACCIDENTE_TRABAJO_GRAVE" ? "bg-orange-500/10 text-orange-400" :
+                                                        ev.classification === "ACCIDENTE_TRABAJO" ? "bg-amber-500/10 text-amber-500" :
+                                                        "bg-blue-500/10 text-blue-400"
+                                                    }`}>
+                                                        {ev.classification?.replace(/_/g, " ") || "INCIDENTE"}
                                                     </span>
                                                 </td>
+                                                <td className="px-8 py-4 text-white text-xs font-bold">{ev.disability_days || 0}</td>
+                                                <td className="px-8 py-4">
+                                                    <div className={`w-2 h-2 rounded-full ${ev.classification_status === 'classified' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                                                </td>
                                             </tr>
-                                        );
-                                    })}
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
-                            {filteredEvents.length > 50 && (
-                                <p className="px-5 py-3 text-[#64748B] text-xs text-center border-t border-[#1E2A3B]">
-                                    Mostrando 50 de {filteredEvents.length} eventos
-                                </p>
-                            )}
                         </div>
-                    )}
-                </section>
-
-                {/* ── HISTORICAL RUC 5 YEARS ── */}
-                <section className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 mb-8">
-                    <div className="flex items-center gap-2 mb-5">
-                        <FileSpreadsheet className="w-4 h-4 text-[#F59E0B]" />
-                        <h2 className="text-white font-semibold text-sm">Histórico RUC — Últimos 5 años</h2>
                     </div>
 
-                    <div className="overflow-x-auto border border-[#1E2A3B] rounded-xl mb-5">
-                        <table className="w-full text-xs text-left">
-                            <thead className="bg-[#0F1420] text-[#64748B] uppercase tracking-wider">
-                                <tr>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">Año</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">AT Mortales</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">AT Con Incap.</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">AT Sin Incap.</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-amber-400">Total AT</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">Días Incap.</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">EL</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B]">Incidentes</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">IF</th>
-                                    <th className="px-4 py-3 font-semibold border-b border-[#1E2A3B] text-emerald-400">IS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {historicalData.map((row, i) => (
-                                    <tr key={row.year} className={`${i % 2 === 0 ? "bg-[#141824]" : "bg-[#0F1420]/30"} hover:bg-white/5 transition-colors border-b border-[#1E2A3B]/50 last:border-0`}>
-                                        <td className="px-4 py-3 font-bold text-white whitespace-nowrap">{row.year}</td>
-                                        <td className="px-4 py-3 text-white">{row.atMortales}</td>
-                                        <td className="px-4 py-3 text-white">{row.atConIncap}</td>
-                                        <td className="px-4 py-3 text-white">{row.atSinIncap}</td>
-                                        <td className="px-4 py-3 font-bold text-amber-400">{row.totalAT}</td>
-                                        <td className="px-4 py-3 text-white">{row.diasIncap}</td>
-                                        <td className="px-4 py-3 text-white">{row.el}</td>
-                                        <td className="px-4 py-3 text-white">{row.incidentes}</td>
-                                        <td className="px-4 py-3 font-bold text-emerald-400">{row.IF.toFixed(2)}</td>
-                                        <td className="px-4 py-3 font-bold text-emerald-400">{row.IS.toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={handleExportHistorical}
-                            disabled={exportState.status === "generating"}
-                            className={[
-                                "flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer",
-                                exportState.status === "error" ? "bg-red-800 text-white" :
-                                    exportState.status === "done" ? "bg-green-700 text-white" :
-                                        "bg-[#F59E0B] text-black hover:bg-[#F59E0B]/90"
-                            ].join(" ")}
-                        >
-                            {exportState.status === "generating" ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : exportState.status === "done" ? (
-                                <CheckCircle2 className="w-4 h-4" />
-                            ) : (
+                    {/* ── RUC HISTORY ──────────────────────────────────────────────────────────── */}
+                    <div id="ruc-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
+                        <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                            <div>
+                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Historial Consolidado RUC / CCS</h3>
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 5 años operativos</p>
+                            </div>
+                            <button
+                                onClick={handleExportHistorical}
+                                disabled={exportState.status === "generating"}
+                                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 text-black font-black text-[10px] tracking-widest uppercase hover:bg-emerald-400 transition-all disabled:opacity-50"
+                            >
                                 <Download className="w-4 h-4" />
-                            )}
-                            {exportState.status === "generating" ? "Generando Excel..." :
-                                exportState.status === "done" ? "¡Excel generado!" :
-                                    "Exportar Histórico 5 Años — Formato RUC/CCS (Excel)"}
-                        </button>
-                        {exportState.message && (
-                            <span className={`text-xs ${exportState.status === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
-                                {exportState.message}
-                            </span>
-                        )}
+                                {exportState.status === "generating" ? "Exportando..." : "Exportar Excel"}
+                            </button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-[#0F1219]">
+                                    <tr>
+                                        {["Año", "AT Fatal", "AT Incap", "Total AT", "Días", "IF", "IS"].map((h) => (
+                                            <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {historicalData.map((row) => (
+                                        <tr key={row.year} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors">
+                                            <td className="px-8 py-4 text-white font-black">{row.year}</td>
+                                            <td className="px-8 py-4 text-[#EF4444] font-bold">{row.atMortales}</td>
+                                            <td className="px-8 py-4 text-[#94A3B8]">{row.atConIncap}</td>
+                                            <td className="px-8 py-4 text-amber-500 font-bold">{row.totalAT}</td>
+                                            <td className="px-8 py-4 text-[#94A3B8]">{row.diasIncap}</td>
+                                            <td className="px-8 py-4 text-white font-black">{row.IF.toFixed(2)}</td>
+                                            <td className="px-8 py-4 text-white font-black">{row.IS.toFixed(2)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </section>
-
-                {/* ── LEGAL NOTE ── */}
-                <p className="text-[#334155] text-xs text-center pb-2">
-                    Calculado según Normativa SG-SST — K={kConstant.toLocaleString("es-CO")}
-                </p>
-            </div>
+                </div>
+            </main>
         </div>
     );
+
 }
+
+export default StatsPage;
