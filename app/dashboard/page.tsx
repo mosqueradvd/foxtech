@@ -28,6 +28,7 @@ import { supabase, type Incident, type Company } from "@/lib/supabase";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { IncidentRow } from "@/components/dashboard/IncidentRow";
+import { TableSkeleton, StatCardSkeleton } from "@/components/dashboard/skeletons";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import type { StatusVariant } from "@/components/ui/StatusBadge";
 import dynamic from "next/dynamic";
@@ -161,34 +162,44 @@ export default function DashboardPage() {
             <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
                 {/* ── KPI CARDS ── */}
                 <div className="grid grid-cols-3 gap-6">
-                    <StatCard
-                        title="INCIDENTES"
-                        subtitle="Este mes"
-                        value={loading ? "—" : totalIncidents}
-                        trend={2}
-                        trendIsUp={false}
-                        color="#F59E0B"
-                        icon={AlertTriangle}
-                    />
-                    <StatCard
-                        title="INSPECCIONES"
-                        subtitle="Completadas"
-                        value={45}
-                        trend={5}
-                        trendIsUp={true}
-                        color="#3B82F6"
-                        icon={ClipboardList}
-                    />
-                    <StatCard
-                        title="CUMPLIMIENTO"
-                        subtitle="Promedio %"
-                        value={avgCompliance}
-                        unit="%"
-                        trend={1}
-                        trendIsUp={false}
-                        color="#22C55E"
-                        icon={Building2}
-                    />
+                    {loading ? (
+                        <>
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                        </>
+                    ) : (
+                        <>
+                            <StatCard
+                                title="INCIDENTES"
+                                subtitle="Este mes"
+                                value={totalIncidents}
+                                trend={2}
+                                trendIsUp={false}
+                                color="#F59E0B"
+                                icon={AlertTriangle}
+                            />
+                            <StatCard
+                                title="INSPECCIONES"
+                                subtitle="Completadas"
+                                value={45}
+                                trend={5}
+                                trendIsUp={true}
+                                color="#3B82F6"
+                                icon={ClipboardList}
+                            />
+                            <StatCard
+                                title="CUMPLIMIENTO"
+                                subtitle="Promedio %"
+                                value={avgCompliance}
+                                unit="%"
+                                trend={1}
+                                trendIsUp={false}
+                                color="#22C55E"
+                                icon={Building2}
+                            />
+                        </>
+                    )}
                 </div>
 
                 {/* ── BOTTOM SECTION: Table + Map ── */}
@@ -231,11 +242,7 @@ export default function DashboardPage() {
                             </thead>
                             <tbody>
                                 {loading ? (
-                                    <tr>
-                                        <td colSpan={6} className="py-8 text-center text-[#64748B] text-sm">
-                                            Cargando...
-                                        </td>
-                                    </tr>
+                                    <TableSkeleton />
                                 ) : paginatedItems.length > 0 ? (
                                     paginatedItems.map((inc, i) => {
                                         if ('id' in inc && inc.id && !('time' in inc)) {
