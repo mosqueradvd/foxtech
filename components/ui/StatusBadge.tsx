@@ -4,7 +4,7 @@
  */
 import React from "react";
 
-export type StatusVariant = "synced" | "pending" | "error" | "scheduled" | "accidente" | "casi_accidente" | "condicion_insegura";
+export type StatusVariant = "synced" | "pending" | "error" | "scheduled" | "accidente" | "accidente_grave" | "casi_accidente" | "condicion_insegura" | "enfermedad_laboral" | "impacto_ambiental" | "otro";
 
 interface StatusBadgeProps {
     variant: StatusVariant;
@@ -38,6 +38,11 @@ const styles: Record<StatusVariant, { bg: string; text: string; label: string }>
         text: "text-red-400",
         label: "Accidente Leve",
     },
+    accidente_grave: {
+        bg: "bg-red-900/60 border border-red-500/50",
+        text: "text-red-500",
+        label: "Accidente Grave",
+    },
     casi_accidente: {
         bg: "bg-amber-800/50 border border-amber-700/50",
         text: "text-amber-400",
@@ -47,6 +52,21 @@ const styles: Record<StatusVariant, { bg: string; text: string; label: string }>
         bg: "bg-slate-700/60 border border-slate-600/40",
         text: "text-slate-300",
         label: "Condición Insegura",
+    },
+    enfermedad_laboral: {
+        bg: "bg-blue-900/40 border border-blue-700/40",
+        text: "text-blue-400",
+        label: "Enfermedad",
+    },
+    impacto_ambiental: {
+        bg: "bg-emerald-900/40 border border-emerald-700/40",
+        text: "text-emerald-400",
+        label: "Impacto Amb.",
+    },
+    otro: {
+        bg: "bg-slate-800 border border-slate-700",
+        text: "text-slate-400",
+        label: "Desconocido",
     },
 };
 

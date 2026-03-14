@@ -262,6 +262,7 @@ export function StatsPage() {
     // Filters
     const [period, setPeriod] = useState<PeriodPreset>("year");
     const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+    const [cieFilter, setCieFilter] = useState<"Todos" | "CIE-10" | "CIE-11">("Todos");
     const [hhtOverride, setHhtOverride] = useState<string>("");
     const [workerOverride, setWorkerOverride] = useState<string>("");
     const [showHHTInput, setShowHHTInput] = useState(false);
@@ -289,7 +290,7 @@ export function StatsPage() {
         const [{ data: evData }, { data: coData }] = await Promise.all([
             supabase
                 .from("incidents")
-                .select("*")
+                .select("*, disability_records(*)")
                 .order("created_at", { ascending: false }),
             supabase.from("companies").select("*"),
         ]);
@@ -369,6 +370,48 @@ export function StatsPage() {
     );
     const ausentismoLaboral = hhtValue > 0 ? ((stats.totalDisabilityDays + diasPerdidosEL) * kConstant) / hhtValue : 0;
     const ausentismoComun = hhtValue > 0 ? ((Number(commonIllnessDaysStr) || 0) * kConstant) / hhtValue : 0;
+
+    const absenteeismByDiagnosis = useMemo(() => {
+        const statsMap = new Map<string, {
+            code: string;
+            description: string;
+            version: string | null;
+            incapacitiesCount: number;
+            totalDays: number;
+        }>();
+
+        let totalDaysAll = 0;
+
+        filteredEvents.forEach(e => {
+            const records = e.disability_records || [];
+            records.forEach(r => {
+                if (r.days_count > 0 && r.cie_codes && r.cie_codes.length > 0) {
+                    r.cie_codes.forEach(codeItem => {
+                        const key = codeItem.code;
+                        if (!statsMap.has(key)) {
+                            statsMap.set(key, {
+                                code: codeItem.code,
+                                description: codeItem.description,
+                                version: r.cie_version || "CIE-11",
+                                incapacitiesCount: 0,
+                                totalDays: 0,
+                            });
+                        }
+                        const s = statsMap.get(key)!;
+                        s.incapacitiesCount += 1;
+                        s.totalDays += r.days_count;
+                    });
+                    totalDaysAll += r.days_count;
+                }
+            });
+        });
+
+        const filtered = Array.from(statsMap.values()).filter(x => 
+            cieFilter === "Todos" || x.version === cieFilter
+        ).sort((a, b) => b.totalDays - a.totalDays);
+
+        return { list: filtered, totalDaysAll };
+    }, [filteredEvents, cieFilter]);
 
 
     // ── Historical 5-year RUC ──────────────────────────────────────────────
@@ -640,6 +683,83 @@ export function StatsPage() {
                             </div>
                         </div>
                         <HazardFrequencyWidget hazardData={hazardData} loading={loading} />
+                    </div>
+
+                    {/* ── DIAGNOSIS ABSENTEEISM TABLE ── */}
+                    <div id="diagnosis-absenteeism-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
+                        <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                            <div>
+                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Ausentismo por Diagnóstico</h3>
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Top diagnósticos (CIE-10 / CIE-11)</p>
+                            </div>
+                            
+                            {/* Toggle filter */}
+                            <div className="flex bg-[#0F1219] p-1 rounded-lg border border-[#1E2A3B]">
+                                {["Todos", "CIE-10", "CIE-11"].map(f => (
+                                    <button
+                                        key={f}
+                                        onClick={() => setCieFilter(f as any)}
+                                        className={`px-4 py-1.5 rounded-md text-[10px] font-black tracking-widest uppercase transition-all ${
+                                            cieFilter === f 
+                                            ? "bg-[#1E2A3B] text-white shadow" 
+                                            : "text-[#64748B] hover:text-white"
+                                        }`}
+                                    >
+                                        {f}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-[#0F1219]">
+                                    <tr>
+                                        {["Código CIE", "Descripción del Diagnóstico", "Nº Incapacidades", "Días Perdidos", "% Ausentismo"].map((h) => (
+                                            <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                                {h}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {absenteeismByDiagnosis.list.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="px-8 py-12 text-center text-[#64748B] font-bold italic">
+                                                No hay registros de diagnósticos para incapacidades mayores a cero
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        absenteeismByDiagnosis.list.map((row) => {
+                                            const pct = absenteeismByDiagnosis.totalDaysAll > 0 
+                                                ? (row.totalDays / absenteeismByDiagnosis.totalDaysAll) * 100 
+                                                : 0;
+                                            return (
+                                                <tr key={row.code} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors group">
+                                                    <td className="px-8 py-4">
+                                                        <span className="bg-white/5 text-amber-500 px-2 py-1 rounded border border-amber-500/20 font-black tracking-wider">
+                                                            {row.code}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-8 py-4 text-white font-bold">{row.description}
+                                                        <span className="ml-2 text-[9px] text-[#64748B] uppercase px-1.5 py-0.5 border border-[#334155] rounded">{row.version}</span>
+                                                    </td>
+                                                    <td className="px-8 py-4 text-[#94A3B8] font-bold text-center w-32">{row.incapacitiesCount}</td>
+                                                    <td className="px-8 py-4 text-red-400 font-bold text-center w-32">{row.totalDays}</td>
+                                                    <td className="px-8 py-4 w-48">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="flex-1 h-1.5 bg-[#0F1219] rounded-full overflow-hidden">
+                                                                <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                                            </div>
+                                                            <span className="text-white font-black">{pct.toFixed(1)}%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     {/* ── EVENT DETAILS TABLE ── */}

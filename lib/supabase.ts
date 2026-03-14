@@ -39,6 +39,23 @@ export type Worker = {
     created_at?: string;
 };
 
+export type CIECode = {
+    code: string;
+    description: string;
+};
+
+export type DisabilityRecord = {
+    id?: string;
+    event_id?: string;
+    disability_date: string;
+    days_count: number;
+    eps_id?: string;
+    cie_version?: "CIE-10" | "CIE-11" | null;
+    cie_codes?: CIECode[];
+    created_at?: string;
+    created_by?: string;
+};
+
 /**
  * Event = the full DB row for the `incidents` table.
  * Módulo 1 fields come from field workers.
@@ -101,6 +118,9 @@ export type Event = {
     synced_at?: string;
     created_at?: string;
     updated_at?: string;
+
+    // Relations
+    disability_records?: DisabilityRecord[];
 };
 
 /** Backward-compatible alias — existing code can keep using Incident */

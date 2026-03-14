@@ -212,7 +212,7 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                                 <h2 className="text-white font-bold text-sm uppercase tracking-wider">
-                                    Últimos Incidentes
+                                    EVENTOS RECIENTES
                                 </h2>
                             </div>
                             <div className="flex items-center gap-2">

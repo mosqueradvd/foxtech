@@ -13,9 +13,13 @@ interface IncidentRowProps {
 }
 
 function getEventBadge(eventType?: string): StatusVariant {
-    if (eventType === "casi_accidente") return "casi_accidente";
     if (eventType === "accidente") return "accidente";
-    return "condicion_insegura";
+    if (eventType === "accidente_grave") return "accidente_grave";
+    if (eventType === "casi_accidente") return "casi_accidente";
+    if (eventType === "condicion_insegura") return "condicion_insegura";
+    if (eventType === "enfermedad_laboral") return "enfermedad_laboral";
+    if (eventType === "impacto_ambiental") return "impacto_ambiental";
+    return "otro";
 }
 
 function getSyncBadge(incident: Incident): StatusVariant {

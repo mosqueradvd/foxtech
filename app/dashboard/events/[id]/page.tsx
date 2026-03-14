@@ -15,6 +15,8 @@ import { supabase, type Event, type Worker } from "@/lib/supabase";
 import { WorkerSelector } from "@/components/module2/WorkerSelector";
 import { LocationSelector } from "@/components/module2/LocationSelector";
 import { InjuryClassifier } from "@/components/module2/InjuryClassifier";
+import { CIESearchInput, type CIECodeItem } from "@/components/ui/CIESearchInput";
+import { type CIECode } from "@/lib/supabase";
 import {
     EVENT_CLASSIFICATIONS,
     EPS_LIST, ARL_LIST, SEX_OPTIONS, EMPLOYMENT_TYPES, EDUCATION_LEVELS,
@@ -27,12 +29,11 @@ const STEPS = [
     { id: 3, label: "Lesión", icon: Activity, description: "Clasificación de la lesión (FURAT)" },
 ] as const;
 
-type InjuryFields = {
-    injury_nature: string;
-    body_part: string;
-    accident_mechanism: string;
-    hazard_type: string;
-    disability_days: number;
+type EventFormData = Partial<Event> & {
+    disability_date?: string;
+    cie_version?: "CIE-10" | "CIE-11";
+    cie_codes?: CIECodeItem[];
+    eps_id?: string;
 };
 
 // ─── Classification badge ─────────────────────────────────────────────────────
@@ -150,9 +151,9 @@ function Step1Worker({
 }: {
     event: Event;
     selectedWorker: Worker | null;
-    formData: Partial<Event>;
+    formData: EventFormData;
     onWorkerSelect: (w: Worker | null) => void;
-    onFieldChange: (f: keyof Event, v: unknown) => void;
+    onFieldChange: (f: keyof EventFormData, v: unknown) => void;
 }) {
     return (
         <div className="space-y-6">
@@ -263,8 +264,8 @@ function Step2Event({
     formData,
     onFieldChange,
 }: {
-    formData: Partial<Event>;
-    onFieldChange: (f: keyof Event, v: unknown) => void;
+    formData: EventFormData;
+    onFieldChange: (f: keyof EventFormData, v: unknown) => void;
 }) {
     const selectedClass = EVENT_CLASSIFICATIONS.find((c) => c.value === formData.classification);
 
@@ -372,8 +373,8 @@ function Step3Injury({
     formData,
     onFieldChange,
 }: {
-    formData: Partial<Event>;
-    onFieldChange: (f: keyof Event, v: unknown) => void;
+    formData: EventFormData;
+    onFieldChange: (f: keyof EventFormData, v: unknown) => void;
 }) {
     const classification = formData.classification ?? "";
     const isAT = classification.startsWith("ACCIDENTE_TRABAJO");
@@ -401,9 +402,71 @@ function Step3Injury({
                     hazard_type: formData.hazard_type,
                     disability_days: formData.disability_days ?? 0,
                 }}
-                onChange={(field, value) => onFieldChange(field as keyof Event, value)}
-                showDisabilityDays={true}
+                onChange={(field, value) => onFieldChange(field as keyof EventFormData, value)}
+                showDisabilityDays={false}
             />
+
+            {/* Incapacidad EPS (Solo para AT y EL) */}
+            {(isAT || isEL) && (
+                <div className="bg-[#1A2538] border border-[#334155] rounded-xl p-5 space-y-4">
+                    <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-2">Incapacidad Médica (EPS)</h4>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">
+                                Fecha de Incapacidad
+                            </label>
+                            <input
+                                type="date"
+                                value={formData.disability_date ?? ""}
+                                onChange={(e) => onFieldChange("disability_date", e.target.value)}
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">
+                                EPS que la expide
+                            </label>
+                            <select
+                                value={formData.eps_id ?? ""}
+                                onChange={(e) => onFieldChange("eps_id", e.target.value)}
+                                className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                            >
+                                <option value="">Seleccionar EPS</option>
+                                {EPS_LIST.map((eps) => <option key={eps} value={eps}>{eps}</option>)}
+                            </select>
+                        </div>
+                        <div className="col-span-2">
+                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">
+                                Días de Incapacidad Médica
+                            </label>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="999"
+                                    value={formData.disability_days ?? ""}
+                                    onChange={(e) => onFieldChange("disability_days", parseInt(e.target.value) || 0)}
+                                    placeholder="0"
+                                    className="w-32 bg-[#252B3B] border border-[#334155] rounded-xl px-3 py-3 text-white text-sm outline-none focus:border-[#F59E0B] transition-colors text-center font-bold"
+                                />
+                                <span>días</span>
+                            </div>
+                        </div>
+                        <div className="col-span-2 space-y-2 mt-2">
+                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">
+                                Códigos Diagnóstico (CIE)
+                            </label>
+                            <CIESearchInput
+                                value={formData.cie_codes || []}
+                                onChange={(codes: CIECodeItem[]) => onFieldChange("cie_codes", codes)}
+                                version={formData.cie_version || "CIE-11"}
+                                onVersionChange={(v: "CIE-10" | "CIE-11") => onFieldChange("cie_version", v)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Witnesses */}
             <div>
@@ -433,21 +496,29 @@ export default function EventCharacterizationPage() {
     const [saved, setSaved] = useState(false);
     const [step, setStep] = useState(1);
     const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
-    const [formData, setFormData] = useState<Partial<Event>>({});
+    const [formData, setFormData] = useState<EventFormData>({});
 
     const loadEvent = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase
+        // 1. Fetch event
+        const { data: eventData, error: eventError } = await supabase
             .from("incidents")
             .select("*")
             .eq("id", eventId)
             .single();
 
-        if (!error && data) {
-            setEvent(data as Event);
+        // 2. Fetch disability records explicitly to avoid relation issues
+        const { data: disabilityData } = await supabase
+            .from("disability_records")
+            .select("*")
+            .eq("event_id", eventId)
+            .maybeSingle();
+
+        if (!eventError && eventData) {
+            setEvent(eventData as Event);
             // Pre-populate form with any existing classification data
-            let initialClassification = data.classification;
-            if (!initialClassification && data.event_type) {
+            let initialClassification = eventData.classification;
+            if (!initialClassification && eventData.event_type) {
                 const typeMap: Record<string, string> = {
                     casi_accidente: "CASI_ACCIDENTE",
                     incidente: "INCIDENTE_SIN_LESION",
@@ -459,35 +530,41 @@ export default function EventCharacterizationPage() {
                     impacto_ambiental: "IMPACTO_AMBIENTAL",
                     dano_propiedad: "DANO_PROPIEDAD",
                 };
-                initialClassification = typeMap[data.event_type];
+                initialClassification = typeMap[eventData.event_type];
             }
 
             setFormData({
-                worker_id: data.worker_id,
-                worker_name: data.worker_name,
-                worker_cedula: data.worker_cedula,
-                worker_birth_date: data.worker_birth_date,
-                worker_sex: data.worker_sex,
-                worker_eps: data.worker_eps,
-                worker_arl: data.worker_arl,
-                worker_job_title: data.worker_job_title,
-                worker_employment_type: data.worker_employment_type,
-                worker_seniority_months: data.worker_seniority_months,
-                worker_contract_start: data.worker_contract_start,
-                worker_education_level: data.worker_education_level,
+                worker_id: eventData.worker_id,
+                worker_name: eventData.worker_name,
+                worker_cedula: eventData.worker_cedula,
+                worker_birth_date: eventData.worker_birth_date,
+                worker_sex: eventData.worker_sex,
+                worker_eps: eventData.worker_eps,
+                worker_arl: eventData.worker_arl,
+                worker_job_title: eventData.worker_job_title,
+                worker_employment_type: eventData.worker_employment_type,
+                worker_seniority_months: eventData.worker_seniority_months,
+                worker_contract_start: eventData.worker_contract_start,
+                worker_education_level: eventData.worker_education_level,
                 classification: initialClassification,
-                event_date: data.event_date,
-                event_time: data.event_time,
-                event_day_of_week: data.event_day_of_week,
-                event_department: data.event_department,
-                event_city: data.event_city,
-                event_address: data.event_address,
-                disability_days: data.disability_days,
-                injury_nature: data.injury_nature,
-                body_part: data.body_part,
-                accident_mechanism: data.accident_mechanism,
-                hazard_type: data.hazard_type,
-                witness_names: data.witness_names,
+                event_date: eventData.event_date,
+                event_time: eventData.event_time,
+                event_day_of_week: eventData.event_day_of_week,
+                event_department: eventData.event_department,
+                event_city: eventData.event_city,
+                event_address: eventData.event_address,
+                disability_days: eventData.disability_days,
+                injury_nature: eventData.injury_nature,
+                body_part: eventData.body_part,
+                accident_mechanism: eventData.accident_mechanism,
+                hazard_type: eventData.hazard_type,
+                witness_names: eventData.witness_names,
+
+                // Disability records merge
+                disability_date: disabilityData?.disability_date || "",
+                eps_id: disabilityData?.eps_id || eventData.worker_eps || "",
+                cie_version: disabilityData?.cie_version || "CIE-11",
+                cie_codes: disabilityData?.cie_codes || [],
             });
         }
         setLoading(false);
@@ -495,7 +572,7 @@ export default function EventCharacterizationPage() {
 
     useEffect(() => { loadEvent(); }, [loadEvent]);
 
-    function handleFieldChange(field: keyof Event, value: unknown) {
+    function handleFieldChange(field: keyof EventFormData, value: unknown) {
         setFormData((prev) => ({ ...prev, [field]: value }));
     }
 
@@ -524,10 +601,12 @@ export default function EventCharacterizationPage() {
         if (!eventId) return;
         setSaving(true);
 
-        const { error } = await supabase
+        const { disability_date, eps_id, cie_version, cie_codes, ...eventDataToSave } = formData;
+
+        const { error: eventError } = await supabase
             .from("incidents")
             .update({
-                ...formData,
+                ...eventDataToSave,
                 classification_status: "classified",
                 classified_at: new Date().toISOString(),
                 classified_by: "Consultor SST", // would come from auth session
@@ -535,8 +614,27 @@ export default function EventCharacterizationPage() {
             })
             .eq("id", eventId);
 
+        // Upsert disability_record checking explicitly for "error"
+        const isATorEL = eventDataToSave.classification?.startsWith("ACCIDENTE_TRABAJO") || eventDataToSave.classification === "ENFERMEDAD_LABORAL";
+        if (!eventError && isATorEL) {
+            await supabase.from("disability_records").delete().eq("event_id", eventId); // Ensure uniqueness
+
+            const { error: insertError } = await supabase.from("disability_records").insert({
+                event_id: eventId,
+                disability_date: disability_date || eventDataToSave.event_date || new Date().toISOString().slice(0, 10),
+                days_count: formData.disability_days ?? 0,
+                eps_id: eps_id || eventDataToSave.worker_eps,
+                cie_version: cie_version || "CIE-11",
+                cie_codes: cie_codes || []
+            });
+
+            if (insertError) {
+                console.error("Error saving disability records:", insertError);
+            }
+        }
+
         setSaving(false);
-        if (!error) {
+        if (!eventError) {
             setSaved(true);
             setTimeout(() => {
                 router.push("/dashboard");
@@ -570,9 +668,9 @@ export default function EventCharacterizationPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#1A1F2E] flex flex-col">
+        <div className="flex-1 overflow-y-auto bg-[#1A1F2E] flex flex-col">
             {/* ── HEADER ── */}
-            <header className="sticky top-0 z-20 bg-[#252B3B]/95 backdrop-blur border-b border-[#334155]">
+            <header className="sticky top-0 z-20 bg-[#1A1F2E]/95 backdrop-blur border-b border-[#334155]">
                 <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
                     <button
                         onClick={() => router.push("/dashboard")}
