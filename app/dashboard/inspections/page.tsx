@@ -14,6 +14,7 @@ import { supabase, type Inspection, type Company } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { INSPECTION_TEMPLATES } from "@/lib/inspection-templates";
+import { StatCardSkeleton, InspectionListSkeleton } from "@/components/dashboard/skeletons";
 import * as LucideIcons from "lucide-react";
 
 function DynamicIcon({ name, className }: { name: string; className?: string }) {
@@ -98,7 +99,7 @@ export default function InspectionsListPage() {
                             Dec. 1072/2015 — Res. 4272/2021 — RETIE
                         </p>
                     </div>
-                    <button 
+                    <button
                         onClick={() => router.push("/inspection")}
                         className="flex items-center gap-2 px-6 py-2.5 bg-[#F59E0B] text-black text-xs font-black rounded-xl hover:bg-amber-400 transition-colors cursor-pointer uppercase tracking-tight"
                     >
@@ -111,36 +112,49 @@ export default function InspectionsListPage() {
             <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
                 {/* KPI strip */}
                 <div className="grid grid-cols-3 gap-6">
-                    <StatCard
-                        title="TOTAL"
-                        subtitle="Inspecciones"
-                        value={inspections.length}
-                        color="#64748B"
-                        icon={ClipboardList}
-                    />
-                    <StatCard
-                        title="ABIERTAS"
-                        subtitle="Pendientes"
-                        value={openCount}
-                        color="#F59E0B"
-                        icon={Clock}
-                    />
-                    <StatCard
-                        title="CRÍTICAS"
-                        subtitle="Cumplimiento < 60%"
-                        value={critCount}
-                        color="#EF4444"
-                        icon={AlertCircle}
-                    />
+                    {loading ? (
+                        <>
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                            <StatCardSkeleton />
+                        </>
+                    ) : (
+                        <>
+                            <StatCard
+                                title="TOTAL"
+                                subtitle="Inspecciones"
+                                value={inspections.length}
+                                color="#64748B"
+                                icon={ClipboardList}
+                            />
+                            <StatCard
+                                title="ABIERTAS"
+                                subtitle="Pendientes"
+                                value={openCount}
+                                color="#F59E0B"
+                                icon={Clock}
+                            />
+                            <StatCard
+                                title="CRÍTICAS"
+                                subtitle="Cumplimiento < 60%"
+                                value={critCount}
+                                color="#EF4444"
+                                icon={AlertCircle}
+                            />
+                        </>
+                    )}
                 </div>
 
                 {/* Filters */}
                 <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 space-y-4">
-                    <div className="flex items-center gap-2 bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5">
-                        <Search className="w-4 h-4 text-[#64748B] flex-shrink-0" />
-                        <input value={search} onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Buscar por inspector, template, ubicación..."
-                            className="flex-1 bg-transparent text-white text-xs font-bold outline-none placeholder:text-[#334155]" />
+                    <div className="relative w-full">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                        <input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Buscar por inspector, ubicación..."
+                            className="bg-[#0F1219] border border-[#1E2A3B] !pl-[44px] rounded-xl pr-4 py-2.5 text-white text-xs font-bold outline-none focus:border-amber-500/50 w-full placeholder:text-[#334155]"
+                        />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <select value={filterTemplate} onChange={(e) => setFilterTemplate(e.target.value)}
@@ -164,7 +178,7 @@ export default function InspectionsListPage() {
 
                 {/* List */}
                 {loading ? (
-                    <div className="text-center py-12 text-[#64748B]">Cargando inspecciones...</div>
+                    <InspectionListSkeleton />
                 ) : filtered.length === 0 ? (
                     <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-12 text-center">
                         <ClipboardList className="w-10 h-10 text-[#334155] mx-auto mb-3" />

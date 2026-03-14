@@ -111,12 +111,12 @@ export default function InvestigationsPage() {
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Search */}
                     <div className="relative flex-1 min-w-[240px]">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar por trabajador, ciudad, investigador…"
-                            className="w-full bg-[#1A1F2E] border border-[#1E2A3B] rounded-xl pl-9 pr-4 py-2.5 text-white text-xs font-bold placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
+                            className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl !pl-[44px] pr-4 py-2.5 text-white text-xs font-bold placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
                         />
                     </div>
                     {/* Status filter */}

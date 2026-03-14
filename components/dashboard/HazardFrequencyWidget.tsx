@@ -160,9 +160,9 @@ export default function HazardFrequencyWidget({ hazardData, loading = false }: H
 function HeroCard({ item }: { item: HazardEntry }) {
     const Icon = getIcon(item.label);
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-red-900/40 bg-[#1A1F2E] p-8 min-h-[400px] flex flex-col justify-between">
+        <div className="relative group overflow-hidden rounded-2xl border border-red-500/20 bg-[#1A1F2E] p-8 min-h-[400px] flex flex-col justify-between shadow-[0_0_50px_-12px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_-12px_rgba(239,68,68,0.45)] hover:border-red-500/40 transition-all duration-500">
             {/* Radial Gradient Background */}
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,_#7F1D1D44_0%,_#1A1F2E_60%)]" />
+            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,_#7F1D1D44_0%,_#1A1F2E_70%)] opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
 
             <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-8">

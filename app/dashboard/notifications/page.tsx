@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { NotificationListSkeleton } from "@/components/dashboard/skeletons";
 import {
     db,
     type LocalIncident,
@@ -501,9 +502,7 @@ export default function NotificationsPage() {
                     </div>
 
                     {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="w-6 h-6 border-2 border-[#F59E0B] border-t-transparent rounded-full animate-spin" />
-                        </div>
+                        <NotificationListSkeleton count={4} />
                     ) : incidents.length === 0 ? (
                         <div className="px-4 py-12 text-center">
                             <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-3" />

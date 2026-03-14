@@ -147,13 +147,15 @@ export default function DashboardPage() {
 
                     {/* Search */}
                     <div className="relative max-w-xs w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         <input
+                            id="search"
                             type="text"
                             placeholder="Buscar empresa, incidente..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-[#0F1219] border border-[#1E2A3B] rounded-xl pl-9 pr-4 py-2.5 text-white text-xs font-bold outline-none focus:border-amber-500/50 w-full placeholder:text-[#334155]"
+                            className="bg-[#0F1219] border border-[#1E2A3B] !pl-[44px] rounded-xl pr-4 py-2.5 text-white text-xs font-bold outline-none focus:border-amber-500/50 w-full placeholder:text-[#334155]"
+                            aria-label="Buscar empresa, incidente..."
                         />
                     </div>
                 </div>

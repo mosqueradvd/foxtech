@@ -19,8 +19,13 @@ import {
     Building2,
     Info,
     Loader2,
+    Edit3,
+    Search,
+    ChevronLeft,
+    ChevronRight,
+    Filter,
 } from "lucide-react";
-import { supabase, type Event } from "@/lib/supabase";
+import { supabase, type Event, type Inspection } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import {
     generateRUCExport,
@@ -153,9 +158,10 @@ function DownloadButton({
 
 function SeverityBadge({ severity }: { severity?: string }) {
     const map: Record<string, { label: string; cls: string }> = {
-        leve: { label: "Leve", cls: "bg-green-800/30 text-green-400 border-green-700/30" },
-        grave: { label: "Grave", cls: "bg-yellow-800/30 text-yellow-400 border-yellow-700/30" },
-        mortal: { label: "Mortal", cls: "bg-red-800/30 text-red-400 border-red-700/30" },
+        mortal: { label: "Mortal", cls: "bg-red-800/20 text-red-500 border-red-500/20" },
+        grave: { label: "Grave", cls: "bg-red-800/20 text-red-500 border-red-500/20" },
+        leve: { label: "Leve", cls: "bg-green-800/20 text-green-500 border-green-500/20" },
+        incidente: { label: "Incidente", cls: "bg-amber-800/20 text-amber-500 border-amber-500/20" },
     };
     const s = map[severity ?? ""] ?? {
         label: "Sin clasificar",
@@ -185,14 +191,27 @@ export default function ExportsPage() {
 
     // Download states
     const [rucState, setRucState] = useState<DownloadState>({ status: "idle" });
-    const [pdfStates, setPdfStates] = useState<Record<string, DownloadState>>({});
+    const [pdfStates, setPdfStates] = useState<Record<string, DownloadState>>({ });
+
+    // Profile edit state
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+    // PDF Center states
+    const [inspections, setInspections] = useState<Inspection[]>([]);
+    const [pdfFilter, setPdfFilter] = useState < "all" | "incidentes" | "inspecciones" > ("all");
+    const [pdfPage, setPdfPage] = useState(1);
+    const pageSize = 5;
 
     // Load Supabase incidents + saved profile
     useEffect(() => {
         setIsMounted(true);
         const loadData = async () => {
-            const { data } = await supabase.from("incidents").select("*").order("created_at", { ascending: false });
-            setIncidents(data || []);
+            const [{ data: incData }, { data: insData }] = await Promise.all([
+                supabase.from("incidents").select("*").order("created_at", { ascending: false }),
+                supabase.from("inspections").select("*").order("created_at", { ascending: false })
+            ]);
+            setIncidents(incData || []);
+            setInspections((insData as Inspection[]) || []);
             setLoading(false);
         };
         loadData();
@@ -310,6 +329,47 @@ export default function ExportsPage() {
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
     ];
 
+    // ── Reports logic for PDF Center ──
+    const allReports = [
+        ...incidents.map(inc => ({
+            id: inc.id,
+            type: 'incident' as const,
+            title: inc.event_type === 'accidente' ? 'Accidente de Trabajo' : 'Incidente Laboral',
+            dateStr: new Date(inc.event_date || inc.created_at || "").toLocaleDateString("es-CO", { day: '2-digit', month: 'short', year: 'numeric' }),
+            location: inc.location_name || "",
+            tag: <SeverityBadge severity={
+                inc.classification === 'ACCIDENTE_TRABAJO_FATAL' ? 'mortal' :
+                inc.classification === 'ACCIDENTE_TRABAJO_GRAVE' ? 'grave' :
+                inc.classification?.startsWith('ACCIDENTE_TRABAJO') ? 'leve' : 'incidente'
+            } />,
+            status: inc.classification_status === "classified" ? "Sincronizado" : "Sin Clasificar",
+            onDownload: () => handlePDFExport(inc)
+        })),
+        ...inspections.map(ins => ({
+            id: ins.id,
+            type: 'inspection' as const,
+            title: ins.template_name || "Inspección",
+            dateStr: new Date(ins.created_at || "").toLocaleDateString("es-CO", { day: '2-digit', month: 'short', year: 'numeric' }),
+            location: ins.location_name || "",
+            tag: <span className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded border border-blue-800/30 font-bold uppercase tracking-tight">Inspección</span>,
+            status: ins.status === "cerrada" ? "Cerrada" : "Abierta",
+            onDownload: () => alert("La descarga de PDF de inspecciones estará disponible pronto.")
+        }))
+    ].sort((a, b) => {
+        const dateA = new Date(a.id.includes("-") ? (incidents.find(i => i.id === a.id)?.created_at || "") : (inspections.find(i => i.id === a.id)?.created_at || ""));
+        const dateB = new Date(b.id.includes("-") ? (incidents.find(i => i.id === b.id)?.created_at || "") : (inspections.find(i => i.id === b.id)?.created_at || ""));
+        return dateB.getTime() - dateA.getTime();
+    });
+
+    const filteredReports = allReports.filter(r => {
+        if (pdfFilter === "all") return true;
+        if (pdfFilter === "incidentes") return r.type === "incident";
+        if (pdfFilter === "inspecciones") return r.type === "inspection";
+        return true;
+    });
+
+    const paginatedReports = filteredReports.slice((pdfPage - 1) * pageSize, pdfPage * pageSize);
+
     if (!isMounted) return null;
 
     return (
@@ -326,298 +386,361 @@ export default function ExportsPage() {
                 </div>
             </DashboardHeader>
 
-            <div className="flex-1 max-w-4xl mx-auto px-8 py-8 space-y-8 w-full overflow-y-auto">
+            <div className="flex-1 max-w-7xl mx-auto px-10 py-10 space-y-8 w-full overflow-y-auto">
 
-                {/* ── Company Profile ── */}
-                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6">
-                    <SectionHeader
-                        icon={<Building2 className="w-5 h-5" />}
-                        title="Perfil de la Empresa"
-                        subtitle="Se usa en todos los documentos exportados. Se guarda en este navegador."
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                        {[
-                            { key: "consultantName", label: "Empresa Consultora (En encabezado)", placeholder: "Ej. FOXTECH SAS" },
-                            { key: "name", label: "Razón Social Cliente", placeholder: "Acero del Norte S.A." },
-                            { key: "nit", label: "NIT (sin DV)", placeholder: "900123456" },
-                            { key: "arl", label: "ARL", placeholder: "Positiva Compañía de Seguros" },
-                            { key: "ciiu", label: "Código CIIU (4 dígitos)", placeholder: "2410" },
-                            { key: "address", label: "Dirección", placeholder: "Calle 13 # 37-20" },
-                            { key: "city", label: "Municipio", placeholder: "Bogotá D.C." },
-                        ].map(({ key, label, placeholder }) => (
-                            <div key={key}>
-                                <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5 block">
-                                    {label}
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder={placeholder}
-                                    value={(profile as unknown as Record<string, string>)[key]}
-                                    onChange={(e) =>
-                                        setProfile((p) => ({ ...p, [key]: e.target.value }))
-                                    }
-                                    className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold placeholder:text-[#334155] outline-none focus:border-[#F59E0B] transition-colors"
-                                />
+                {/* ── Compact Company Profile ── */}
+                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden shadow-xl">
+                    <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center text-[#F59E0B] shadow-inner">
+                                <Building2 className="w-6 h-6" />
                             </div>
-                        ))}
-                        <div>
-                            <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5 block">
-                                Clase de Riesgo (1–5)
-                            </label>
-                            <select
-                                value={profile.riskClass}
-                                onChange={(e) =>
-                                    setProfile((p) => ({ ...p, riskClass: Number(e.target.value) }))
-                                }
-                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B] transition-colors"
-                            >
-                                {[1, 2, 3, 4, 5].map((r) => (
-                                    <option key={r} value={r}>
-                                        Clase {r}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={saveProfile}
-                        className={[
-                            "mt-5 h-10 px-6 rounded-xl font-bold text-sm transition-all cursor-pointer",
-                            profileSaved
-                                ? "bg-green-700 text-white"
-                                : "bg-[#F59E0B]/15 border border-[#F59E0B]/30 text-[#F59E0B] hover:bg-[#F59E0B]/25",
-                        ].join(" ")}
-                    >
-                        {profileSaved ? "✓ Guardado" : "Guardar Perfil"}
-                    </button>
-                </section>
-
-                {/* ── Excel RUC/CCS ── */}
-                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6">
-                    <SectionHeader
-                        icon={<FileSpreadsheet className="w-5 h-5" />}
-                        title="Archivo Plano RUC — CCS"
-                        subtitle="Formato exacto para el Consejo Colombiano de Seguridad (K=240.000)"
-                    />
-
-                    <InfoBadge>
-                        El archivo Excel generado cumple el formato CCS: 21 columnas exactas, hoja "Accidentalidad",
-                        indicadores calculados en tiempo real (IF, IS, TA) con K=240.000. Sin formato de celda
-                        (CCS rechaza archivos con colores o negrita).
-                    </InfoBadge>
-
-                    {/* Period selector */}
-                    <div className="grid grid-cols-4 gap-4 mt-5">
-                        <div>
-                            <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5 block">
-                                Mes
-                            </label>
-                            <div className="relative">
-                                <select
-                                    value={rucMonth}
-                                    onChange={(e) => setRucMonth(Number(e.target.value))}
-                                    className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B] appearance-none pr-8"
-                                >
-                                    {MONTHS.map((m, i) => (
-                                        <option key={i} value={i + 1}>{m}</option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#64748B] pointer-events-none" />
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <h2 className="text-white font-black text-lg tracking-tight uppercase leading-none">
+                                        {profile.name || "Empresa No Configurada"}
+                                    </h2>
+                                    <span className="px-2 py-0.5 rounded bg-[#F59E0B]/10 border border-[#F59E0B]/20 text-[#F59E0B] text-[10px] font-black tracking-widest uppercase">
+                                        NIT: {profile.nit || "—"}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-4 mt-2 text-[#64748B] text-[11px] font-bold uppercase tracking-wider">
+                                    <span className="flex items-center gap-1">
+                                        <Info className="w-3 h-3" />
+                                        {profile.address || "Dirección no definida"} · {profile.city}
+                                    </span>
+                                    <span className="w-1 h-1 rounded-full bg-[#1E2A3B]" />
+                                    <span>CIIU: {profile.ciiu || "—"}</span>
+                                    <span className="w-1 h-1 rounded-full bg-[#1E2A3B]" />
+                                    <span>Riesgo {profile.riskClass}</span>
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5 block">
-                                Año
-                            </label>
-                            <input
-                                type="number"
-                                min="2020"
-                                max="2099"
-                                value={rucYear}
-                                onChange={(e) => setRucYear(Number(e.target.value))}
-                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5 block">
-                                N.° Trabajadores
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={rucWorkersCount}
-                                onChange={(e) => setRucWorkersCount(Number(e.target.value))}
-                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1.5 block">
-                                HHT (horas hombre)
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={rucHHT}
-                                onChange={(e) => setRucHHT(Number(e.target.value))}
-                                className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
-                            />
-                        </div>
+
+                        <button
+                            onClick={() => setIsEditingProfile(!isEditingProfile)}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-[#F59E0B]/10 border border-[#F59E0B]/20 text-[#F59E0B] text-xs font-black rounded-xl hover:bg-[#F59E0B]/20 transition-all cursor-pointer uppercase tracking-tight group"
+                        >
+                            <Edit3 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                            Editar Perfil
+                        </button>
                     </div>
 
-                    {/* Summary for selected period */}
-                    <div className="mt-4 p-5 bg-[#141824] rounded-xl border border-[#334155] shadow-inner font-mono text-[11px] text-[#94A3B8] leading-relaxed">
-                        <div className="flex justify-between items-center mb-3">
-                            <span className="font-bold text-white uppercase tracking-wider">
-                                PERÍODO: {MONTHS[rucMonth - 1]} {rucYear}
-                            </span>
-                            <span className="text-[#64748B] tracking-wider text-[10px]">
-                                {rucWorkersCount} TRAB. | K=240000 | {rucHHT.toLocaleString("es-CO")} HHT
-                            </span>
-                        </div>
-
-                        <div className="h-px bg-[#334155] w-full mb-3"></div>
-
-                        <div className="grid grid-cols-2 gap-x-12 gap-y-1">
-                            <div className="flex justify-between"><span>Accidentes de trabajo mortales:</span> <span className="text-white">{rucStats.atFatal}</span></div>
-                            <div className="flex justify-between"><span>AT con incapacidad:</span> <span className="text-white">{atConIncap}</span></div>
-                            <div className="flex justify-between"><span>AT sin incapacidad:</span> <span className="text-white">{atSinIncap}</span></div>
-                            <div className="flex justify-between font-bold"><span>Total AT:</span> <span className="text-[#F59E0B]">{rucStats.totalAT}</span></div>
-                            <div className="flex justify-between"><span>Días de incapacidad AT:</span> <span className="text-white">{rucStats.totalDisabilityDays}</span></div>
-                            <div className="flex justify-between"><span>Días cargados AT:</span> <span className="text-[#F97316]">{rucStats.diasCargadosAT}</span></div>
-                            <div className="flex justify-between"><span>Enfermedades laborales:</span> <span className="text-white">{rucPeriodEvents.filter(e => e.classification === "ENFERMEDAD_LABORAL").length}</span></div>
-                            <div className="flex justify-between"><span>Incidentes / Casi-accidentes:</span> <span className="text-white">{rucStats.incidentes}</span></div>
-                        </div>
-
-                        <div className="h-px bg-[#334155] w-full my-3"></div>
-
-                        <div className="grid grid-cols-2 gap-x-12 gap-y-1">
-                            <div className="flex justify-between"><span>IF (Índice de Frecuencia):</span> <span className="text-emerald-400 font-bold">{rucStats.IF.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span>IS (Índice de Severidad):</span> <span className="text-emerald-400 font-bold">{rucStats.IS.toFixed(2)}</span></div>
-                            <div className="flex justify-between"><span>Tasa de Accidentalidad:</span> <span className="text-white font-bold">{rucStats.TA.toFixed(2)}%</span></div>
-                            <div className="flex justify-between"></div>
-                        </div>
-                    </div>
-
-                    <div className="mt-4">
-                        <DownloadButton
-                            onClick={handleRUCExport}
-                            state={rucState}
-                            label="Exportar RUC (Excel)"
-                            icon={<Download className="w-4 h-4" />}
-                        />
-                    </div>
-                </section>
-
-                {/* ── PDF by event ── */}
-                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6">
-                    <SectionHeader
-                        icon={<FileText className="w-5 h-5" />}
-                        title="Reporte PDF por Evento"
-                        subtitle="Informe individual para ARL, EPS o auditoría SG-SST"
-                    />
-
-                    <InfoBadge>
-                        El PDF incluye datos del empleador, trabajador, clasificación del accidente y lesión.
-                        Generado 100% en el navegador — funciona sin conexión.
-                        Todos los eventos aparecen aquí; los clasificados incluyen los datos completos del Módulo 2.
-                    </InfoBadge>
-
-                    {loading ? (
-                        <div className="mt-6 flex items-center justify-center gap-2 py-12 text-[#64748B]">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span className="text-sm">Cargando eventos...</span>
-                        </div>
-                    ) : incidents.length === 0 ? (
-                        <div className="mt-6 text-center py-12 text-[#64748B]">
-                            <AlertTriangle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No hay eventos registrados aún.</p>
-                        </div>
-                    ) : (
-                        <div className="mt-5 space-y-3">
-                            {incidents.map((inc) => {
-                                const pdfState = pdfStates[inc.id] ?? { status: "idle" };
-                                const classified = inc.classification_status === "classified";
-                                const dateStr = new Date(inc.created_at || new Date().toISOString()).toLocaleDateString("es-CO", {
-                                    day: "2-digit", month: "short", year: "numeric",
-                                });
-                                const eventTypeMap: Record<string, string> = {
-                                    casi_accidente: "Casi Accidente",
-                                    accidente: "Accidente de Trabajo",
-                                    condicion_insegura: "Condición Insegura",
-                                };
-
-                                return (
-                                    <div
-                                        key={inc.id}
-                                        className="flex items-center gap-6 p-4 bg-[#0F1219] rounded-xl border border-[#1E2A3B]"
-                                    >
-                                        {/* Icon */}
-                                        <div className={[
-                                            "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0",
-                                            inc.event_type === "accidente"
-                                                ? "bg-red-800/30 text-red-400"
-                                                : inc.event_type === "casi_accidente"
-                                                    ? "bg-yellow-800/30 text-yellow-400"
-                                                    : "bg-blue-800/30 text-blue-400",
-                                        ].join(" ")}>
-                                            <AlertTriangle className="w-4 h-4" />
-                                        </div>
-
-                                        {/* Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-white font-semibold text-sm truncate">
-                                                {eventTypeMap[inc.event_type ?? ""] ?? "Evento"} — {dateStr}
-                                            </p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <p className="text-[#64748B] text-xs truncate">
-                                                    {inc.description?.slice(0, 60) || inc.location_name || "Sin descripción"}
-                                                </p>
-                                                {/* En lugar de usar severity (usado para DB Dexie), mapeamos clasificación Supabase */}
-                                                <SeverityBadge severity={
-                                                    inc.classification === "ACCIDENTE_TRABAJO_FATAL" ? "mortal"
-                                                        : inc.classification === "ACCIDENTE_TRABAJO_GRAVE" ? "grave"
-                                                            : inc.classification === "ACCIDENTE_TRABAJO" ? "leve"
-                                                                : undefined
-                                                } />
-                                                {classified && (
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-blue-800/30 text-blue-400 border-blue-700/30">
-                                                        Clasificado
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Download button */}
-                                        <button
-                                            onClick={() => handlePDFExport(inc)}
-                                            disabled={pdfState.status === "generating"}
-                                            className={[
-                                                "flex items-center gap-1.5 px-4 h-9 rounded-xl text-xs font-bold transition-all flex-shrink-0 cursor-pointer",
-                                                pdfState.status === "done"
-                                                    ? "bg-green-700 text-white"
-                                                    : pdfState.status === "error"
-                                                        ? "bg-red-800 text-white"
-                                                        : "bg-[#334155] text-white hover:bg-[#475569]",
-                                            ].join(" ")}
-                                        >
-                                            {pdfState.status === "generating" ? (
-                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                            ) : pdfState.status === "done" ? (
-                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                            ) : (
-                                                <Download className="w-3.5 h-3.5" />
-                                            )}
-                                            {pdfState.status === "done" ? "Listo" : "PDF"}
-                                        </button>
+                    {/* Inline Edit Form */}
+                    {isEditingProfile && (
+                        <div className="border-t border-[#1E2A3B] bg-[#0F1219]/50 p-6 animate-in slide-in-from-top duration-300">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {[
+                                    { key: "consultantName", label: "Empresa Consultora", placeholder: "Ej. FOXTECH SAS" },
+                                    { key: "name", label: "Razón Social Cliente", placeholder: "Acero del Norte S.A." },
+                                    { key: "nit", label: "NIT (sin DV)", placeholder: "900123456" },
+                                    { key: "arl", label: "ARL", placeholder: "Positiva" },
+                                    { key: "ciiu", label: "Código CIIU", placeholder: "2410" },
+                                    { key: "address", label: "Dirección", placeholder: "Calle 13 # 37-20" },
+                                    { key: "city", label: "Municipio", placeholder: "Bogotá D.C." },
+                                ].map(({ key, label, placeholder }) => (
+                                    <div key={key}>
+                                        <label className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-2 block">
+                                            {label}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder={placeholder}
+                                            value={(profile as any)[key]}
+                                            onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
+                                            className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2 text-white text-xs font-bold placeholder:text-[#334155] outline-none focus:border-[#F59E0B] transition-colors"
+                                        />
                                     </div>
-                                );
-                            })}
+                                ))}
+                                <div>
+                                    <label className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-2 block">
+                                        Riesgo (1–5)
+                                    </label>
+                                    <select
+                                        value={profile.riskClass}
+                                        onChange={(e) => setProfile((p) => ({ ...p, riskClass: Number(e.target.value) }))}
+                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-[#F59E0B] transition-colors"
+                                    >
+                                        {[1, 2, 3, 4, 5].map((r) => (
+                                            <option key={r} value={r}>Clase {r}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex justify-end mt-6">
+                                <button
+                                    onClick={() => {
+                                        saveProfile();
+                                        setIsEditingProfile(false);
+                                    }}
+                                    className="px-8 py-2.5 bg-[#F59E0B] text-black text-xs font-black rounded-xl hover:bg-amber-400 transition-colors uppercase tracking-tight shadow-lg shadow-amber-500/10"
+                                >
+                                    Guardar Cambios
+                                </button>
+                            </div>
                         </div>
                     )}
                 </section>
+
+                {/* ── Main Grid ── */}
+                <div className="grid grid-cols-[400px_1fr] gap-10 items-start">
+
+                    {/* COLUMNA IZQUIERDA: RUC–CCS */}
+                    <div className="space-y-6">
+                        <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-3 opacity-5">
+                                <FileSpreadsheet className="w-20 h-20 text-white" />
+                            </div>
+                            
+                            <SectionHeader
+                                icon={<FileSpreadsheet className="w-5 h-5" />}
+                                title="Archivo Plano RUC — CCS"
+                                subtitle="Configuración mensual de indicadores SST"
+                            />
+
+                            <InfoBadge>
+                                Este generador cumple con los estándares regulatorios del CCS para la presentación mensual de indicadores de SST.
+                            </InfoBadge>
+
+                            <div className="grid grid-cols-2 gap-4 mt-6">
+                                <div>
+                                    <label className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-2 block">Mes</label>
+                                    <div className="relative">
+                                        <select
+                                            value={rucMonth}
+                                            onChange={(e) => setRucMonth(Number(e.target.value))}
+                                            className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B] appearance-none"
+                                        >
+                                            {MONTHS.map((m, i) => (
+                                                <option key={i} value={i + 1}>{m}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-2 block">Año</label>
+                                    <input
+                                        type="number"
+                                        value={rucYear}
+                                        onChange={(e) => setRucYear(Number(e.target.value))}
+                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-2 block">Trabajadores</label>
+                                    <input
+                                        type="number"
+                                        value={rucWorkersCount}
+                                        onChange={(e) => setRucWorkersCount(Number(e.target.value))}
+                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-2 block">HHT</label>
+                                    <input
+                                        type="number"
+                                        value={rucHHT}
+                                        onChange={(e) => setRucHHT(Number(e.target.value))}
+                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="mt-6 p-5 bg-[#0F1219] rounded-2xl border border-[#1E2A3B] space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-white font-black text-[10px] uppercase tracking-widest">
+                                        Resumen Periodo: {MONTHS[rucMonth - 1].slice(0, 3)} {rucYear}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 text-[9px] font-black">
+                                        K=240.000
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    {[
+                                        { label: "AT Mortales", val: rucStats.atFatal },
+                                        { label: "AT con Incapacidad", val: atConIncap },
+                                        { label: "Indice Frecuencia (IF)", val: rucStats.IF.toFixed(2), highlight: true },
+                                        { label: "Indice Severidad (IS)", val: rucStats.IS.toFixed(2), highlight: true },
+                                    ].map((s) => (
+                                        <div key={s.label} className="flex items-center justify-between text-[11px] font-bold">
+                                            <span className="text-[#64748B] uppercase tracking-wider">{s.label}</span>
+                                            <span className={s.highlight ? "text-emerald-400" : "text-white"}>{s.val}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mt-8">
+                                <DownloadButton
+                                    onClick={handleRUCExport}
+                                    state={rucState}
+                                    label="Exportar RUC (Excel)"
+                                    icon={<FileSpreadsheet className="w-4 h-4" />}
+                                />
+                            </div>
+                        </section>
+                    </div>
+
+                    {/* COLUMNA DERECHA: Centro de Reportes PDF */}
+                    <div className="space-y-6">
+                        <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden">
+                            <div className="px-6 py-4 border-b border-[#1E2A3B] flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center text-[#F59E0B]">
+                                        <FileText className="w-4 h-4" />
+                                    </div>
+                                    <h2 className="text-white font-black text-lg uppercase tracking-tight">Centro de Reportes PDF</h2>
+                                </div>
+
+                                <div className="flex gap-2 p-1.5 bg-[#0F1219] rounded-xl border border-[#1E2A3B]">
+                                    {[
+                                        { id: "all", label: "TODOS" },
+                                        { id: "incidentes", label: "INCIDENTES" },
+                                        { id: "inspecciones", label: "INSPECCIONES" },
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => {
+                                                setPdfFilter(tab.id as any);
+                                                setPdfPage(1);
+                                            }}
+                                            className={[
+                                                "px-6 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all cursor-pointer",
+                                                pdfFilter === tab.id
+                                                    ? "bg-[#F59E0B] text-black shadow-lg shadow-amber-500/10"
+                                                    : "text-[#64748B] hover:text-white"
+                                            ].join(" ")}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-[1fr_120px_180px_80px] px-8 py-5 border-b border-[#1E2A3B] bg-[#1E2A3B]/10">
+                                <span className="text-[#64748B] text-sm font-black uppercase tracking-widest">Evento / Fecha</span>
+                                <span className="text-[#64748B] text-sm font-black uppercase tracking-widest text-center">Severidad</span>
+                                <span className="text-[#64748B] text-sm font-black uppercase tracking-widest text-center">Estado</span>
+                                <span className="text-[#64748B] text-sm font-black uppercase tracking-widest text-right">Acción</span>
+                            </div>
+
+                            {/* Reports List */}
+                            <div className="flex-1 overflow-y-auto min-h-[500px]">
+                                {loading ? (
+                                    <div className="flex items-center justify-center py-20 text-[#64748B]">
+                                        <Loader2 className="w-8 h-8 animate-spin" />
+                                    </div>
+                                ) : paginatedReports.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-20 text-[#64748B]">
+                                        <FileText className="w-12 h-12 mb-4 opacity-20" />
+                                        <p className="text-sm font-bold uppercase tracking-widest">No se encontraron reportes</p>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-[#1E2A3B]">
+                                {paginatedReports.map((report) => (
+                                    <div key={report.id} className="grid grid-cols-[1fr_120px_180px_80px] items-center px-8 py-6 hover:bg-white/[0.02] transition-colors group">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-white font-bold text-lg truncate uppercase tracking-tight mb-1.5">
+                                                {report.title}
+                                            </p>
+                                            <p className="text-[#64748B] text-sm font-bold uppercase tracking-wider">
+                                                {report.dateStr} — <span className="opacity-60">{report.location || (report.type === 'incident' ? 'Incidente' : 'Inspección')}</span>
+                                            </p>
+                                        </div>
+
+                                        <div className="flex justify-center">
+                                            {report.tag}
+                                        </div>
+
+                                        <div className="flex items-center justify-center gap-3">
+                                            <span className={`w-2.5 h-2.5 rounded-full ${
+                                                report.status === 'Sincronizado' || report.status === 'Cerrada' ? 'bg-emerald-400' :
+                                                report.status === 'Sin Clasificar' || report.status === 'Abierta' ? 'bg-amber-400' : 'bg-[#64748B]'
+                                            }`} />
+                                            <span className={`text-sm font-black uppercase tracking-widest ${
+                                                report.status === 'Sincronizado' || report.status === 'Cerrada' ? 'text-emerald-400' :
+                                                report.status === 'Sin Clasificar' || report.status === 'Abierta' ? 'text-amber-400' : 'text-[#64748B]'
+                                            }`}>
+                                                {report.status}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex justify-end">
+                                            <button
+                                                onClick={() => report.onDownload()}
+                                                disabled={pdfStates[report.id]?.status === "generating"}
+                                                className="w-10 h-10 flex items-center justify-center bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] rounded-xl hover:border-[#F59E0B]/50 hover:text-[#F59E0B] transition-all cursor-pointer disabled:opacity-50"
+                                            >
+                                                {pdfStates[report.id]?.status === "generating" ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <Download className="w-4 h-4" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer / Pagination */}
+                    <div className="px-10 py-8 bg-[#1E2A3B]/30 border-t border-[#1E2A3B] flex items-center justify-between">
+                        <span className="text-[#64748B] text-sm font-black uppercase tracking-widest">
+                            MOSTRANDO {filteredReports.length > 0 ? (pdfPage - 1) * pageSize + 1 : 0} DE {filteredReports.length} REPORTES
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                disabled={pdfPage === 1}
+                                onClick={() => setPdfPage(p => p - 1)}
+                                className="w-10 h-10 rounded-xl bg-[#0F1219] border border-[#1E2A3B] flex items-center justify-center text-white disabled:opacity-30 hover:border-[#F59E0B]/30 transition-all cursor-pointer"
+                            >
+                                <ChevronLeft className="w-5 h-5" />
+                            </button>
+                            <button
+                                disabled={pdfPage >= Math.ceil(filteredReports.length / pageSize)}
+                                onClick={() => setPdfPage(p => p + 1)}
+                                className="w-10 h-10 rounded-xl bg-[#0F1219] border border-[#1E2A3B] flex items-center justify-center text-white disabled:opacity-30 hover:border-[#F59E0B]/30 transition-all cursor-pointer"
+                            >
+                                <ChevronRight className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                </section>
             </div>
         </div>
+    </div>
+</div>
+    );
+}
+
+// ── Helpers ──
+
+function ClipboardList({ className }: { className?: string }) {
+    return (
+        <svg
+            className={className}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            <path d="M12 11h4" />
+            <path d="M12 16h4" />
+            <path d="M8 11h.01" />
+            <path d="M8 16h.01" />
+        </svg>
     );
 }
