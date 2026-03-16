@@ -24,6 +24,8 @@ import {
     BarChart2,
 } from "lucide-react";
 
+import { useActiveCompany } from "@/hooks/useActiveCompany";
+
 import { supabase, type Incident, type Company } from "@/lib/supabase";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -53,6 +55,7 @@ export default function DashboardPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 6;
+    const { activeCompany } = useActiveCompany();
 
     // Derived KPIs
     const thisMonth = incidents.filter((i) => {
@@ -66,23 +69,22 @@ export default function DashboardPage() {
 
     // Load data from Supabase
     const fetchData = useCallback(async () => {
+        if (!activeCompany) return;
         setLoading(true);
-        const [{ data: incData }, { data: compData }] = await Promise.all([
-            supabase.from("incidents").select("*").order("created_at", { ascending: false }).limit(20),
-            supabase.from("companies").select("*"),
+        const [{ data: incData }] = await Promise.all([
+            supabase.from("incidents").select("*").eq("company_id", activeCompany.id).order("created_at", { ascending: false }).limit(20)
         ]);
 
-        const companiesMap = Object.fromEntries((compData ?? []).map((c) => [c.id, c]));
         const enriched = (incData ?? []).map((inc: Incident) => ({
             ...inc,
-            company_name: companiesMap[inc.company_id ?? ""]?.name ?? "Duflo",
-            company_location: companiesMap[inc.company_id ?? ""]?.location ?? "",
+            company_name: activeCompany.razon_social,
+            company_location: activeCompany.direccion,
         }));
 
         setIncidents(enriched);
-        setCompanies(compData ?? []);
+        setCompanies([activeCompany as Company]);
         setLoading(false);
-    }, []);
+    }, [activeCompany]);
 
     useEffect(() => {
         fetchData();
@@ -129,7 +131,7 @@ export default function DashboardPage() {
             lat,
             lng,
             type: incAny.event_type || incAny.type || "Desconocido",
-            company: incAny.company_name || incAny.company || "Duflo",
+            company: activeCompany?.razon_social || "Empresa",
         };
     });
 
@@ -221,9 +223,9 @@ export default function DashboardPage() {
                                     className="text-[#64748B] hover:text-white transition-colors"
                                     title="Actualizar"
                                 >
-                                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                                    <RefreshCw className={`w-4 h-4 cursor-pointer ${loading ? "animate-spin" : ""}`} />
                                 </button>
-                                <button className="text-[#F59E0B] text-xs font-bold hover:underline">
+                                <button className="text-[#F59E0B] text-xs font-bold hover:underline cursor-pointer">
                                     VER TODOS
                                 </button>
                             </div>

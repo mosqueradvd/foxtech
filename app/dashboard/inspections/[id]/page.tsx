@@ -227,7 +227,7 @@ export default function InspectionDetailPage() {
                         }
                     </div>
                     <p className="text-[#64748B] text-xs mt-0.5 truncate">
-                        {inspection.inspector_name}{company ? ` · ${company.name}` : ""}
+                        {inspection.inspector_name}{company ? ` · ${company.razon_social}` : ""}
                         {" · "}{new Date(inspection.created_at ?? "").toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                 </div>

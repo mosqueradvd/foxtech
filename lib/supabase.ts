@@ -14,12 +14,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export type Company = {
     id: string;
     consultant_id?: string;
-    name: string;
-    industry?: string;
-    location?: string;
+    razon_social: string;
     nit?: string;
+    nit_dv?: string;
+    ciiu?: string;
+    clase_riesgo?: number;
+    direccion?: string;
+    municipio?: string;
+    departamento?: string;
+    representante_legal?: string;
+    telefono_empresa?: string;
+    email_empresa?: string;
     arl?: string;
     employee_count?: number;
+    hht_annual?: number;
+    is_active?: boolean;
     created_at?: string;
 };
 

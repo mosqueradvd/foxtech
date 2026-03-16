@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import HazardFrequencyWidget from "@/components/dashboard/HazardFrequencyWidget";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useActiveCompany } from "@/hooks/useActiveCompany";
 import {
     LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -75,11 +76,10 @@ const StatCard = ({
                 {value < 0.01 && value > 0 ? "<0.01" : value.toLocaleString("es-CO", { maximumFractionDigits: 2 })}
                 <span className="text-base ml-0.5">{unit}</span>
             </div>
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${
-                trendIsUp 
-                    ? "bg-red-500/10 text-red-500 border-red-500/20" 
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${trendIsUp
+                    ? "bg-red-500/10 text-red-500 border-red-500/20"
                     : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-            }`}>
+                }`}>
                 {trendIsUp ? <TrendingUp className="w-2 h-2" /> : <TrendingDown className="w-2 h-2" />}
                 {trend}%
             </div>
@@ -261,7 +261,8 @@ export function StatsPage() {
 
     // Filters
     const [period, setPeriod] = useState<PeriodPreset>("year");
-    const [selectedCompanyId, setSelectedCompanyId] = useState<string>("all");
+    const { activeCompany } = useActiveCompany();
+    const selectedCompanyId = activeCompany?.id || "all";
     const [cieFilter, setCieFilter] = useState<"Todos" | "CIE-10" | "CIE-11">("Todos");
     const [hhtOverride, setHhtOverride] = useState<string>("");
     const [workerOverride, setWorkerOverride] = useState<string>("");
@@ -406,7 +407,7 @@ export function StatsPage() {
             });
         });
 
-        const filtered = Array.from(statsMap.values()).filter(x => 
+        const filtered = Array.from(statsMap.values()).filter(x =>
             cieFilter === "Todos" || x.version === cieFilter
         ).sort((a, b) => b.totalDays - a.totalDays);
 
@@ -450,7 +451,7 @@ export function StatsPage() {
 
         // Read profile from local storage or use defaults + db fields
         const saved = typeof window !== "undefined" ? localStorage.getItem("foxtech_company_profile") : null;
-        let profile = { name: selectedCompany?.name || "Empresa", nit: selectedCompany?.nit || "0000", city: selectedCompany?.location || "Bogotá", ciiu: "0000", riskClass: 3 };
+        let profile = { name: selectedCompany?.razon_social || "Empresa", nit: selectedCompany?.nit || "0000", city: selectedCompany?.direccion || "Bogotá", ciiu: "0000", riskClass: 3 };
         if (saved) {
             try { profile = { ...profile, ...JSON.parse(saved) }; } catch { }
         }
@@ -511,25 +512,8 @@ export function StatsPage() {
                         </div>
                     </div>
 
-                    {/* Company Filter */}
-                    <div>
-                        <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
-                            Empresa
-                        </label>
-                        <div className="relative">
-                            <select
-                                value={selectedCompanyId}
-                                onChange={(e) => setSelectedCompanyId(e.target.value)}
-                                className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10 min-w-[200px]"
-                            >
-                                <option value="all">TODAS LAS ENTIDADES</option>
-                                {companies.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>
-                                ))}
-                            </select>
-                            <ChevronDown className="w-4 h-4 text-[#64748B] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-                    </div>
+                    {/* Tools Config / Optional slot */}
+                    <div className="flex-1" />
 
                     {/* Workers Filter */}
                     <div>
@@ -548,320 +532,318 @@ export function StatsPage() {
             </DashboardHeader>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                    {/* ── KPI SECTION ── */}
-                    <div id="kpi-section" className="grid grid-cols-4 gap-6">
-                        <StatCard
-                            title="IF"
-                            subtitle="Frecuencia"
-                            value={stats.IF}
-                            trend={2.4}
-                            trendIsUp={false}
-                            color="#F59E0B"
-                            icon={Activity}
-                        />
-                        <StatCard
-                            title="IS"
-                            subtitle="Severidad"
-                            value={stats.IS}
-                            trend={1.2}
-                            trendIsUp={true}
-                            color="#06B6D4"
-                            icon={Zap}
-                        />
-                        <StatCard
-                            title="TA"
-                            subtitle="Accidentalidad"
-                            value={stats.TA}
-                            unit="%"
-                            trend={0.5}
-                            trendIsUp={false}
-                            color="#8B5CF6"
-                            icon={TrendingUp}
-                        />
-                        <StatCard
-                            title="MORTALIDAD"
-                            subtitle="Tasa Fatal"
-                            value={stats.mortalidadPct}
-                            unit="%"
-                            trend={0}
-                            trendIsUp={false}
-                            color="#EF4444"
-                            icon={Skull}
-                        />
-                    </div>
+                {/* ── KPI SECTION ── */}
+                <div id="kpi-section" className="grid grid-cols-4 gap-6">
+                    <StatCard
+                        title="IF"
+                        subtitle="Frecuencia"
+                        value={stats.IF}
+                        trend={2.4}
+                        trendIsUp={false}
+                        color="#F59E0B"
+                        icon={Activity}
+                    />
+                    <StatCard
+                        title="IS"
+                        subtitle="Severidad"
+                        value={stats.IS}
+                        trend={1.2}
+                        trendIsUp={true}
+                        color="#06B6D4"
+                        icon={Zap}
+                    />
+                    <StatCard
+                        title="TA"
+                        subtitle="Accidentalidad"
+                        value={stats.TA}
+                        unit="%"
+                        trend={0.5}
+                        trendIsUp={false}
+                        color="#8B5CF6"
+                        icon={TrendingUp}
+                    />
+                    <StatCard
+                        title="MORTALIDAD"
+                        subtitle="Tasa Fatal"
+                        value={stats.mortalidadPct}
+                        unit="%"
+                        trend={0}
+                        trendIsUp={false}
+                        color="#EF4444"
+                        icon={Skull}
+                    />
+                </div>
 
-                    {/* ── SUMMARY CHIPS ── */}
-                    <div id="summary-section" className="flex flex-wrap gap-4">
-                        <SummaryChip label="AT" value={stats.totalAT} color="amber" />
-                        <SummaryChip label="AT GRAVE" value={stats.atGrave} color="orange" />
-                        <SummaryChip label="AT FATAL" value={stats.atFatal} color="red" />
-                        <SummaryChip label="INCIDENTES REPORTADOS" value={stats.incidentes} color="blue" />
-                    </div>
+                {/* ── SUMMARY CHIPS ── */}
+                <div id="summary-section" className="flex flex-wrap gap-4">
+                    <SummaryChip label="AT" value={stats.totalAT} color="amber" />
+                    <SummaryChip label="AT GRAVE" value={stats.atGrave} color="orange" />
+                    <SummaryChip label="AT FATAL" value={stats.atFatal} color="red" />
+                    <SummaryChip label="INCIDENTES REPORTADOS" value={stats.incidentes} color="blue" />
+                </div>
 
-                    {/* ── CENTRAL SECTION: TREND CHART & ABSENTEEISM ── */}
-                    <div id="central-section" className="grid grid-cols-12 gap-6">
-                        {/* Trend Area Chart (65%) */}
-                        <div className="col-span-8 bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-8">
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Tendencia de Accidentalidad</h3>
-                                    <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 12 meses</p>
+                {/* ── CENTRAL SECTION: TREND CHART & ABSENTEEISM ── */}
+                <div id="central-section" className="grid grid-cols-12 gap-6">
+                    {/* Trend Area Chart (65%) */}
+                    <div className="col-span-8 bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-8">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Tendencia de Accidentalidad</h3>
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 12 meses</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                                    <span className="text-[#64748B] text-[10px] font-black uppercase">AT</span>
                                 </div>
-                                <div className="flex gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                                        <span className="text-[#64748B] text-[10px] font-black uppercase">AT</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                                        <span className="text-[#64748B] text-[10px] font-black uppercase">INCIDENTES</span>
-                                    </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                                    <span className="text-[#64748B] text-[10px] font-black uppercase">INCIDENTES</span>
                                 </div>
                             </div>
-
-                            <div className="h-64 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={trendData}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" vertical={false} />
-                                        <XAxis 
-                                            dataKey="label" 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }}
-                                            dy={10}
-                                        />
-                                        <YAxis 
-                                            axisLine={false} 
-                                            tickLine={false} 
-                                            tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }}
-                                        />
-                                        <Tooltip 
-                                            contentStyle={{ backgroundColor: '#1A1F2E', border: '1px solid #1E2A3B', borderRadius: '12px' }}
-                                            itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }}
-                                        />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="at" 
-                                            stroke="#F59E0B" 
-                                            strokeWidth={3} 
-                                            dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }} 
-                                            activeDot={{ r: 6, strokeWidth: 0 }}
-                                        />
-                                        <Line 
-                                            type="monotone" 
-                                            dataKey="incidentes" 
-                                            stroke="#3B82F6" 
-                                            strokeWidth={3} 
-                                            dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }} 
-                                            activeDot={{ r: 6, strokeWidth: 0 }}
-                                        />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
                         </div>
 
-                        {/* Absenteeism (35%) */}
-                        <div className="col-span-4 flex flex-col gap-6">
-                            <AbsenteeismCard 
-                                label="Laboral (AT + EL)" 
-                                value={ausentismoLaboral} 
-                                color="orange"
-                            />
-                            <AbsenteeismCard 
-                                label="Común (EG)" 
-                                value={ausentismoComun} 
-                                color="blue"
-                            />
-                        </div>
-                    </div>
-                    {/* ── GTC-45 HAZARD DISTRIBUTION ── */}
-                    <div id="gtc45-section">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Distribución por Peligros GTC-45</h3>
-                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Análisis de criticidad por centro de trabajo</p>
-                            </div>
-                        </div>
-                        <HazardFrequencyWidget hazardData={hazardData} loading={loading} />
-                    </div>
-
-                    {/* ── DIAGNOSIS ABSENTEEISM TABLE ── */}
-                    <div id="diagnosis-absenteeism-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
-                        <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
-                            <div>
-                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Ausentismo por Diagnóstico</h3>
-                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Top diagnósticos (CIE-10 / CIE-11)</p>
-                            </div>
-                            
-                            {/* Toggle filter */}
-                            <div className="flex bg-[#0F1219] p-1 rounded-lg border border-[#1E2A3B]">
-                                {["Todos", "CIE-10", "CIE-11"].map(f => (
-                                    <button
-                                        key={f}
-                                        onClick={() => setCieFilter(f as any)}
-                                        className={`px-4 py-1.5 rounded-md text-[10px] font-black tracking-widest uppercase transition-all ${
-                                            cieFilter === f 
-                                            ? "bg-[#1E2A3B] text-white shadow" 
-                                            : "text-[#64748B] hover:text-white"
-                                        }`}
-                                    >
-                                        {f}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-[#0F1219]">
-                                    <tr>
-                                        {["Código CIE", "Descripción del Diagnóstico", "Nº Incapacidades", "Días Perdidos", "% Ausentismo"].map((h) => (
-                                            <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
-                                                {h}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {absenteeismByDiagnosis.list.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="px-8 py-12 text-center text-[#64748B] font-bold italic">
-                                                No hay registros de diagnósticos para incapacidades mayores a cero
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        absenteeismByDiagnosis.list.map((row) => {
-                                            const pct = absenteeismByDiagnosis.totalDaysAll > 0 
-                                                ? (row.totalDays / absenteeismByDiagnosis.totalDaysAll) * 100 
-                                                : 0;
-                                            return (
-                                                <tr key={row.code} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors group">
-                                                    <td className="px-8 py-4">
-                                                        <span className="bg-white/5 text-amber-500 px-2 py-1 rounded border border-amber-500/20 font-black tracking-wider">
-                                                            {row.code}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-8 py-4 text-white font-bold">{row.description}
-                                                        <span className="ml-2 text-[9px] text-[#64748B] uppercase px-1.5 py-0.5 border border-[#334155] rounded">{row.version}</span>
-                                                    </td>
-                                                    <td className="px-8 py-4 text-[#94A3B8] font-bold text-center w-32">{row.incapacitiesCount}</td>
-                                                    <td className="px-8 py-4 text-red-400 font-bold text-center w-32">{row.totalDays}</td>
-                                                    <td className="px-8 py-4 w-48">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="flex-1 h-1.5 bg-[#0F1219] rounded-full overflow-hidden">
-                                                                <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
-                                                            </div>
-                                                            <span className="text-white font-black">{pct.toFixed(1)}%</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={trendData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" vertical={false} />
+                                    <XAxis
+                                        dataKey="label"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }}
+                                        dy={10}
+                                    />
+                                    <YAxis
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }}
+                                    />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: '#1A1F2E', border: '1px solid #1E2A3B', borderRadius: '12px' }}
+                                        itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="at"
+                                        stroke="#F59E0B"
+                                        strokeWidth={3}
+                                        dot={{ fill: '#F59E0B', strokeWidth: 2, r: 4 }}
+                                        activeDot={{ r: 6, strokeWidth: 0 }}
+                                    />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="incidentes"
+                                        stroke="#3B82F6"
+                                        strokeWidth={3}
+                                        dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
+                                        activeDot={{ r: 6, strokeWidth: 0 }}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* ── EVENT DETAILS TABLE ── */}
-                    <div id="table-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden">
-                        <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
-                            <div>
-                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Registro de Eventos</h3>
-                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Período Seleccionado</p>
-                            </div>
-                            <span className="bg-white/5 text-[#64748B] px-3 py-1 rounded-full text-[10px] font-black border border-white/10 uppercase">
-                                {filteredEvents.length} Totales
-                            </span>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-[#0F1219]">
-                                    <tr>
-                                        {["Fecha", "Trabajador", "Clasificación", "Días", "Estado"].map((h) => (
-                                            <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
-                                                {h}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredEvents.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} className="px-8 py-12 text-center text-[#64748B] font-bold italic">
-                                                No se encontraron eventos en este período
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filteredEvents.slice(0, 10).map((ev) => (
-                                            <tr key={ev.id} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] cursor-pointer group transition-colors" onClick={() => router.push(`/dashboard/events/${ev.id}`)}>
-                                                <td className="px-8 py-4 text-white text-xs font-bold whitespace-nowrap">{(ev.event_date || "").slice(0, 10)}</td>
-                                                <td className="px-8 py-4 text-[#94A3B8] text-xs font-bold">{ev.worker_name || "Sin asignar"}</td>
-                                                <td className="px-8 py-4">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                        ev.classification === "ACCIDENTE_TRABAJO_FATAL" ? "bg-red-500/10 text-red-500" :
-                                                        ev.classification === "ACCIDENTE_TRABAJO_GRAVE" ? "bg-orange-500/10 text-orange-400" :
-                                                        ev.classification === "ACCIDENTE_TRABAJO" ? "bg-amber-500/10 text-amber-500" :
-                                                        "bg-blue-500/10 text-blue-400"
-                                                    }`}>
-                                                        {ev.classification?.replace(/_/g, " ") || "INCIDENTE"}
-                                                    </span>
-                                                </td>
-                                                <td className="px-8 py-4 text-white text-xs font-bold">{ev.disability_days || 0}</td>
-                                                <td className="px-8 py-4">
-                                                    <div className={`w-2 h-2 rounded-full ${ev.classification_status === 'classified' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* ── RUC HISTORY ──────────────────────────────────────────────────────────── */}
-                    <div id="ruc-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
-                        <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
-                            <div>
-                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Historial Consolidado RUC / CCS</h3>
-                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 5 años operativos</p>
-                            </div>
-                            <button
-                                onClick={handleExportHistorical}
-                                disabled={exportState.status === "generating"}
-                                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 text-black font-black text-[10px] tracking-widest uppercase hover:bg-emerald-400 transition-all disabled:opacity-50"
-                            >
-                                <Download className="w-4 h-4" />
-                                {exportState.status === "generating" ? "Exportando..." : "Exportar Excel"}
-                            </button>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-[#0F1219]">
-                                    <tr>
-                                        {["Año", "AT Fatal", "AT Incap", "Total AT", "Días", "IF", "IS"].map((h) => (
-                                            <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
-                                                {h}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {historicalData.map((row) => (
-                                        <tr key={row.year} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors">
-                                            <td className="px-8 py-4 text-white font-black">{row.year}</td>
-                                            <td className="px-8 py-4 text-[#EF4444] font-bold">{row.atMortales}</td>
-                                            <td className="px-8 py-4 text-[#94A3B8]">{row.atConIncap}</td>
-                                            <td className="px-8 py-4 text-amber-500 font-bold">{row.totalAT}</td>
-                                            <td className="px-8 py-4 text-[#94A3B8]">{row.diasIncap}</td>
-                                            <td className="px-8 py-4 text-white font-black">{row.IF.toFixed(2)}</td>
-                                            <td className="px-8 py-4 text-white font-black">{row.IS.toFixed(2)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                    {/* Absenteeism (35%) */}
+                    <div className="col-span-4 flex flex-col gap-6">
+                        <AbsenteeismCard
+                            label="Laboral (AT + EL)"
+                            value={ausentismoLaboral}
+                            color="orange"
+                        />
+                        <AbsenteeismCard
+                            label="Común (EG)"
+                            value={ausentismoComun}
+                            color="blue"
+                        />
                     </div>
                 </div>
+                {/* ── GTC-45 HAZARD DISTRIBUTION ── */}
+                <div id="gtc45-section">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Distribución por Peligros GTC-45</h3>
+                            <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Análisis de criticidad por centro de trabajo</p>
+                        </div>
+                    </div>
+                    <HazardFrequencyWidget hazardData={hazardData} loading={loading} />
+                </div>
+
+                {/* ── DIAGNOSIS ABSENTEEISM TABLE ── */}
+                <div id="diagnosis-absenteeism-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
+                    <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                        <div>
+                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Ausentismo por Diagnóstico</h3>
+                            <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Top diagnósticos (CIE-10 / CIE-11)</p>
+                        </div>
+
+                        {/* Toggle filter */}
+                        <div className="flex bg-[#0F1219] p-1 rounded-lg border border-[#1E2A3B]">
+                            {["Todos", "CIE-10", "CIE-11"].map(f => (
+                                <button
+                                    key={f}
+                                    onClick={() => setCieFilter(f as any)}
+                                    className={`px-4 py-1.5 rounded-md text-[10px] font-black tracking-widest uppercase transition-all ${cieFilter === f
+                                            ? "bg-[#1E2A3B] text-white shadow"
+                                            : "text-[#64748B] hover:text-white"
+                                        }`}
+                                >
+                                    {f}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-[#0F1219]">
+                                <tr>
+                                    {["Código CIE", "Descripción del Diagnóstico", "Nº Incapacidades", "Días Perdidos", "% Ausentismo"].map((h) => (
+                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {absenteeismByDiagnosis.list.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-8 py-12 text-center text-[#64748B] font-bold italic">
+                                            No hay registros de diagnósticos para incapacidades mayores a cero
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    absenteeismByDiagnosis.list.map((row) => {
+                                        const pct = absenteeismByDiagnosis.totalDaysAll > 0
+                                            ? (row.totalDays / absenteeismByDiagnosis.totalDaysAll) * 100
+                                            : 0;
+                                        return (
+                                            <tr key={row.code} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors group">
+                                                <td className="px-8 py-4">
+                                                    <span className="bg-white/5 text-amber-500 px-2 py-1 rounded border border-amber-500/20 font-black tracking-wider">
+                                                        {row.code}
+                                                    </span>
+                                                </td>
+                                                <td className="px-8 py-4 text-white font-bold">{row.description}
+                                                    <span className="ml-2 text-[9px] text-[#64748B] uppercase px-1.5 py-0.5 border border-[#334155] rounded">{row.version}</span>
+                                                </td>
+                                                <td className="px-8 py-4 text-[#94A3B8] font-bold text-center w-32">{row.incapacitiesCount}</td>
+                                                <td className="px-8 py-4 text-red-400 font-bold text-center w-32">{row.totalDays}</td>
+                                                <td className="px-8 py-4 w-48">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex-1 h-1.5 bg-[#0F1219] rounded-full overflow-hidden">
+                                                            <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                                                        </div>
+                                                        <span className="text-white font-black">{pct.toFixed(1)}%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* ── EVENT DETAILS TABLE ── */}
+                <div id="table-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden">
+                    <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                        <div>
+                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Registro de Eventos</h3>
+                            <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Período Seleccionado</p>
+                        </div>
+                        <span className="bg-white/5 text-[#64748B] px-3 py-1 rounded-full text-[10px] font-black border border-white/10 uppercase">
+                            {filteredEvents.length} Totales
+                        </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-[#0F1219]">
+                                <tr>
+                                    {["Fecha", "Trabajador", "Clasificación", "Días", "Estado"].map((h) => (
+                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredEvents.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="px-8 py-12 text-center text-[#64748B] font-bold italic">
+                                            No se encontraron eventos en este período
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredEvents.slice(0, 10).map((ev) => (
+                                        <tr key={ev.id} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] cursor-pointer group transition-colors" onClick={() => router.push(`/dashboard/events/${ev.id}`)}>
+                                            <td className="px-8 py-4 text-white text-xs font-bold whitespace-nowrap">{(ev.event_date || "").slice(0, 10)}</td>
+                                            <td className="px-8 py-4 text-[#94A3B8] text-xs font-bold">{ev.worker_name || "Sin asignar"}</td>
+                                            <td className="px-8 py-4">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${ev.classification === "ACCIDENTE_TRABAJO_FATAL" ? "bg-red-500/10 text-red-500" :
+                                                        ev.classification === "ACCIDENTE_TRABAJO_GRAVE" ? "bg-orange-500/10 text-orange-400" :
+                                                            ev.classification === "ACCIDENTE_TRABAJO" ? "bg-amber-500/10 text-amber-500" :
+                                                                "bg-blue-500/10 text-blue-400"
+                                                    }`}>
+                                                    {ev.classification?.replace(/_/g, " ") || "INCIDENTE"}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-4 text-white text-xs font-bold">{ev.disability_days || 0}</td>
+                                            <td className="px-8 py-4">
+                                                <div className={`w-2 h-2 rounded-full ${ev.classification_status === 'classified' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* ── RUC HISTORY ──────────────────────────────────────────────────────────── */}
+                <div id="ruc-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
+                    <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                        <div>
+                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Historial Consolidado RUC / CCS</h3>
+                            <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 5 años operativos</p>
+                        </div>
+                        <button
+                            onClick={handleExportHistorical}
+                            disabled={exportState.status === "generating"}
+                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 text-black font-black text-[10px] tracking-widest uppercase hover:bg-emerald-400 transition-all disabled:opacity-50"
+                        >
+                            <Download className="w-4 h-4" />
+                            {exportState.status === "generating" ? "Exportando..." : "Exportar Excel"}
+                        </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-[#0F1219]">
+                                <tr>
+                                    {["Año", "AT Fatal", "AT Incap", "Total AT", "Días", "IF", "IS"].map((h) => (
+                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                            {h}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {historicalData.map((row) => (
+                                    <tr key={row.year} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors">
+                                        <td className="px-8 py-4 text-white font-black">{row.year}</td>
+                                        <td className="px-8 py-4 text-[#EF4444] font-bold">{row.atMortales}</td>
+                                        <td className="px-8 py-4 text-[#94A3B8]">{row.atConIncap}</td>
+                                        <td className="px-8 py-4 text-amber-500 font-bold">{row.totalAT}</td>
+                                        <td className="px-8 py-4 text-[#94A3B8]">{row.diasIncap}</td>
+                                        <td className="px-8 py-4 text-white font-black">{row.IF.toFixed(2)}</td>
+                                        <td className="px-8 py-4 text-white font-black">{row.IS.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 

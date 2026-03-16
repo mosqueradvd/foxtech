@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { supabase, type Investigation, type Event } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useActiveCompany } from "@/hooks/useActiveCompany";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -47,8 +48,10 @@ export default function InvestigationsPage() {
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [search, setSearch] = useState("");
+    const { activeCompany } = useActiveCompany();
 
     const fetchData = useCallback(async () => {
+        if (!activeCompany) return;
         setLoading(true);
         const { data: invs } = await supabase
             .from("investigations")
@@ -60,21 +63,23 @@ export default function InvestigationsPage() {
             const { data: evs } = await supabase
                 .from("incidents")
                 .select("id, worker_name, reported_by_name, description, classification, event_date, created_at, company_id, event_city, event_department")
-                .in("id", ids);
+                .in("id", ids)
+                .eq("company_id", activeCompany.id);
             const evMap: Record<string, Event> = {};
             (evs ?? []).forEach((e) => { evMap[e.id] = e as Event; });
             setEvents(evMap);
         }
         setInvestigations((invs ?? []) as Investigation[]);
         setLoading(false);
-    }, []);
+    }, [activeCompany]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
     const filtered = investigations.filter((inv) => {
+        const ev = events[inv.incident_id];
+        if (!ev) return false; // Filter out if not in this company
         if (filterStatus !== "all" && inv.status !== filterStatus) return false;
         if (search) {
-            const ev = events[inv.incident_id];
             const q = search.toLowerCase();
             return (
                 (ev?.worker_name ?? "").toLowerCase().includes(q) ||

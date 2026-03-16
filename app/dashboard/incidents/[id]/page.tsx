@@ -142,7 +142,7 @@ export default function IncidentDetailPage() {
                     </h1>
                     <p className="text-[#64748B] text-xs flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3" />
-                        {incident.company?.name ?? "—"} · {incident.company?.location ?? ""}
+                        {incident.company?.razon_social ?? "—"} · {incident.company?.direccion ?? ""}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -214,8 +214,8 @@ export default function IncidentDetailPage() {
                         {[
                             ["Tipo de evento", EVENT_LABELS[incident.event_type ?? ""] ?? "—"],
                             ["Descripción", incident.description ?? "Sin descripción"],
-                            ["Empresa", incident.company?.name ?? "—"],
-                            ["Ubicación", incident.company?.location ?? "—"],
+                            ["Empresa", incident.company?.razon_social ?? "—"],
+                            ["Ubicación", incident.company?.direccion ?? "—"],
                         ].map(([label, value]) => (
                             <div key={label} className="px-5 py-3 flex gap-4">
                                 <span className="text-[#64748B] text-sm font-medium w-36 flex-shrink-0">{label}</span>

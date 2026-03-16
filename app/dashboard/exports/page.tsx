@@ -33,6 +33,7 @@ import {
     type WorkCenterConfig,
 } from "@/lib/exports/ruc-export";
 import { calcIndicators } from "@/lib/stats/indicators";
+import { useActiveCompany } from "@/hooks/useActiveCompany";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,7 @@ export default function ExportsPage() {
     const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
     const [profileSaved, setProfileSaved] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
+    const { activeCompany } = useActiveCompany();
 
     // RUC export period
     const [rucYear, setRucYear] = useState(new Date().getFullYear());
@@ -206,9 +208,10 @@ export default function ExportsPage() {
     useEffect(() => {
         setIsMounted(true);
         const loadData = async () => {
+            if (!activeCompany) return;
             const [{ data: incData }, { data: insData }] = await Promise.all([
-                supabase.from("incidents").select("*").order("created_at", { ascending: false }),
-                supabase.from("inspections").select("*").order("created_at", { ascending: false })
+                supabase.from("incidents").select("*").eq("company_id", activeCompany.id).order("created_at", { ascending: false }),
+                supabase.from("inspections").select("*").eq("company_id", activeCompany.id).order("created_at", { ascending: false })
             ]);
             setIncidents(incData || []);
             setInspections((insData as Inspection[]) || []);
@@ -219,10 +222,26 @@ export default function ExportsPage() {
         const saved = typeof window !== "undefined"
             ? localStorage.getItem(COMPANY_PROFILE_KEY)
             : null;
+        let savedProfile: Partial<CompanyProfile> = {};
         if (saved) {
-            try { setProfile(JSON.parse(saved) as CompanyProfile); } catch { /* ignore */ }
+            try { savedProfile = JSON.parse(saved) as Partial<CompanyProfile>; } catch { /* ignore */ }
         }
-    }, []);
+
+        if (activeCompany) {
+            setProfile((p) => ({
+                ...p,
+                ...savedProfile,
+                name: activeCompany.razon_social || p.name,
+                nit: activeCompany.nit || p.nit,
+                riskClass: activeCompany.clase_riesgo || p.riskClass,
+                ciiu: activeCompany.ciiu || p.ciiu,
+                address: activeCompany.direccion || p.address,
+                city: activeCompany.municipio || p.city,
+            }));
+        } else if (Object.keys(savedProfile).length > 0) {
+            setProfile((p) => ({ ...p, ...savedProfile }));
+        }
+    }, [activeCompany]);
 
     // Classified accidents for PDF section
     const classifiedAccidents = incidents.filter(

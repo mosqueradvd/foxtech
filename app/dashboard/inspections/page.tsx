@@ -11,6 +11,7 @@ import {
     CheckCircle2, Clock, ChevronRight, Plus, Filter
 } from "lucide-react";
 import { supabase, type Inspection, type Company } from "@/lib/supabase";
+import { useActiveCompany } from "@/hooks/useActiveCompany";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { INSPECTION_TEMPLATES } from "@/lib/inspection-templates";
@@ -53,18 +54,21 @@ export default function InspectionsListPage() {
     const [search, setSearch] = useState("");
     const [filterTemplate, setFilterTemplate] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
-    const [filterCompany, setFilterCompany] = useState("all");
+    const { activeCompany } = useActiveCompany();
 
     const load = useCallback(async () => {
+        if (!activeCompany) return;
         setLoading(true);
-        const [{ data: insp }, { data: cos }] = await Promise.all([
-            supabase.from("inspections").select("*").order("created_at", { ascending: false }),
-            supabase.from("companies").select("id, name"),
-        ]);
+        const { data: insp } = await supabase
+            .from("inspections")
+            .select("*")
+            .eq("company_id", activeCompany.id)
+            .order("created_at", { ascending: false });
+        
         setInspections((insp ?? []) as Inspection[]);
-        setCompanies((cos ?? []) as Company[]);
+        setCompanies([activeCompany as Company]);
         setLoading(false);
-    }, []);
+    }, [activeCompany]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -77,8 +81,7 @@ export default function InspectionsListPage() {
             (i.location_name ?? "").toLowerCase().includes(q);
         const matchTemplate = filterTemplate === "all" || i.template_id === filterTemplate;
         const matchStatus = filterStatus === "all" || i.status === filterStatus;
-        const matchCompany = filterCompany === "all" || i.company_id === filterCompany;
-        return matchText && matchTemplate && matchStatus && matchCompany;
+        return matchText && matchTemplate && matchStatus;
     });
 
     // ── Counters ───────────────────────────────────────────────────────────────
@@ -86,7 +89,7 @@ export default function InspectionsListPage() {
     const critCount = inspections.filter((i) => (i.score_percent ?? 100) < 60).length;
 
     // ── Company name helper ────────────────────────────────────────────────────
-    const companyName = (id?: string) => companies.find((c) => c.id === id)?.name ?? "—";
+    const companyName = (id?: string) => companies.find((c) => c.id === id)?.razon_social ?? "—";
 
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -167,11 +170,6 @@ export default function InspectionsListPage() {
                             <option value="all">Todos los estados</option>
                             <option value="abierta">Abiertas</option>
                             <option value="cerrada">Cerradas</option>
-                        </select>
-                        <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)}
-                            className="bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]/50 appearance-none">
-                            <option value="all">Todas las empresas</option>
-                            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
                 </div>

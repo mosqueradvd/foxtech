@@ -15,7 +15,8 @@
 }
 
 @theme {
-  --font-display: "Space Grotesk", sans-serif;
+  --font-display: var(--font-outfit);
+  --font-sans: var(--font-space-grotesk);
 
   --color-bg: #1A1F2E;
   --color-surface: #252B3B;
@@ -43,7 +44,7 @@ html {
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

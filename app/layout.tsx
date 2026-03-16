@@ -3,7 +3,7 @@
  * Root layout — Space Grotesk font, PWA meta tags, OfflineBanner, sync init, route preloader
  */
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Space_Grotesk, Outfit } from "next/font/google";
 import "./globals.css";
 import { OfflineBanner } from "@/components/forms/OfflineBanner";
 import { SyncInitializer } from "@/components/SyncInitializer";
@@ -13,6 +13,12 @@ import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
   display: "swap",
 });
 
@@ -44,7 +50,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={spaceGrotesk.variable}>
+    <html lang="es" className={`${spaceGrotesk.variable} ${outfit.variable}`}>
       <body className="font-[var(--font-space-grotesk)] bg-[#1A1F2E] text-white antialiased">
         {/* Registers public/sw.js (Workbox custom service worker) */}
         <ServiceWorkerRegistrar />

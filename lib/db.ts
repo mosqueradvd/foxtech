@@ -96,6 +96,8 @@ export interface LocalIncident {
     diagnosis_date?: string;
     /** N.° FURAT (Module 4) */
     furat_number?: string;
+    /** Toggle to include description in Mintrabajo PDF */
+    mintrabajo_include_description?: boolean;
 }
 
 export interface LocalInspection {

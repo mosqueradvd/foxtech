@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useActiveCompany } from "@/hooks/useActiveCompany";
 import { NotificationListSkeleton } from "@/components/dashboard/skeletons";
 import {
     db,
@@ -157,6 +158,7 @@ export default function NotificationsPage() {
     const [incidents, setIncidents] = useState<EnrichedIncident[]>([]);
     const [pendingCount, setPendingCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const { activeCompany } = useActiveCompany();
 
     // Selected incident
     const [selected, setSelected] = useState<EnrichedIncident | null>(null);
@@ -181,6 +183,7 @@ export default function NotificationsPage() {
     ]);
     const [radicado, setRadicado] = useState("");
     const [markingType, setMarkingType] = useState<NotificationType | null>(null);
+    const [includeDescription, setIncludeDescription] = useState<boolean>(true);
 
     // Download states
     const [dlMintra, setDlMintra] = useState<DownloadState>("idle");
@@ -190,6 +193,7 @@ export default function NotificationsPage() {
     // ── Load incidents ──────────────────────────────────────────────────────
 
     const loadData = useCallback(async () => {
+        if (!activeCompany) return;
         setLoading(true);
         try {
             // Module 2 saves to Supabase with classification = "ACCIDENTE_TRABAJO_GRAVE" | "ACCIDENTE_TRABAJO_FATAL"
@@ -197,6 +201,7 @@ export default function NotificationsPage() {
                 .from("incidents")
                 .select("*, investigations(event_narrative)")
                 .in("classification", ["ACCIDENTE_TRABAJO_GRAVE", "ACCIDENTE_TRABAJO_FATAL"])
+                .eq("company_id", activeCompany.id)
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -245,7 +250,10 @@ export default function NotificationsPage() {
                     const finalInc = {
                         ...inc,
                         diagnosis_date: localInc?.diagnosis_date || inc.diagnosis_date,
-                        furat_number: localInc?.furat_number || inc.furat_number
+                        furat_number: localInc?.furat_number || inc.furat_number,
+                        mintrabajo_include_description: localInc?.mintrabajo_include_description !== undefined 
+                            ? localInc.mintrabajo_include_description 
+                            : (inc.mintrabajo_include_description !== undefined ? inc.mintrabajo_include_description : true)
                     };
 
                     const days = businessDaysRemaining(finalInc.created_at, finalInc.diagnosis_date);
@@ -275,43 +283,67 @@ export default function NotificationsPage() {
             );
             setPendingCount(enriched.filter((i) => !notifiedIds.has(i.id)).length);
 
-            if (!selected && enriched.length > 0) {
-                setSelected(enriched[0]);
-            } else if (selected) {
-                const refreshed = enriched.find((e) => e.id === selected.id) ?? null;
-                setSelected(refreshed);
-                if (refreshed) {
-                    setFuratNumber(refreshed.furat_number || "");
-                    setDiagnosisDate(refreshed.diagnosis_date || "");
-                }
-            }
         } finally {
             setLoading(false);
         }
-    }, [selected]);
+    }, [activeCompany]);
 
 
     useEffect(() => {
         loadData();
 
-        // Load company profile from localStorage (shared with exports page)
-        const saved: any = loadCompanyProfile();
-        if (saved && saved.name) {
-            setCompany((c) => ({
-                ...c,
-                name: saved.name || c.name,
-                nitWithDv: saved.nit || c.nitWithDv,
-                city: saved.city || c.city,
-                department: saved.department || c.department,
-                address: saved.address || c.address,
+        if (activeCompany) {
+            setCompany({
+                name: activeCompany.razon_social || "",
+                nitWithDv: activeCompany.nit_dv ? `${activeCompany.nit}-${activeCompany.nit_dv}` : activeCompany.nit || "",
+                city: activeCompany.municipio || "Bogotá D.C.",
+                department: activeCompany.departamento || "Bogotá D.C.",
+                address: activeCompany.direccion || "",
                 legalRep: {
-                    name: saved.consultantName || c.legalRep.name,
-                    phone: c.legalRep.phone,
-                    email: c.legalRep.email
-                },
-            }));
+                    name: activeCompany.representante_legal || "",
+                    phone: activeCompany.telefono_empresa || "",
+                    email: activeCompany.email_empresa || ""
+                }
+            });
+        } else {
+            // Load company profile from localStorage (shared with exports page)
+            const saved: any = loadCompanyProfile();
+            if (saved && saved.name) {
+                setCompany((c) => ({
+                    ...c,
+                    name: saved.name || c.name,
+                    nitWithDv: saved.nit || c.nitWithDv,
+                    city: saved.city || c.city,
+                    department: saved.department || c.department,
+                    address: saved.address || c.address,
+                    legalRep: {
+                        name: saved.consultantName || c.legalRep.name,
+                        phone: c.legalRep.phone,
+                        email: c.legalRep.email
+                    },
+                }));
+            }
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [activeCompany, loadData]);
+
+    useEffect(() => {
+        if (incidents.length === 0) return;
+
+        if (!selected) {
+            setSelected(incidents[0]);
+            setFuratNumber(incidents[0].furat_number || "");
+            setDiagnosisDate(incidents[0].diagnosis_date || "");
+            setIncludeDescription(incidents[0].mintrabajo_include_description !== false);
+        } else {
+            const refreshed = incidents.find((e) => e.id === selected.id) ?? null;
+            if (refreshed && refreshed.id !== selected.id) {
+                setSelected(refreshed);
+                setFuratNumber(refreshed.furat_number || "");
+                setDiagnosisDate(refreshed.diagnosis_date || "");
+                setIncludeDescription(refreshed.mintrabajo_include_description !== false);
+            }
+        }
+    }, [incidents, selected]);
 
     // ── Notification marking ────────────────────────────────────────────────
 
@@ -339,6 +371,29 @@ export default function NotificationsPage() {
 
     // ── PDF downloads ─────────────────────────────────────────────────────
 
+    const handleToggleDescription = async () => {
+        const nextValue = !includeDescription;
+        setIncludeDescription(nextValue);
+
+        if (selected) {
+            setIncidents((prev) =>
+                prev.map((inc) =>
+                    inc.id === selected.id
+                        ? { ...inc, mintrabajo_include_description: nextValue }
+                        : inc
+                )
+            );
+
+            await supabase
+                .from("incidents")
+                .update({ mintrabajo_include_description: nextValue })
+                .eq("id", selected.id);
+
+            setSelected({ ...selected, mintrabajo_include_description: nextValue });
+            await saveIncidentDraft(selected.id, { mintrabajo_include_description: nextValue });
+        }
+    };
+
     const handleMintrabajoDownload = async () => {
         if (!selected) return;
         setDlMintra("generating");
@@ -349,6 +404,7 @@ export default function NotificationsPage() {
                 diagnosisDate: diagnosisDate || undefined,
                 furatNumber: furatNumber || undefined,
                 immediateActions: actions.filter((a) => a.description.trim()),
+                includeDescription,
             });
             setDlMintra("done");
             setTimeout(() => setDlMintra("idle"), 3000);
@@ -611,63 +667,50 @@ export default function NotificationsPage() {
                             </div>
 
                             {/* Company profile */}
-                            <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
+                            {/* <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
                                 <div className="flex items-center gap-2 mb-4">
                                     <Building2 className="w-4 h-4 text-[#F59E0B]" />
                                     <h3 className="text-white font-semibold text-sm">Datos de la Empresa</h3>
                                     <span className="text-[#64748B] text-xs">(aparecen en todas las cartas)</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-2 gap-4">
                                     {[
-                                        { label: "Razón Social", key: "name", placeholder: "Acero del Norte S.A." },
-                                        { label: "NIT (con DV)", key: "nitWithDv", placeholder: "900.123.456-7" },
-                                        { label: "Ciudad", key: "city", placeholder: "Bogotá D.C." },
-                                        { label: "Departamento", key: "department", placeholder: "Bogotá D.C." },
-                                        { label: "Dirección (o centro trabajo)", key: "address", placeholder: "Calle 123 #45-67" },
-                                    ].map(({ label, key, placeholder }) => (
-                                        <div key={key}>
-                                            <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1">
+                                        { label: "Razón Social", value: company.name },
+                                        { label: "NIT", value: company.nitWithDv },
+                                        { label: "Ciudad", value: company.city },
+                                        { label: "Departamento", value: company.department },
+                                        { label: "Dirección", value: company.address },
+                                    ].map(({ label, value }) => (
+                                        <div key={label}>
+                                            <label className="block text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-1">
                                                 {label}
                                             </label>
-                                            <input
-                                                type="text"
-                                                placeholder={placeholder}
-                                                value={(company as unknown as Record<string, string>)[key] ?? ""}
-                                                onChange={(e) => setCompany((c) => ({ ...c, [key]: e.target.value }))}
-                                                className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
-                                            />
+                                            <p className="text-white text-sm font-bold">
+                                                {value || <span className="text-[#334155] italic">No registrado</span>}
+                                            </p>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="mt-3">
-                                    <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2">
+                                <div className="mt-4 pt-4 border-t border-[#1E2A3B]/30">
+                                    <p className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-3">
                                         Representante Legal
                                     </p>
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-3 gap-4">
                                         {[
-                                            { label: "Nombre", key: "name", placeholder: "Juan Pérez" },
-                                            { label: "Teléfono", key: "phone", placeholder: "601-123-4567" },
-                                            { label: "Correo", key: "email", placeholder: "legal@empresa.com" },
-                                        ].map(({ label, key, placeholder }) => (
-                                            <div key={key}>
-                                                <label className="block text-[#64748B] text-xs mb-1">{label}</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder={placeholder}
-                                                    value={(company.legalRep as unknown as Record<string, string>)[key] ?? ""}
-                                                    onChange={(e) =>
-                                                        setCompany((c) => ({
-                                                            ...c,
-                                                            legalRep: { ...c.legalRep, [key]: e.target.value },
-                                                        }))
-                                                    }
-                                                    className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
-                                                />
+                                            { label: "Nombre", value: company.legalRep.name },
+                                            { label: "Teléfono", value: company.legalRep.phone },
+                                            { label: "Correo", value: company.legalRep.email },
+                                        ].map(({ label, value }) => (
+                                            <div key={label}>
+                                                <label className="block text-[#64748B] text-[10px] font-bold mb-1">{label}</label>
+                                                <p className="text-white text-xs font-semibold">
+                                                    {value || <span className="text-[#334155] italic">—</span>}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                            </section>
+                            </section> */}
 
                             {/* Mintrabajo extras */}
                             <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
@@ -784,6 +827,29 @@ export default function NotificationsPage() {
                                             <p className="text-white text-xs font-bold mb-0.5">Ministerio del Trabajo</p>
                                             <p className="text-[#64748B] text-xs">Art. 2.2.4.1.7 Dec. 1072/2015</p>
                                             <p className="text-[#64748B] text-xs">Plazo: 2 días hábiles</p>
+                                        </div>
+                                        {/* Toggle Include Description */}
+                                        <div className="border-t border-b border-[#1E2A3B]/30 py-2 my-1">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-white text-xs font-semibold">Incluir descripción</span>
+                                                <button
+                                                    onClick={handleToggleDescription}
+                                                    className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${
+                                                        includeDescription ? "bg-[#F59E0B]" : "bg-[#1E2A3B]"
+                                                    }`}
+                                                >
+                                                    <div
+                                                        className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
+                                                            includeDescription ? "left-4.5" : "left-0.5"
+                                                        }`}
+                                                    />
+                                                </button>
+                                            </div>
+                                            <p className="text-[#64748B] text-[10px] mt-1 leading-tight">
+                                                {includeDescription
+                                                    ? "La carta incluirá el relato del evento"
+                                                    : "La carta solo incluirá datos administrativos"}
+                                            </p>
                                         </div>
                                         {isNotified("mintrabajo") && (
                                             <span className="text-xs text-emerald-400 font-semibold">✓ Ya notificado</span>
