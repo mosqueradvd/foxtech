@@ -326,677 +326,138 @@ export default function NotificationsPage() {
         }
     }, [activeCompany, loadData]);
 
-    useEffect(() => {
-        if (incidents.length === 0) return;
+    const [activeTab, setActiveTab] = useState<"pendientes" | "enviadas" | "archivadas">("pendientes");
 
-        if (!selected) {
-            setSelected(incidents[0]);
-            setFuratNumber(incidents[0].furat_number || "");
-            setDiagnosisDate(incidents[0].diagnosis_date || "");
-            setIncludeDescription(incidents[0].mintrabajo_include_description !== false);
-        } else {
-            const refreshed = incidents.find((e) => e.id === selected.id) ?? null;
-            if (refreshed && refreshed.id !== selected.id) {
-                setSelected(refreshed);
-                setFuratNumber(refreshed.furat_number || "");
-                setDiagnosisDate(refreshed.diagnosis_date || "");
-                setIncludeDescription(refreshed.mintrabajo_include_description !== false);
-            }
-        }
-    }, [incidents, selected]);
-
-    // ── Notification marking ────────────────────────────────────────────────
-
-    const markAsSent = async (type: NotificationType) => {
-        if (!selected) return;
-        setMarkingType(type);
-        try {
-            const notification: LocalNotification = {
-                id: `${selected.id}_${type}`,
-                incident_id: selected.id,
-                type,
-                status: radicado ? "filed" : "sent",
-                sent_at: new Date().toISOString(),
-                filing_number: radicado || undefined,
-                signed_by: company.legalRep.name || undefined,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            };
-            await upsertNotification(notification);
-            await loadData();
-        } finally {
-            setMarkingType(null);
-        }
-    };
-
-    // ── PDF downloads ─────────────────────────────────────────────────────
-
-    const handleToggleDescription = async () => {
-        const nextValue = !includeDescription;
-        setIncludeDescription(nextValue);
-
-        if (selected) {
-            setIncidents((prev) =>
-                prev.map((inc) =>
-                    inc.id === selected.id
-                        ? { ...inc, mintrabajo_include_description: nextValue }
-                        : inc
-                )
-            );
-
-            await supabase
-                .from("incidents")
-                .update({ mintrabajo_include_description: nextValue })
-                .eq("id", selected.id);
-
-            setSelected({ ...selected, mintrabajo_include_description: nextValue });
-            await saveIncidentDraft(selected.id, { mintrabajo_include_description: nextValue });
-        }
-    };
-
-    const handleMintrabajoDownload = async () => {
-        if (!selected) return;
-        setDlMintra("generating");
-        try {
-            await downloadMintrabajoLetterPDF({
-                company,
-                incident: selected,
-                diagnosisDate: diagnosisDate || undefined,
-                furatNumber: furatNumber || undefined,
-                immediateActions: actions.filter((a) => a.description.trim()),
-                includeDescription,
-            });
-            setDlMintra("done");
-            setTimeout(() => setDlMintra("idle"), 3000);
-        } catch {
-            setDlMintra("error");
-            setTimeout(() => setDlMintra("idle"), 4000);
-        }
-    };
-
-    const handleARLDownload = async () => {
-        if (!selected) return;
-        setDlARL("generating");
-        try {
-            await downloadARLLetterPDF(company, selected);
-            setDlARL("done");
-            setTimeout(() => setDlARL("idle"), 3000);
-        } catch {
-            setDlARL("error");
-            setTimeout(() => setDlARL("idle"), 4000);
-        }
-    };
-
-    const handleEPSDownload = async () => {
-        if (!selected) return;
-        setDlEPS("generating");
-        try {
-            await downloadEPSLetterPDF(company, selected);
-            setDlEPS("done");
-            setTimeout(() => setDlEPS("idle"), 3000);
-        } catch {
-            setDlEPS("error");
-            setTimeout(() => setDlEPS("idle"), 4000);
-        }
-    };
-
-    // ── Download button label ─────────────────────────────────────────────
-
-    function dlLabel(state: DownloadState, defaultLabel: string): string {
-        if (state === "generating") return "Generando PDF…";
-        if (state === "done") return "✓ Descargado";
-        if (state === "error") return "Error — Reintentar";
-        return defaultLabel;
-    }
-
-    const isNotified = (type: NotificationType) =>
-        selected?.notifications.some(
-            (n) => n.type === type && (n.status === "sent" || n.status === "filed")
-        ) ?? false;
-
-    // ── Mailto generators ─────────────────────────────────────────────────
-
-    const buildMailtoMintrabajo = () => {
-        if (!selected) return "#";
-
-        // Default mintrabajo emails pattern
-        const dept = company.department?.toLowerCase() || "";
-        let email = "atencionalciudadano@mintrabajo.gov.co";
-        if (dept.includes("bogot") || dept.includes("cundinamarca")) email = "dtbogota@mintrabajo.gov.co";
-        else if (dept.includes("antioquia")) email = "dtantioquia@mintrabajo.gov.co";
-        else if (dept.includes("valle")) email = "dtvalle@mintrabajo.gov.co";
-        else if (dept.includes("atlantico")) email = "dtatlantico@mintrabajo.gov.co";
-
-        const subject = encodeURIComponent(`Notificación AT Grave — ${company.name || "Empresa"} — ${formatDate(selected.created_at)} — Art. 2.2.4.1.7 Dec. 1072/2015`);
-        const body = encodeURIComponent(
-            `Respetados señores,\n\nAdjunto a este correo remitimos la comunicación formal de notificación de Accidente de Trabajo Grave/Mortal, junto con el reporte FURAT correspondiente.\n\nQuedamos atentos a cualquier requerimiento adicional.\n\nCordialmente,\n${company.legalRep?.name || "Representante de SG-SST"}\n${company.name || "Empresa"}`
+    const filteredIncidents = incidents.filter((inc) => {
+        const notifiedMintrabajo = inc.notifications.some(
+            (n) => n.type === "mintrabajo" && (n.status === "sent" || n.status === "filed")
         );
-        return `mailto:${email}?subject=${subject}&body=${body}`;
-    };
+        const isArchived = new Date(inc.created_at).getTime() < Date.now() - 30 * 24 * 60 * 60 * 1000;
 
-    const buildMailtoEPS = () => {
-        if (!selected) return "#";
-
-        const epsName = (selected.worker_eps || "").toLowerCase();
-        let email = "notificaciones@eps.com.co"; // placeholder
-        if (epsName.includes("sura")) email = "notificacioneseps@epssura.com.co";
-        else if (epsName.includes("sanitas")) email = "atencionalciudadano@epssanitas.com";
-        else if (epsName.includes("compensar")) email = "notificaciones@compensarsalud.com";
-        else if (epsName.includes("famisanar")) email = "servicioalcliente@famisanar.com.co";
-
-        const subject = encodeURIComponent(`Reporte AT — ${selected.worker_name || "Trabajador"} — ${formatDate(selected.created_at)} — Art. 62 Dec. Ley 1295/1994`);
-        const body = encodeURIComponent(
-            `Señores EPS ${selected.worker_eps || ""},\n\nAdjuntamos el reporte de Accidente de Trabajo (FURAT) del trabajador ${selected.worker_name || ""} identificado con documento ${selected.worker_id_number || ""}.\n\nCordialmente,\n${company.legalRep?.name || "Representante de SG-SST"}\n${company.name || "Empresa"}`
-        );
-        return `mailto:${email}?subject=${subject}&body=${body}`;
-    };
-
-    const buildMailtoARL = () => {
-        if (!selected) return "#";
-
-        const arlName = (selected.worker_arl || "").toLowerCase();
-        let email = "notificaciones@arl.com.co"; // placeholder
-        if (arlName.includes("sura")) email = "comunicaciones@arlsura.com.co";
-        else if (arlName.includes("positiva")) email = "servicioalcliente@positiva.gov.co";
-        else if (arlName.includes("colmena")) email = "notificaciones@colmenaseguros.com";
-        else if (arlName.includes("bolivar")) email = "atencion@arlbolivar.com";
-        else if (arlName.includes("axa")) email = "notificaciones@axacolpatria.co";
-
-        const subject = encodeURIComponent(`Reporte AT — ${selected.worker_name || "Trabajador"} — ${formatDate(selected.created_at)}`);
-        const body = encodeURIComponent(
-            `Señores ARL ${selected.worker_arl || ""},\n\nAdjuntamos el reporte de Accidente de Trabajo (FURAT) y la comunicación formal del trabajador ${selected.worker_name || ""} identificado con documento ${selected.worker_id_number || ""}.\n\nCordialmente,\n${company.legalRep?.name || "Representante de SG-SST"}\n${company.name || "Empresa"}`
-        );
-        return `mailto:${email}?subject=${subject}&body=${body}`;
-    };
-
-    // ── Render ────────────────────────────────────────────────────────────
+        if (activeTab === "archivadas") return isArchived;
+        if (activeTab === "enviadas") return notifiedMintrabajo && !isArchived;
+        return !notifiedMintrabajo && !isArchived; // pendientes
+    });
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {/* Top bar */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0D14]" style={{ fontFamily: "'Inter', sans-serif" }}>
+            {/* ── HEADER ────────────────────────────────────────────────── */}
             <DashboardHeader onRefresh={loadData} loading={loading}>
-                <div className="flex items-center gap-8 flex-1">
+                <div className="flex items-center gap-6 flex-1">
                     <div>
-                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Notificaciones Legales</h1>
-                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
+                        <h1 className="text-white font-black text-2xl tracking-tight leading-none uppercase">Notificaciones Legales</h1>
+                        <p className="text-[#475569] text-xs font-bold uppercase tracking-wider mt-1">
                             Cartas Mintrabajo · ARL · EPS
                         </p>
                     </div>
                     {pendingCount > 0 && (
-                        <div className="flex items-center gap-2">
-                            {selected && !isNotified("mintrabajo") ? (
-                                <div className={[
-                                    "flex items-center gap-2 border px-3 py-1.5 rounded-full font-bold text-xs shadow-sm shadow-black/20",
-                                    selected.urgency === "overdue" ? "bg-red-500/15 border-red-500/30 text-red-400" :
-                                        selected.urgency === "warning" ? "bg-amber-500/15 border-amber-500/30 text-amber-400" :
-                                            "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                                ].join(" ")}>
-                                    <span className={`w-1.5 h-1.5 rounded-full ${selected.urgency === "overdue" ? "bg-red-400" : selected.urgency === "warning" ? "bg-amber-400" : "bg-emerald-400"} animate-pulse`} />
-                                    {selected.urgency === "overdue"
-                                        ? `Vencido hace ${Math.abs(selected.daysRemaining)} día${Math.abs(selected.daysRemaining) !== 1 ? "s" : ""}`
-                                        : `${selected.daysRemaining} día${selected.daysRemaining !== 1 ? "s" : ""} hábil${selected.daysRemaining !== 1 ? "es" : ""}`
-                                    } para notificar
-                                </div>
-                            ) : (
-                                <span className="flex items-center gap-2 bg-red-500/15 border border-red-500/25 text-red-400 text-xs font-bold px-3 py-1.5 rounded-full">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                                    {pendingCount} sin notificar
-                                </span>
-                            )}
-                        </div>
+                        <span className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-red-500/5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                            {pendingCount} sin notificar a Mintrabajo
+                        </span>
                     )}
                 </div>
             </DashboardHeader>
 
-            <div className="flex-1 flex overflow-hidden">
-                {/* ── LEFT: event list ────────────────────────────────────────── */}
-                <aside className="w-80 flex-shrink-0 border-r border-[#1E2A3B] bg-[#1A1F2E] overflow-y-auto">
-                    <div className="px-4 pt-4 pb-2">
-                        <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider">
-                            Eventos graves / mortales
-                        </p>
+            {/* ── TABS ─────────────────────────────────────────────────── */}
+            <div className="px-6 border-b border-slate-800/50 bg-[#0A0D14] flex gap-4">
+                {(["pendientes", "enviadas", "archivadas"] as const).map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={[
+                            "px-4 py-3 text-xs font-black uppercase tracking-wider transition-all relative cursor-pointer",
+                            activeTab === tab 
+                                ? "text-amber-500" 
+                                : "text-slate-500 hover:text-slate-300"
+                        ].join(" ")}
+                    >
+                        {tab.toUpperCase()}
+                        {activeTab === tab && (
+                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-500 rounded-full" />
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            {/* ── LISTA ─────────────────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                {loading ? (
+                    <p className="text-slate-500 text-sm">Cargando...</p>
+                ) : filteredIncidents.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-48 text-center bg-[#131A26]/30 rounded-2xl border border-slate-800/50">
+                        <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2 opacity-60" />
+                        <p className="text-slate-300 text-sm font-semibold">Sin notificaciones en esta categoría</p>
                     </div>
-
-                    {loading ? (
-                        <NotificationListSkeleton count={4} />
-                    ) : incidents.length === 0 ? (
-                        <div className="px-4 py-12 text-center">
-                            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-3" />
-                            <p className="text-white text-sm font-semibold mb-1">Sin alertas activas</p>
-                            <p className="text-[#64748B] text-xs">
-                                No hay accidentes graves ni mortales en la base de datos.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-1 p-2">
-                            {incidents.map((inc) => {
-                                const isSelected = selected?.id === inc.id;
-                                const notifiedMintrabajo = inc.notifications.some(
-                                    (n) => n.type === "mintrabajo" && (n.status === "sent" || n.status === "filed")
-                                );
-                                return (
-                                    <button
-                                        key={inc.id}
-                                        onClick={() => {
-                                            setSelected(inc);
-                                            setFuratNumber(inc.furat_number || "");
-                                            setDiagnosisDate(inc.diagnosis_date || "");
-                                        }}
-                                        className={[
-                                            "w-full text-left rounded-xl p-3 transition-all border",
-                                            isSelected
-                                                ? "bg-[#1E2A3B] border-[#F59E0B]/30"
-                                                : "border-transparent hover:bg-white/5 hover:border-white/10",
-                                        ].join(" ")}
-                                    >
-                                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                                            <span className="text-white text-sm font-semibold leading-tight">
-                                                {incidentTitle(inc)}
-                                            </span>
-                                            <UrgencyBadge level={inc.urgency} days={inc.daysRemaining} />
-                                        </div>
-                                        <p className="text-[#64748B] text-xs mb-1.5">
-                                            {formatDate(inc.created_at)}
-                                        </p>
-                                        <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                                            <SeverityBadge severity={inc.severity ?? ""} />
-                                            {notifiedMintrabajo && (
-                                                <span className="text-xs text-emerald-400 font-medium">✓ Notificado</span>
-                                            )}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </aside>
-
-                {/* ── RIGHT: generator ────────────────────────────────────────── */}
-                <main className="flex-1 overflow-y-auto p-6 space-y-5">
-                    {!selected ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center">
-                            <Bell className="w-12 h-12 text-[#334155] mb-4" />
-                            <p className="text-[#64748B] text-sm">
-                                Selecciona un evento de la lista para generar las notificaciones.
-                            </p>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Event summary banner */}
-                            <div className={[
-                                "rounded-xl border p-4 flex items-start gap-4",
-                                selected.urgency === "overdue"
-                                    ? "bg-red-950/30 border-red-500/25"
-                                    : selected.urgency === "warning"
-                                        ? "bg-amber-950/30 border-amber-500/25"
-                                        : "bg-[#141824] border-[#1E2A3B]",
-                            ].join(" ")}>
-                                <AlertTriangle className={[
-                                    "w-5 h-5 mt-0.5 flex-shrink-0",
-                                    selected.urgency === "overdue" ? "text-red-400" :
-                                        selected.urgency === "warning" ? "text-amber-400" : "text-[#64748B]",
-                                ].join(" ")} />
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-3 flex-wrap mb-1">
-                                        <h2 className="text-white font-bold text-sm">{incidentTitle(selected)}</h2>
-                                        <UrgencyBadge level={selected.urgency} days={selected.daysRemaining} />
-                                        <SeverityBadge severity={selected.severity ?? ""} />
+                ) : (
+                    filteredIncidents.map((inc) => {
+                        const isFatal = inc.severity === "mortal";
+                        const notified = inc.notifications.some(
+                            (n) => n.type === "mintrabajo" && (n.status === "sent" || n.status === "filed")
+                        );
+                        
+                        return (
+                            <div
+                                key={inc.id}
+                                onClick={() => router.push(`/dashboard/notifications/${inc.id}`)}
+                                className="group bg-[#131A26] rounded-xl border border-slate-800/40 p-4 flex items-center justify-between hover:border-amber-500/30 hover:bg-[#161F2E] transition-all cursor-pointer shadow-lg hover:shadow-black/20"
+                            >
+                                <div className="space-y-2 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        {/* Urgency Badge */}
+                                        <span className={[
+                                            "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border",
+                                            notified ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                                            inc.urgency === "overdue" ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                                            inc.urgency === "warning" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
+                                            "bg-slate-500/10 border-slate-500/20 text-slate-400"
+                                        ].join(" ")}>
+                                            {notified ? "ENVIADO" : inc.urgency === "overdue" ? "VENCE HOY" : `${inc.daysRemaining} DÍAS RESTANTES`}
+                                        </span>
+                                        {/* Classification Badge */}
+                                        <span className={[
+                                            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black border",
+                                            isFatal ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                                        ].join(" ")}>
+                                            {incidentTitle(inc).toUpperCase()}
+                                        </span>
                                     </div>
-                                    <p className="text-[#64748B] text-xs">
-                                        Evento del {formatDate(selected.created_at)}
-                                        {selected.worker_name && ` · ${selected.worker_name}`}
-                                        {selected.location_name && ` · ${selected.location_name}`}
-                                    </p>
-                                    {/* Notification status */}
-                                    {selected.notifications.length > 0 && (
-                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                            {(["mintrabajo", "arl", "eps"] as NotificationType[]).map((t) => {
-                                                const n = selected.notifications.find((n) => n.type === t && (n.status === "sent" || n.status === "filed"));
-                                                return n ? <NotifiedBadge key={t} type={t} /> : null;
-                                            })}
-                                        </div>
-                                    )}
-
-                                    {/* Diagnosis Date Warning */}
-                                    {!diagnosisDate && (
-                                        <div className="mt-3 flex items-center gap-2 bg-amber-500/15 border border-amber-500/25 text-amber-500 text-[10px] font-bold px-2 py-1 rounded-lg w-fit">
-                                            <span>⚠️ Agrega la fecha de diagnóstico para un cálculo preciso del plazo.</span>
-                                        </div>
-                                    )}
+                                    <div>
+                                        <h3 className="text-white font-bold text-sm group-hover:text-amber-500 transition-colors">
+                                            {incidentTitle(inc)} — {formatDate(inc.created_at)}
+                                        </h3>
+                                        <p className="text-slate-500 text-xs mt-0.5">
+                                            {inc.worker_name || "Trabajador"} · {inc.location_name || "Ubicación"}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        {notified ? (
+                                            <p className="text-emerald-400 font-black text-xl flex items-center gap-1">
+                                                ✓ NOTIFICADO
+                                            </p>
+                                        ) : (
+                                            <div>
+                                                <p className={[
+                                                    "font-black text-2xl leading-none",
+                                                    inc.urgency === "overdue" ? "text-red-500" : "text-amber-500"
+                                                ].join(" ")}>
+                                                    {inc.urgency === "overdue" ? "1 día hábil" : `${inc.daysRemaining} días`}
+                                                </p>
+                                                <p className="text-[#475569] text-[10px] font-bold">para notificar</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-slate-600 group-hover:text-amber-500 transition-colors">→</span>
                                 </div>
                             </div>
-
-                            {/* Company profile */}
-                            {/* <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Building2 className="w-4 h-4 text-[#F59E0B]" />
-                                    <h3 className="text-white font-semibold text-sm">Datos de la Empresa</h3>
-                                    <span className="text-[#64748B] text-xs">(aparecen en todas las cartas)</span>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {[
-                                        { label: "Razón Social", value: company.name },
-                                        { label: "NIT", value: company.nitWithDv },
-                                        { label: "Ciudad", value: company.city },
-                                        { label: "Departamento", value: company.department },
-                                        { label: "Dirección", value: company.address },
-                                    ].map(({ label, value }) => (
-                                        <div key={label}>
-                                            <label className="block text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-1">
-                                                {label}
-                                            </label>
-                                            <p className="text-white text-sm font-bold">
-                                                {value || <span className="text-[#334155] italic">No registrado</span>}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-[#1E2A3B]/30">
-                                    <p className="text-[#64748B] text-[10px] font-black uppercase tracking-widest mb-3">
-                                        Representante Legal
-                                    </p>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        {[
-                                            { label: "Nombre", value: company.legalRep.name },
-                                            { label: "Teléfono", value: company.legalRep.phone },
-                                            { label: "Correo", value: company.legalRep.email },
-                                        ].map(({ label, value }) => (
-                                            <div key={label}>
-                                                <label className="block text-[#64748B] text-[10px] font-bold mb-1">{label}</label>
-                                                <p className="text-white text-xs font-semibold">
-                                                    {value || <span className="text-[#334155] italic">—</span>}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </section> */}
-
-                            {/* Mintrabajo extras */}
-                            <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <FileText className="w-4 h-4 text-[#F59E0B]" />
-                                    <h3 className="text-white font-semibold text-sm">Datos adicionales para Mintrabajo</h3>
-                                </div>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1">
-                                            Fecha de conocimiento del diagnóstico
-                                            <span className="text-red-400 ml-1">*</span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={diagnosisDate}
-                                            placeholder="¿Cuándo se conoció el diagnóstico de gravedad?"
-                                            onChange={async (e) => {
-                                                const val = e.target.value;
-                                                setDiagnosisDate(val);
-                                                if (selected) {
-                                                    // Save locally
-                                                    await saveIncidentDraft(selected.id, { diagnosis_date: val });
-                                                    // Save to Supabase for immediate persistence
-                                                    await supabase.from('incidents').update({ diagnosis_date: val }).eq('id', selected.id);
-                                                    await loadData();
-                                                }
-                                            }}
-                                            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors mb-1 cursor-pointer"
-                                        />
-                                        <p className="text-[#64748B] text-[10px] italic">
-                                            El plazo de 2 días hábiles se cuenta desde esta fecha — Dec. Ley 1295/1994, no desde la fecha del evento.
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1">
-                                            N.° FURAT (si ya se tiene)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ej: ARL-2026-000123"
-                                            value={furatNumber}
-                                            onChange={async (e) => {
-                                                const val = e.target.value;
-                                                setFuratNumber(val);
-                                                if (selected) {
-                                                    // Save locally
-                                                    await saveIncidentDraft(selected.id, { furat_number: val });
-                                                    // Save to Supabase
-                                                    await supabase.from('incidents').update({ furat_number: val }).eq('id', selected.id);
-                                                }
-                                            }}
-                                            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2">
-                                            Acciones inmediatas tomadas
-                                        </label>
-                                        <div className="space-y-2">
-                                            {actions.map((action, i) => (
-                                                <div key={i} className="flex gap-2">
-                                                    <span className="text-[#F59E0B] text-xs font-bold mt-2.5 w-4 flex-shrink-0">{i + 1}.</span>
-                                                    <input
-                                                        type="text"
-                                                        value={action.description}
-                                                        onChange={(e) => {
-                                                            const updated = [...actions];
-                                                            updated[i] = { description: e.target.value };
-                                                            setActions(updated);
-                                                        }}
-                                                        className="flex-1 bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
-                                                    />
-                                                    {actions.length > 1 && (
-                                                        <button
-                                                            onClick={() => setActions(actions.filter((_, j) => j !== i))}
-                                                            className="text-[#64748B] hover:text-red-400 text-xs mt-2 transition-colors"
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            <button
-                                                onClick={() => setActions([...actions, { description: "" }])}
-                                                className="text-[#F59E0B] text-xs font-semibold hover:text-amber-300 transition-colors mt-1 cursor-pointer"
-                                            >
-                                                + Agregar acción
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-
-                            {/* PDF Download buttons */}
-                            <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-2">
-                                        <Download className="w-4 h-4 text-[#F59E0B]" />
-                                        <h3 className="text-white font-semibold text-sm">Generar Cartas PDF</h3>
-                                    </div>
-                                </div>
-                                {/* <div className="bg-blue-950/30 border border-blue-900/50 rounded-lg p-3 mb-4 flex gap-3">
-                                    <AlertTriangle className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                                    <p className="text-blue-300 text-xs leading-relaxed">
-                                        <strong>Nota sobre los correos:</strong> Por limitaciones de seguridad de los navegadores, el PDF no se puede adjuntar automáticamente al abrir tu cliente de correo.
-                                        Deberás <strong>descargar primero el PDF</strong> y luego <strong>adjuntarlo manualmente</strong> en la ventana de correo que se abrirá con el botón "Abrir en correo".
-                                    </p>
-                                </div> */}
-                                <div className="grid grid-cols-3 gap-3">
-                                    {/* Mintrabajo */}
-                                    <div className="rounded-xl bg-[#0F1420] border border-[#1E2A3B] p-4 flex flex-col gap-3">
-                                        <div>
-                                            <p className="text-white text-xs font-bold mb-0.5">Ministerio del Trabajo</p>
-                                            <p className="text-[#64748B] text-xs">Art. 2.2.4.1.7 Dec. 1072/2015</p>
-                                            <p className="text-[#64748B] text-xs">Plazo: 2 días hábiles</p>
-                                        </div>
-                                        {/* Toggle Include Description */}
-                                        <div className="border-t border-b border-[#1E2A3B]/30 py-2 my-1">
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-white text-xs font-semibold">Incluir descripción</span>
-                                                <button
-                                                    onClick={handleToggleDescription}
-                                                    className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${
-                                                        includeDescription ? "bg-[#F59E0B]" : "bg-[#1E2A3B]"
-                                                    }`}
-                                                >
-                                                    <div
-                                                        className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
-                                                            includeDescription ? "left-4.5" : "left-0.5"
-                                                        }`}
-                                                    />
-                                                </button>
-                                            </div>
-                                            <p className="text-[#64748B] text-[10px] mt-1 leading-tight">
-                                                {includeDescription
-                                                    ? "La carta incluirá el relato del evento"
-                                                    : "La carta solo incluirá datos administrativos"}
-                                            </p>
-                                        </div>
-                                        {isNotified("mintrabajo") && (
-                                            <span className="text-xs text-emerald-400 font-semibold">✓ Ya notificado</span>
-                                        )}
-                                        <div className="mt-auto flex flex-col gap-2">
-                                            <button
-                                                onClick={handleMintrabajoDownload}
-                                                disabled={dlMintra === "generating"}
-                                                className={[
-                                                    "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                                                    dlMintra === "done"
-                                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                        : dlMintra === "error"
-                                                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                                            : "bg-red-500 hover:bg-red-600 text-white",
-                                                ].join(" ")}
-                                            >
-                                                <Download className="w-3 h-3" />
-                                                {dlLabel(dlMintra, "Descargar PDF")}
-                                            </button>
-                                            {/* <a
-                                                href={buildMailtoMintrabajo()}
-                                                className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-red-500 hover:bg-red-600 text-white"
-                                            >
-                                                <Mail className="w-3 h-3" />
-                                                Abrir en correo
-                                            </a> */}
-                                        </div>
-                                    </div>
-
-                                    {/* ARL */}
-                                    <div className="rounded-xl bg-[#0F1420] border border-[#1E2A3B] p-4 flex flex-col gap-3">
-                                        <div>
-                                            <p className="text-white text-xs font-bold mb-0.5">ARL</p>
-                                            <p className="text-[#64748B] text-xs">{selected.worker_arl || "Sin ARL registrada"}</p>
-                                            <p className="text-[#64748B] text-xs">Aviso + solicitud asesoría</p>
-                                        </div>
-                                        {isNotified("arl") && (
-                                            <span className="text-xs text-emerald-400 font-semibold">✓ Ya notificado</span>
-                                        )}
-                                        <div className="mt-auto flex flex-col gap-2">
-                                            <button
-                                                onClick={handleARLDownload}
-                                                disabled={dlARL === "generating"}
-                                                className={[
-                                                    "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                                                    dlARL === "done"
-                                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                        : dlARL === "error"
-                                                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                                            : "bg-amber-500 hover:bg-amber-600 text-white",
-                                                ].join(" ")}
-                                            >
-                                                <Download className="w-3 h-3" />
-                                                {dlLabel(dlARL, "Descargar PDF")}
-                                            </button>
-                                            {/* <a
-                                                href={buildMailtoARL()}
-                                                className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-amber-500 hover:bg-amber-600 text-white"
-                                            >
-                                                <Mail className="w-3 h-3" />
-                                                Abrir en correo
-                                            </a> */}
-                                        </div>
-                                    </div>
-
-                                    {/* EPS */}
-                                    <div className="rounded-xl bg-[#0F1420] border border-[#1E2A3B] p-4 flex flex-col gap-3">
-                                        <div>
-                                            <p className="text-white text-xs font-bold mb-0.5">EPS</p>
-                                            <p className="text-[#64748B] text-xs">{selected.worker_eps || "Sin EPS registrada"}</p>
-                                            <p className="text-[#64748B] text-xs">Aviso + solicitud informe médico</p>
-                                        </div>
-                                        {isNotified("eps") && (
-                                            <span className="text-xs text-emerald-400 font-semibold">✓ Ya notificado</span>
-                                        )}
-                                        <div className="mt-auto flex flex-col gap-2">
-                                            <button
-                                                onClick={handleEPSDownload}
-                                                disabled={dlEPS === "generating"}
-                                                className={[
-                                                    "w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer",
-                                                    dlEPS === "done"
-                                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                        : dlEPS === "error"
-                                                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                                                            : "bg-blue-500 hover:bg-blue-600 text-white",
-                                                ].join(" ")}
-                                            >
-                                                <Download className="w-3 h-3" />
-                                                {dlLabel(dlEPS, "Descargar PDF")}
-                                            </button>
-                                            {/* <a
-                                                href={buildMailtoEPS()}
-                                                className="w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer bg-blue-500 hover:bg-blue-600 text-white"
-                                            >
-                                                <Mail className="w-3 h-3" />
-                                                Abrir en correo
-                                            </a> */}
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-
-                            {/* Mark as sent */}
-                            <section className="bg-[#141824] border border-[#1E2A3B] rounded-xl p-5">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <Send className="w-4 h-4 text-[#F59E0B]" />
-                                    <h3 className="text-white font-semibold text-sm">Registrar envío</h3>
-                                </div>
-                                <div className="flex items-end gap-3">
-                                    <div className="flex-1">
-                                        <label className="block text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-1">
-                                            N.° Radicado (opcional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ej: MINTRABAJO-2026-0001234"
-                                            value={radicado}
-                                            onChange={(e) => setRadicado(e.target.value)}
-                                            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-3 py-2 text-white text-sm placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
-                                        />
-                                    </div>
-                                    {(["mintrabajo", "arl", "eps"] as NotificationType[]).map((type) => (
-                                        <button
-                                            key={type}
-                                            onClick={() => markAsSent(type)}
-                                            disabled={markingType !== null || isNotified(type)}
-                                            className={[
-                                                "px-3 py-2 rounded-lg text-xs font-bold transition-all border cursor-pointer",
-                                                isNotified(type)
-                                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 cursor-default"
-                                                    : "bg-[#1E2A3B] text-white border-[#334155] hover:bg-[#252B3B] hover:border-[#F59E0B]/30",
-                                            ].join(" ")}
-                                        >
-                                            {markingType === type ? "…" : isNotified(type) ? `✓ ${type.toUpperCase()}` : `Marcar ${type.toUpperCase()}`}
-                                        </button>
-                                    ))}
-                                </div>
-                                <p className="text-[#334155] text-xs mt-2">
-                                    Al marcar como enviado queda constancia en la base de datos local del evento.
-                                </p>
-                            </section>
-                        </>
-                    )}
-                </main>
+                        );
+                    })
+                )}
             </div>
         </div>
     );
 }
+

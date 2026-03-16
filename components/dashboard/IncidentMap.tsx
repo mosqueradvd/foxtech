@@ -24,11 +24,11 @@ export default function IncidentMap({ incidents }: Props) {
         <MapContainer
             center={center}
             zoom={zoom}
-            style={{ height: "100%", width: "100%", background: "#1A2538", zIndex: 0 }}
+            style={{ height: "100%", width: "100%", background: "#fff", zIndex: 0 }}
             zoomControl={false} // We will add it manually to position it
         >
             <TileLayer
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
             />
             {/* Posicionar control de zoom */}
