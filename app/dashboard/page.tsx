@@ -136,27 +136,27 @@ export default function DashboardPage() {
     });
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]">
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--bg-primary)]">
             {/* Top bar */}
             <DashboardHeader onRefresh={fetchData} loading={loading}>
                 <div className="flex items-center justify-between flex-1">
                     <div>
-                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Vista General</h1>
-                        <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
+                        <h1 className="text-[var(--text-primary)] font-black text-xl tracking-tight leading-none uppercase">Vista General</h1>
+                        <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider mt-1">
                             Consultant Command Center
                         </p>
                     </div>
 
                     {/* Search */}
                     <div className="relative max-w-xs w-full">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] pointer-events-none" />
                         <input
                             id="search"
                             type="text"
                             placeholder="Buscar empresa, incidente..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="bg-[#0F1219] border border-[#1E2A3B] !pl-[44px] rounded-xl pr-4 py-2.5 text-white text-xs font-bold outline-none focus:border-amber-500/50 w-full placeholder:text-[#334155]"
+                            className="bg-[var(--bg-primary)] border border-[var(--border)] !pl-[44px] rounded-xl pr-4 py-2.5 text-[var(--text-primary)] text-xs font-bold outline-none focus:border-amber-500/50 w-full placeholder:text-[var(--text-muted)]"
                             aria-label="Buscar empresa, incidente..."
                         />
                     </div>
@@ -209,18 +209,18 @@ export default function DashboardPage() {
                 {/* ── BOTTOM SECTION: Table + Map ── */}
                 <div className="grid grid-cols-[1fr_300px] gap-4">
                     {/* Incidents Table */}
-                    <div className="bg-[#252B3B] border border-[#334155] rounded-xl overflow-hidden">
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-[#334155]">
+                    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden shadow-sm dark:shadow-none">
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                                <h2 className="text-white font-bold text-sm uppercase tracking-wider">
+                                <h2 className="text-[var(--text-primary)] font-bold text-sm uppercase tracking-wider">
                                     EVENTOS RECIENTES
                                 </h2>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={fetchData}
-                                    className="text-[#64748B] hover:text-white transition-colors"
+                                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                                     title="Actualizar"
                                 >
                                     <RefreshCw className={`w-4 h-4 cursor-pointer ${loading ? "animate-spin" : ""}`} />
@@ -233,11 +233,11 @@ export default function DashboardPage() {
 
                         <table className="w-full">
                             <thead>
-                                <tr className="border-b border-[#334155]">
+                                <tr className="border-b border-[var(--border)]">
                                     {["EMPRESA", "TIPO DE EVENTO", "HORA", "CLASIFICACIÓN", "ESTADO", ""].map((h) => (
                                         <th
                                             key={h}
-                                            className="text-left text-[#64748B] text-[10px] font-bold uppercase tracking-wider px-4 py-3"
+                                            className="text-left text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider px-4 py-3"
                                         >
                                             {h}
                                         </th>
@@ -260,22 +260,22 @@ export default function DashboardPage() {
                                         } else {
                                             const row = inc as any;
                                             return (
-                                                <tr key={i} className="border-b border-[#334155] hover:bg-white/5 cursor-pointer transition-colors" onClick={() => router.push("/dashboard")}>
+                                                <tr key={i} className="border-b border-[var(--border)] hover:bg-[#F1F5F9] dark:hover:bg-white/5 cursor-pointer transition-colors" onClick={() => router.push("/dashboard")}>
                                                     <td className="py-4 px-4">
-                                                        <p className="text-white font-semibold text-sm">{row.company}</p>
-                                                        <p className="text-[#64748B] text-xs">{row.location}</p>
+                                                        <p className="text-[var(--text-primary)] font-semibold text-sm">{row.company}</p>
+                                                        <p className="text-[var(--text-muted)] text-xs">{row.location}</p>
                                                     </td>
                                                     <td className="py-4 px-4">
                                                         <StatusBadge variant={row.type as StatusVariant} />
                                                     </td>
-                                                    <td className="py-4 px-4 text-[#64748B] text-sm">{row.time}</td>
+                                                    <td className="py-4 px-4 text-[var(--text-muted)] text-sm">{row.time}</td>
                                                     <td className="py-4 px-4">
                                                         <StatusBadge variant={row.status as StatusVariant} label={row.status === "synced" ? "Sync" : row.status === "error" ? "Error" : "Pendiente"} />
                                                     </td>
                                                     <td className="py-4 px-4 text-emerald-400 font-bold text-xs uppercase tracking-widest text-center">
                                                         {row.status === "synced" ? "Sync" : "—"}
                                                     </td>
-                                                    <td className="py-4 px-4 text-[#64748B] text-sm">›</td>
+                                                    <td className="py-4 px-4 text-[var(--text-muted)] text-sm">›</td>
                                                 </tr>
                                             );
                                         }
@@ -292,22 +292,22 @@ export default function DashboardPage() {
 
                         {/* Pagination Controls */}
                         {totalPages > 1 && (
-                            <div className="px-5 py-4 border-t border-[#334155] flex items-center justify-between">
-                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-widest">
+                            <div className="px-5 py-4 border-t border-[var(--border)] flex items-center justify-between">
+                                <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest">
                                     Pág {currentPage} de {totalPages}
                                 </p>
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                         disabled={currentPage === 1}
-                                        className="px-3 py-1.5 rounded-lg bg-[#2E3547] text-[#64748B] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                        className="px-3 py-1.5 rounded-lg bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                     >
                                         Anterior
                                     </button>
                                     <button
                                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                         disabled={currentPage === totalPages}
-                                        className="px-3 py-1.5 rounded-lg bg-[#2E3547] text-[#64748B] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                                        className="px-3 py-1.5 rounded-lg bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] font-bold uppercase tracking-wider cursor-pointer"
                                     >
                                         Siguiente
                                     </button>
@@ -317,13 +317,13 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Geolocation Panel */}
-                    <div className="bg-[#252B3B] border border-[#334155] rounded-xl overflow-hidden flex flex-col">
-                        <div className="flex items-center justify-between px-4 py-4 border-b border-[#334155]">
-                            <h2 className="text-white font-bold text-sm uppercase tracking-wider">
+                    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden flex flex-col shadow-sm dark:shadow-none">
+                        <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--border)]">
+                            <h2 className="text-[var(--text-primary)] font-bold text-sm uppercase tracking-wider">
                                 GEOLOCALIZACIÓN
                             </h2>
                             <div className="flex gap-1.5">
-                                <button className="p-1.5 rounded-lg bg-[#2E3547] text-[#64748B] hover:text-white transition-colors" title="Vista mapa">
+                                <button className="p-1.5 rounded-lg bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title="Vista mapa">
                                     <MapPin className="w-3.5 h-3.5" />
                                 </button>
                             </div>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Legend */}
-                        <div className="px-4 py-3 border-t border-[#334155] space-y-1.5">
+                        <div className="px-4 py-3 border-t border-[var(--border)] space-y-1.5">
                             {[
                                 { color: "bg-red-500", label: "Accidente" },
                                 { color: "bg-amber-400", label: "Casi Accidente" },
@@ -343,7 +343,7 @@ export default function DashboardPage() {
                             ].map((leg) => (
                                 <div key={leg.label} className="flex items-center gap-2">
                                     <div className={`w-2.5 h-2.5 rounded-full ${leg.color}`} />
-                                    <span className="text-[#64748B] text-xs">{leg.label}</span>
+                                    <span className="text-[var(--text-muted)] text-xs">{leg.label}</span>
                                 </div>
                             ))}
                         </div>

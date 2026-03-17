@@ -2,17 +2,36 @@
 
 /* ─── FOXTECH Design Tokens ─────────────────────────────────────────── */
 :root {
-  --color-bg: #1A1F2E;
-  --color-surface: #252B3B;
-  --color-surface-2: #2E3547;
-  --color-accent: #F59E0B;
-  --color-accent-hover: #D97706;
-  --color-text: #FFFFFF;
-  --color-muted: #64748B;
-  --color-border: #334155;
-  --color-green: #22C55E;
-  --color-red: #EF4444;
+  /* DARK — valores actuales */
+  --bg-primary: #0F1219;
+  --bg-surface: #1A1F2E;
+  --bg-card: #252B3B;
+  --text-primary: #FFFFFF;
+  --text-muted: #64748B;
+  --border: #2D3748;
+  --accent: #F59E0B;
+
+  /* Legacy mapping to prevent breakages */
+  --color-bg: var(--bg-primary);
+  --color-surface: var(--bg-surface);
+  --color-surface-2: var(--bg-card);
+  --color-text: var(--text-primary);
+  --color-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
 }
+
+:root.light {
+  /* LIGHT — basado en diseño Stitch */
+  --bg-primary: #F8F9FA;
+  --bg-surface: #FFFFFF;
+  --bg-card: #F1F5F9;
+  --text-primary: #0F1219;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
+  --accent: #F59E0B;
+}
+
 
 @theme {
   --font-display: var(--font-outfit);
@@ -42,8 +61,8 @@ html {
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: var(--font-space-grotesk), system-ui, sans-serif;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;

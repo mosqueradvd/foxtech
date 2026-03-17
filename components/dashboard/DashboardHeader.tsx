@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { RefreshCw, Bell } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { RefreshCw, Bell, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface DashboardHeaderProps {
     children?: React.ReactNode;
@@ -10,8 +11,15 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ children, onRefresh, loading }: DashboardHeaderProps) {
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     return (
-        <header className="bg-[#1A1F2E] border-b border-[#1E2A3B] px-8 py-5 flex items-center justify-between sticky top-0 z-30">
+        <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] px-8 py-5 flex items-center justify-between sticky top-0 z-30">
             <div className="flex items-center gap-8 flex-1">
                 {children}
             </div>
@@ -20,14 +28,27 @@ export function DashboardHeader({ children, onRefresh, loading }: DashboardHeade
                 {onRefresh && (
                     <button
                         onClick={onRefresh}
-                        className="p-2.5 rounded-xl bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] hover:text-white hover:border-amber-500/50 transition-all cursor-pointer"
+                        className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-amber-500/50 transition-all cursor-pointer"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
                     </button>
                 )}
-                <button className="relative p-2.5 rounded-xl bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] hover:text-white hover:border-amber-500/50 transition-all cursor-pointer">
+                
+                <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-amber-500/50 transition-all cursor-pointer"
+                    aria-label="Toggle Theme"
+                >
+                    {mounted ? (
+                        theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />
+                    ) : (
+                        <Sun className="w-4 h-4" /> // Default fallback
+                    )}
+                </button>
+
+                <button className="relative p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-amber-500/50 transition-all cursor-pointer">
                     <Bell className="w-4 h-4" />
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0F1219]" />
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[var(--bg-primary)]" />
                 </button>
             </div>
         </header>

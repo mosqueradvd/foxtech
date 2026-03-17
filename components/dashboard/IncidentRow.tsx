@@ -44,9 +44,9 @@ function formatTime(dateStr?: string): string {
 
 function ClassificationBadge({ status }: { status?: string }) {
     const map: Record<string, { label: string; cls: string }> = {
-        pending: { label: "Pendiente", cls: "bg-amber-900/40 text-amber-400 border-amber-700/30" },
-        classified: { label: "Clasificado", cls: "bg-blue-900/40 text-blue-400 border-blue-700/30" },
-        investigated: { label: "Investigado", cls: "bg-green-900/40 text-green-400 border-green-700/30" },
+        pending: { label: "Pendiente", cls: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-700/30" },
+        classified: { label: "Clasificado", cls: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-700/30" },
+        investigated: { label: "Investigado", cls: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-700/30" },
     };
     const s = map[status ?? "pending"] ?? map.pending;
     return (
@@ -59,17 +59,17 @@ function ClassificationBadge({ status }: { status?: string }) {
 export function IncidentRow({ incident, onClick }: IncidentRowProps) {
     return (
         <tr
-            className="border-b border-[#334155] hover:bg-white/5 cursor-pointer transition-colors"
+            className="border-b border-[var(--border)] hover:bg-[#F1F5F9] dark:hover:bg-white/5 cursor-pointer transition-colors"
             onClick={onClick}
         >
             <td className="py-4 px-4">
-                <p className="text-white font-semibold text-sm">{incident.company_name ?? "—"}</p>
-                <p className="text-[#64748B] text-xs mt-0.5">{incident.company_location ?? ""}</p>
+                <p className="text-[var(--text-primary)] font-semibold text-sm">{incident.company_name ?? "—"}</p>
+                <p className="text-[var(--text-muted)] text-xs mt-0.5">{incident.company_location ?? ""}</p>
             </td>
             <td className="py-4 px-4">
                 <StatusBadge variant={getEventBadge(incident.event_type)} />
             </td>
-            <td className="py-4 px-4 text-[#64748B] text-sm">{formatTime(incident.created_at)}</td>
+            <td className="py-4 px-4 text-[var(--text-muted)] text-sm">{formatTime(incident.created_at)}</td>
             <td className="py-4 px-4">
                 <ClassificationBadge status={(incident as Incident & { classification_status?: string }).classification_status} />
             </td>
@@ -80,7 +80,7 @@ export function IncidentRow({ incident, onClick }: IncidentRowProps) {
                 />
             </td>
             <td className="py-4 px-4">
-                <ChevronRight className="w-4 h-4 text-[#64748B]" />
+                <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
             </td>
         </tr>
     );

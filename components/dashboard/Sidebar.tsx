@@ -62,7 +62,7 @@ export function Sidebar() {
     );
 
     return (
-        <aside className="w-64 flex-shrink-0 bg-[#1A1F2E] border-r border-[#1E2A3B] flex flex-col h-full">
+        <aside className="w-64 flex-shrink-0 bg-[var(--bg-surface)] border-r border-[var(--border)] flex flex-col h-full shadow-sm dark:shadow-none">
             {/* Logo */}
             <div className="px-6 py-8">
                 <div className="flex items-center gap-3">
@@ -70,8 +70,8 @@ export function Sidebar() {
                         <Shield className="w-6 h-6 text-amber-500" />
                     </div>
                     <div>
-                        <p className="text-white font-black text-lg leading-none tracking-tight">FOXTECH</p>
-                        <p className="text-[#64748B] text-[10px] font-bold tracking-[0.2em] uppercase mt-1">
+                        <p className="text-[var(--text-primary)] font-black text-lg leading-none tracking-tight">FOXTECH</p>
+                        <p className="text-[var(--text-muted)] text-[10px] font-bold tracking-[0.2em] uppercase mt-1">
                             Command Center
                         </p>
                     </div>
@@ -80,7 +80,7 @@ export function Sidebar() {
                 {/* Company Selector */}
                 {companies.length > 0 && (
                     <div className="mt-10 relative" ref={dropdownRef}>
-                        <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-[0.2em] px-2 mb-2 block">
+                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] px-2 mb-2 block">
                             Empresa en Gestión
                         </label>
 
@@ -88,17 +88,17 @@ export function Sidebar() {
                         <button
                             type="button"
                             onClick={() => setIsOpen(!isOpen)}
-                            className={`w-full bg-[#1A1F2E] border ${isOpen ? "border-amber-500/50 bg-[#1e2536]" : "border-[#1E2A3B] hover:border-amber-500/30"} transition-all rounded-xl p-3 flex items-center justify-between cursor-pointer`}
+                            className={`w-full bg-[var(--bg-surface)] border ${isOpen ? "border-amber-500/50 bg-[var(--bg-card)]" : "border-[var(--border)] hover:border-amber-500/30"} transition-all rounded-xl p-3 flex items-center justify-between cursor-pointer`}
                         >
                             <div className="flex items-center gap-3 overflow-hidden text-left">
                                 <div className="w-8 h-8 shrink-0 bg-amber-500/20 text-amber-500 rounded-lg flex items-center justify-center font-black text-sm border border-amber-500/10">
                                     {activeCompany?.razon_social?.charAt(0).toUpperCase() || "E"}
                                 </div>
                                 <div className="overflow-hidden">
-                                    <p className="text-xs font-bold text-slate-100 truncate uppercase leading-tight">
+                                    <p className="text-xs font-bold text-[var(--text-primary)] truncate uppercase leading-tight">
                                         {activeCompany?.razon_social || "Seleccionar..."}
                                     </p>
-                                    <p className="text-[10px] text-[#64748B] truncate mt-0.5">
+                                    <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
                                         {activeCompany?.nit ? `NIT: ${activeCompany.nit}` : "Sin NIT"}
                                     </p>
                                 </div>
@@ -112,17 +112,17 @@ export function Sidebar() {
 
                         {/* Dropdown Menu */}
                         {isOpen && (
-                            <div className="absolute top-full left-0 w-[350px] mt-2 bg-[#1A1F2E] border border-[#1E2A3B] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-50">
-                                <div className="p-3 border-b border-[#1E2A3B] bg-[#161B28]">
+                            <div className="absolute top-full left-0 w-[350px] mt-2 bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl shadow-xl overflow-hidden z-50">
+                                <div className="p-3 border-b border-[var(--border)] bg-[var(--bg-card)]">
                                     <div className="relative">
-                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#64748B] w-4 h-4" />
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
                                         <input
                                             autoFocus
                                             type="text"
                                             placeholder="Buscar empresa..."
                                             value={searchQuery}
                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                            className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-lg text-[12px] !pl-10 py-1.5 focus:outline-none focus:border-amber-500/50 text-slate-100 placeholder:text-[#64748B]"
+                                            className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-[12px] !pl-10 py-1.5 focus:outline-none focus:border-amber-500/50 text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                                         />
                                     </div>
                                 </div>
@@ -139,14 +139,14 @@ export function Sidebar() {
                                                 }}
                                                 className={`w-full text-left p-2.5 rounded-lg transition-all cursor-pointer relative group ${isActive
                                                     ? "bg-amber-500/10 border border-amber-500/30 ring-1 ring-amber-500/20"
-                                                    : "hover:bg-white/5"
+                                                    : "hover:bg-[#F1F5F9] dark:hover:bg-white/5"
                                                     }`}
                                             >
                                                 {isActive && (
                                                     <div className="absolute top-0 right-0 w-12 h-12 bg-amber-500/5 -mr-6 -mt-6 rotate-45"></div>
                                                 )}
                                                 <div className="flex items-center justify-between mb-1 relative">
-                                                    <span className={`text-[16px] font-bold truncate uppercase ${isActive ? "text-amber-500" : "text-slate-300 group-hover:text-slate-100"}`}>
+                                                    <span className={`text-[16px] font-bold truncate uppercase ${isActive ? "text-amber-500" : "text-[var(--text-primary)]"}`}>
                                                         {c.razon_social}
                                                     </span>
                                                     {isActive && (
@@ -155,7 +155,7 @@ export function Sidebar() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className={`flex items-center gap-2 text-[12px] uppercase font-medium relative ${isActive ? "text-amber-500/70" : "text-[#64748B]"}`}>
+                                                <div className={`flex items-center gap-2 text-[12px] uppercase font-medium relative ${isActive ? "text-amber-500/70" : "text-[var(--text-muted)]"}`}>
                                                     <span>NIT: {c.nit || "N/A"}</span>
                                                     {(c.arl || c.clase_riesgo) && <span className="w-1 h-1 rounded-full bg-current opacity-40"></span>}
                                                     {c.arl && <span>{c.arl}</span>}
@@ -168,7 +168,7 @@ export function Sidebar() {
                                         <p className="text-center text-[#64748B] text-xs py-4">No se encontraron empresas</p>
                                     )}
                                 </div>
-                                <div className="p-2 bg-[#161B28] border-t border-[#1E2A3B]">
+                                <div className="p-2 bg-[var(--bg-card)] border-t border-[var(--border)]">
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -202,8 +202,8 @@ export function Sidebar() {
                             className={[
                                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer",
                                 isActive
-                                    ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                                    : "text-[#64748B] hover:bg-white/5 hover:text-white",
+                                    ? "bg-amber-500 text-black dark:bg-amber-500/10 dark:text-amber-500 border border-amber-500/20"
+                                    : "text-[var(--text-muted)] hover:bg-[#F1F5F9] hover:text-[#0F1219] dark:hover:bg-white/5 dark:hover:text-white",
                             ].join(" ")}
                         >
                             <Icon className="w-4 h-4" />
@@ -214,15 +214,15 @@ export function Sidebar() {
             </nav>
 
             {/* User profile at bottom */}
-            <div className="p-4 border-t border-[#1E2A3B] flex items-center gap-3 mt-auto">
+            <div className="p-4 border-t border-[var(--border)] flex items-center gap-3 mt-auto">
                 <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
                     <User className="w-5 h-5 text-emerald-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-bold leading-none truncate">Carlos Mendez</p>
-                    <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1 truncate">Senior Consultant</p>
+                    <p className="text-[var(--text-primary)] text-sm font-bold leading-none truncate">Carlos Mendez</p>
+                    <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider mt-1 truncate">Senior Consultant</p>
                 </div>
-                <button className="text-[#64748B] hover:text-white transition-colors cursor-pointer">
+                <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
                     <MoreVertical className="w-4 h-4" />
                 </button>
             </div>
