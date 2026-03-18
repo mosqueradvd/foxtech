@@ -13,7 +13,7 @@ import {
     ArrowLeft, Save, CheckCircle2, AlertTriangle, Users,
     Search, Zap, ClipboardList, Plus, Trash2, Loader2,
     ChevronRight, ChevronDown, Lock, Clock, PenLine, Copy, Check, Share2, FileText,
-    Car, TriangleAlert, BookOpen, Camera, CalendarDays, Image, MessageCircle, Mail
+    Car, TriangleAlert, BookOpen, Camera, CalendarDays, Image, MessageCircle, Mail, Sparkles
 } from "lucide-react";
 import {
     CONDICIONES_SUBESTANDAR,
@@ -112,11 +112,14 @@ function FTextarea({ value, onChange, placeholder, rows = 4, disabled }: {
     );
 }
 
-function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+function SectionTitle({ icon: Icon, children, action }: { icon: React.ElementType; children: React.ReactNode, action?: React.ReactNode }) {
     return (
-        <div className="flex items-center gap-2 mb-4">
-            <Icon className="w-4 h-4 text-[#F59E0B]" />
-            <h3 className="text-white font-semibold text-sm">{children}</h3>
+        <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+                <Icon className="w-4 h-4 text-[#F59E0B]" />
+                <h3 className="text-white font-semibold text-sm">{children}</h3>
+            </div>
+            {action}
         </div>
     );
 }
@@ -276,6 +279,12 @@ export default function InvestigationPage() {
     const [signerNames, setSignerNames] = useState<Record<SignerRole, string>>({
         COPASST: "", SUPERVISOR: "", SST_PROFESSIONAL: "",
     });
+
+    // AI Suggestion states
+    const [isSuggesting, setIsSuggesting] = useState(false);
+    const [isSuggestSuccess, setIsSuggestSuccess] = useState(false);
+    const [isSuggestError, setIsSuggestError] = useState(false);
+    const [suggestToast, setSuggestToast] = useState<{ message: string; type: "info" | "error" } | null>(null);
 
     const isClosed = investigation?.status === "cerrado";
     const allSigned = sigRequests.length === 3 && sigRequests.every((r) => r.status === "SIGNED");
@@ -652,10 +661,100 @@ export default function InvestigationPage() {
                             </CausesAccordion>
 
                             {/* §5.4 — Fallas en Control Administrativo (unchanged — free text) */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={AlertTriangle}>Fallas en el Control Administrativo (§5.4)</SectionTitle>
+                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6 space-y-2">
+                                <SectionTitle 
+                                    icon={AlertTriangle}
+                                    action={
+                                        <button
+                                            type="button"
+                                            disabled={isSuggesting || isClosed}
+                                            onClick={async () => {
+                                                const hasCauses = 
+                                                    (causesSelected.inmediatas?.condiciones?.length || 0) > 0 ||
+                                                    (causesSelected.inmediatas?.actos?.length || 0) > 0 ||
+                                                    (causesSelected.basicas?.factores_personales?.length || 0) > 0 ||
+                                                    (causesSelected.basicas?.factores_trabajo?.length || 0) > 0;
+
+                                                if (!hasCauses) {
+                                                    setSuggestToast({ message: "Selecciona alguna causa primero para sugerir", type: "info" });
+                                                    setTimeout(() => setSuggestToast(null), 3000);
+                                                    return;
+                                                }
+
+                                                setIsSuggesting(true);
+                                                setIsSuggestError(false);
+                                                setIsSuggestSuccess(false);
+
+                                                try {
+                                                    const inmediatas = [
+                                                        ...(causesSelected.inmediatas?.condiciones || []),
+                                                        ...(causesSelected.inmediatas?.actos || []),
+                                                        ...(causesSelected.inmediatas?.otra ? [causesSelected.inmediatas.otra] : [])
+                                                    ];
+                                                    const basicas = [
+                                                        ...(causesSelected.basicas?.factores_personales || []),
+                                                        ...(causesSelected.basicas?.factores_trabajo || []),
+                                                        ...(causesSelected.basicas?.otra ? [causesSelected.basicas.otra] : [])
+                                                    ];
+
+                                                    const res = await fetch("/api/ai/narrativa", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            tipo: "causas",
+                                                            texto: incident?.classification || "Accidente",
+                                                            contexto: { inmediatas, basicas }
+                                                        })
+                                                     });
+
+                                                     const data = await res.json();
+                                                     if (data.texto) {
+                                                         setControlFails(data.texto);
+                                                         scheduleSave();
+                                                         setIsSuggestSuccess(true);
+                                                         setTimeout(() => setIsSuggestSuccess(false), 2000);
+                                                     } else {
+                                                         setIsSuggestError(true);
+                                                     }
+                                                 } catch (e) {
+                                                     console.error("Error al sugerir causas:", e);
+                                                     setIsSuggestError(true);
+                                                 } finally {
+                                                     setIsSuggesting(false);
+                                                 }
+                                             }}
+                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                                                 isSuggesting ? "bg-amber-900/20 border-amber-700/30 text-amber-400 cursor-not-allowed" :
+                                                 isSuggestSuccess ? "bg-emerald-900/20 border-emerald-700/30 text-emerald-400" :
+                                                 isSuggestError ? "bg-red-900/20 border-red-700/30 text-red-400" :
+                                                 "bg-[#0F1420] border-[#1E2A3B] hover:border-[#F59E0B]/50 text-white hover:text-[#F59E0B]"
+                                             }`}
+                                        >
+                                            {isSuggesting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 
+                                             isSuggestSuccess ? <Check className="w-3.5 h-3.5" /> :
+                                             <Sparkles className="w-3.5 h-3.5" />}
+                                            {isSuggesting ? "Sugiriendo..." : isSuggestSuccess ? "Sugerido" : isSuggestError ? "Error — reintentar" : "Sugerir con IA"}
+                                        </button>
+                                    }
+                                >
+                                    Fallas en el Control Administrativo (§5.4)
+                                </SectionTitle>
+                                
                                 <FTextarea value={controlFails} onChange={(v) => { setControlFails(v); scheduleSave(); }}
-                                    placeholder="Deficiencias del sistema de gestión que permitieron que las causas básicas existieran..." rows={4} disabled={isClosed} />
+                                    placeholder="Deficiencias del sistema de gestión que permitieron que las causas básicas existieran..." rows={4} disabled={isClosed || isSuggesting} />
+                                
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[#64748B] text-[10px]">
+                                        Texto sugerido por IA — revisa y ajusta según los hechos reales
+                                    </p>
+                                </div>
+
+                                {/* Toast Notification */}
+                                {suggestToast && (
+                                    <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg z-50">
+                                        <span className="text-amber-400 text-xs font-semibold">{suggestToast.message}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* §5.5 — Factores PESV (conditional on vehicle toggle) */}

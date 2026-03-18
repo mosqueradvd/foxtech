@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
     ArrowLeft, ArrowRight, Check, Save, User, MapPin, Activity,
-    AlertTriangle, Image as ImageIcon, FileText, Loader2, ChevronRight, ClipboardList
+    AlertTriangle, Image as ImageIcon, FileText, Loader2, ChevronRight, ClipboardList, Sparkles
 } from "lucide-react";
 import { supabase, type Event, type Worker } from "@/lib/supabase";
 import { WorkerSelector } from "@/components/module2/WorkerSelector";
@@ -267,6 +267,11 @@ function Step2Event({
     formData: EventFormData;
     onFieldChange: (f: keyof EventFormData, v: unknown) => void;
 }) {
+    const [isImproving, setIsImproving] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [isError, setIsError] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: "info" | "error" } | null>(null);
+
     const selectedClass = EVENT_CLASSIFICATIONS.find((c) => c.value === formData.classification);
 
     // Auto compute day when date changes
@@ -364,6 +369,76 @@ function Step2Event({
                 onCityChange={(v) => onFieldChange("event_city", v)}
                 onAddressChange={(v) => onFieldChange("event_address", v)}
             />
+
+            {/* Description Textarea with AI Assistant */}
+            <div className="space-y-2">
+                <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Descripción del evento *</label>
+                <textarea
+                    value={formData.description ?? ""}
+                    onChange={(e) => onFieldChange("description", e.target.value)}
+                    placeholder="Describe qué pasó en tus propias palabras o el relato del trabajador..."
+                    className="w-full bg-[#252B3B] border border-[#334155] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#F59E0B] placeholder:text-[#334155] resize-none"
+                    rows={4}
+                    disabled={isImproving}
+                />
+                <div className="flex items-center justify-between">
+                    <p className="text-[#64748B] text-[10px]">
+                        Texto sugerido por IA — revisa y ajusta según los hechos reales
+                    </p>
+                    <button
+                        type="button"
+                        disabled={isImproving}
+                        onClick={async () => {
+                            if (!formData.description) {
+                                setToast({ message: "Escribe algo primero para mejorar", type: "info" });
+                                setTimeout(() => setToast(null), 3000);
+                                return;
+                            }
+                            setIsImproving(true);
+                            setIsError(false);
+                            setIsSuccess(false);
+                            try {
+                                const res = await fetch("/api/ai/narrativa", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ tipo: "narrativa", texto: formData.description })
+                                });
+                                const data = await res.json();
+                                if (data.texto) {
+                                    onFieldChange("description", data.texto);
+                                    setIsSuccess(true);
+                                    setTimeout(() => setIsSuccess(false), 2000);
+                                } else {
+                                    setIsError(true);
+                                }
+                            } catch (e) {
+                                console.error("Error al mejorar redacción:", e);
+                                setIsError(true);
+                            } finally {
+                                setIsImproving(false);
+                            }
+                        }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border cursor-pointer ${
+                            isImproving ? "bg-amber-900/20 border-amber-700/30 text-amber-400 cursor-not-allowed" :
+                            isSuccess ? "bg-emerald-900/20 border-emerald-700/30 text-emerald-400" :
+                            isError ? "bg-red-900/20 border-red-700/30 text-red-400" :
+                            "bg-[#1A2538] border-[#334155] hover:border-[#F59E0B]/50 text-white hover:text-[#F59E0B]"
+                        }`}
+                    >
+                        {isImproving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 
+                         isSuccess ? <Check className="w-3.5 h-3.5" /> :
+                         <Sparkles className="w-3.5 h-3.5" />}
+                        {isImproving ? "Mejorando..." : isSuccess ? "Texto mejorado" : isError ? "Error — reintentar" : "Mejorar redacción"}
+                    </button>
+                </div>
+            </div>
+
+            {/* Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-[#1A2538] border border-[#334155] rounded-xl px-4 py-2 flex items-center gap-2 shadow-lg z-50">
+                    <span className="text-amber-400 text-xs font-semibold">{toast.message}</span>
+                </div>
+            )}
         </div>
     );
 }
@@ -559,6 +634,7 @@ export default function EventCharacterizationPage() {
                 accident_mechanism: eventData.accident_mechanism,
                 hazard_type: eventData.hazard_type,
                 witness_names: eventData.witness_names,
+                description: eventData.description || "",
 
                 // Disability records merge
                 disability_date: disabilityData?.disability_date || "",
