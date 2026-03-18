@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useTheme } from "next-themes";
 
 interface StatCardProps {
     title: string;
@@ -26,20 +27,29 @@ export function StatCard({
     icon: Icon,
     progress
 }: StatCardProps) {
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const isDark = mounted && resolvedTheme === "dark";
+
     const formattedValue = typeof value === "number"
         ? (value < 0.01 && value > 0 ? "<0.01" : value.toLocaleString("es-CO", { maximumFractionDigits: 2 }))
         : value;
 
     return (
         <div
-            className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6 transition-all hover:bg-slate-50 dark:hover:bg-white/[0.02] shadow-md dark:shadow-[0_2px_20px_rgba(0,0,0,0.1)]"
+            className="bg-[var(--bg-surface)] rounded-2xl p-6 transition-all shadow-md dark:shadow-[0_2px_20px_rgba(0,0,0,0.01)]"
         >
             <div className="flex items-start justify-between mb-4">
                 <div>
                     <h3 className="text-[var(--text-primary)] text-[12px] font-black tracking-widest leading-none mb-1 uppercase">{title}</h3>
                     <p className="text-[var(--text-muted)] text-[11px] font-bold uppercase tracking-wider">{subtitle}</p>
                 </div>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 dark:bg-white/5 border border-[var(--border)]">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--border)] ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
                     <Icon className="w-4 h-4" style={{ color }} />
                 </div>
             </div>

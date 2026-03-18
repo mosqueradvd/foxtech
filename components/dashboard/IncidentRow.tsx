@@ -2,10 +2,11 @@
  * components/dashboard/IncidentRow.tsx
  * Table row for incident list on the consultant dashboard
  */
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { StatusBadge, type StatusVariant } from "@/components/ui/StatusBadge";
 import type { Incident } from "@/lib/supabase";
+import { useTheme } from "next-themes";
 
 interface IncidentRowProps {
     incident: Incident & { company_name?: string; company_location?: string };
@@ -43,11 +44,28 @@ function formatTime(dateStr?: string): string {
 }
 
 function ClassificationBadge({ status }: { status?: string }) {
-    const map: Record<string, { label: string; cls: string }> = {
-        pending: { label: "Pendiente", cls: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-400 dark:border-amber-700/30" },
-        classified: { label: "Clasificado", cls: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-700/30" },
-        investigated: { label: "Investigado", cls: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/40 dark:text-green-400 dark:border-green-700/30" },
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const isDark = mounted && resolvedTheme === "dark";
+
+    const lightMap: Record<string, { label: string; cls: string }> = {
+        pending: { label: "Pendiente", cls: "bg-amber-100 text-amber-800 border-amber-200" },
+        classified: { label: "Clasificado", cls: "bg-blue-100 text-blue-800 border-blue-200" },
+        investigated: { label: "Investigado", cls: "bg-green-100 text-green-800 border-green-200" },
     };
+
+    const darkMap: Record<string, { label: string; cls: string }> = {
+        pending: { label: "Pendiente", cls: "bg-amber-900/40 text-amber-400 border-amber-700/30" },
+        classified: { label: "Clasificado", cls: "bg-blue-900/40 text-blue-400 border-blue-700/30" },
+        investigated: { label: "Investigado", cls: "bg-green-900/40 text-green-400 border-green-700/30" },
+    };
+
+    const map = isDark ? darkMap : lightMap;
     const s = map[status ?? "pending"] ?? map.pending;
     return (
         <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wide ${s.cls}`}>

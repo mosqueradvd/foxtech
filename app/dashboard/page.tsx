@@ -209,7 +209,7 @@ export default function DashboardPage() {
                 {/* ── BOTTOM SECTION: Table + Map ── */}
                 <div className="grid grid-cols-[1fr_300px] gap-4">
                     {/* Incidents Table */}
-                    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden shadow-sm dark:shadow-none">
+                    <div className="bg-[var(--bg-surface)] rounded-xl overflow-hidden shadow-sm dark:shadow-[0_2px_10px_rgba(0,0,0,0.01)]">
                         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
@@ -317,7 +317,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Geolocation Panel */}
-                    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden flex flex-col shadow-sm dark:shadow-none">
+                    <div className="bg-[var(--bg-surface)] rounded-xl overflow-hidden flex flex-col dark:shadow-[0_2px_10px_rgba(0,0,0,0.01)]">
                         <div className="flex items-center justify-between px-4 py-4 border-b border-[var(--border)]">
                             <h2 className="text-[var(--text-primary)] font-bold text-sm uppercase tracking-wider">
                                 GEOLOCALIZACIÓN
