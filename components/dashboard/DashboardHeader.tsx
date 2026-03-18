@@ -34,17 +34,7 @@ export function DashboardHeader({ children, onRefresh, loading }: DashboardHeade
                     </button>
                 )}
                 
-                <button
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-amber-500/50 transition-all cursor-pointer"
-                    aria-label="Toggle Theme"
-                >
-                    {mounted ? (
-                        theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />
-                    ) : (
-                        <Sun className="w-4 h-4" /> // Default fallback
-                    )}
-                </button>
+
 
                 <button className="relative p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-amber-500/50 transition-all cursor-pointer">
                     <Bell className="w-4 h-4" />

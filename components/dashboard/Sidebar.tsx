@@ -18,8 +18,11 @@ import {
     ChevronUp,
     Search,
     ShieldAlert,
+    Sun,
+    Moon,
 } from "lucide-react";
 import { useActiveCompany } from "@/hooks/useActiveCompany";
+import { useTheme } from "next-themes";
 
 interface NavItem {
     id: string;
@@ -45,6 +48,13 @@ export function Sidebar() {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -222,7 +232,20 @@ export function Sidebar() {
                     <p className="text-[var(--text-primary)] text-sm font-bold leading-none truncate">Carlos Mendez</p>
                     <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider mt-1 truncate">Senior Consultant</p>
                 </div>
-                <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+                
+                <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-amber-500/50 transition-all cursor-pointer flex items-center justify-center shrink-0"
+                    aria-label="Toggle Theme"
+                >
+                    {mounted ? (
+                        theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />
+                    ) : (
+                        <Sun className="w-4 h-4" />
+                    )}
+                </button>
+
+                <button className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer ml-1">
                     <MoreVertical className="w-4 h-4" />
                 </button>
             </div>
