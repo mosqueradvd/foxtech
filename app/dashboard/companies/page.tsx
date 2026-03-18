@@ -102,7 +102,7 @@ export default function CompaniesPage() {
                 <div className="flex items-center gap-4">
                     <div>
                         <h1 className={`${s.title} font-black text-xl tracking-tight leading-none uppercase`}>Mis Empresas</h1>
-                        <p className={`${s.subtitle} text-xs font-medium mt-1`}>
+                        <p className={`${s.subtitle} text-md font-meium mt-1`}>
                             Gestión de empresas cliente centralizada
                         </p>
                     </div>
@@ -112,16 +112,17 @@ export default function CompaniesPage() {
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B]" />
                         <input
+                            id="search-company"
                             type="text"
                             placeholder="Buscar empresa..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`w-[280px] h-[36px] ${s.inputBg} border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none transition-colors`}
+                            className={`w-[280px] !h-[36px] !min-h-0 ${s.inputBg} border rounded-lg !pl-10 pr-4 py-2 text-sm focus:outline-none transition-colors`}
                         />
                     </div>
                     <button
                         onClick={() => router.push("/dashboard/companies/new")}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#F59E0B] text-black text-xs font-black rounded-lg hover:bg-amber-400 transition-colors uppercase tracking-tight"
+                        className="flex items-center gap-2 px-5 h-[36px] bg-[#F59E0B] text-black text-xs font-black rounded-lg hover:bg-amber-400 transition-colors uppercase tracking-tight cursor-pointer"
                     >
                         <Building2 className="w-4 h-4" /> Nueva Empresa
                     </button>
@@ -178,14 +179,16 @@ export default function CompaniesPage() {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3 mt-auto">
+                                        {!isActive && (
+                                            <button
+                                                onClick={() => handleSelectActive(company.id, company.razon_social)}
+                                                className="py-2.5 rounded-lg text-xs font-black bg-[#F59E0B] text-black hover:bg-amber-400 cursor-pointer transition-colors"
+                                            >
+                                                SELECCIONAR
+                                            </button>
+                                        )}
                                         <button
-                                            onClick={() => handleSelectActive(company.id, company.razon_social)}
-                                            className={`py-2.5 rounded-lg text-xs font-black transition-colors ${isActive ? "bg-[#F59E0B] text-black" : "bg-[#F59E0B] text-black hover:bg-amber-400 cursor-pointer"}`}
-                                        >
-                                            SELECCIONAR
-                                        </button>
-                                        <button
-                                            className={`py-2.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${s.editButton}`}
+                                            className={`py-2.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${s.editButton} ${isActive ? "col-span-2" : ""}`}
                                         >
                                             EDITAR
                                         </button>

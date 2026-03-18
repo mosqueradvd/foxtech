@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
     ArrowLeft, Search, ClipboardList, AlertCircle,
     CheckCircle2, Clock, ChevronRight, Plus, Filter
@@ -25,12 +26,38 @@ function DynamicIcon({ name, className }: { name: string; className?: string }) 
 
 // ── Score semaphore ────────────────────────────────────────────────────────────
 
-function ScoreBadge({ score }: { score: number }) {
+const lightStyles = {
+    bg: "bg-[#F8F9FA]",
+    textTitle: "text-[#0F1219]",
+    subtitle: "text-[#64748B]",
+    containerBg: "bg-white",
+    border: "border-[#E2E8F0]",
+    cardBg: "bg-white border-[#E2E8F0] hover:bg-slate-50/50",
+    itemTitle: "text-[#1B253B]",
+    inputBg: "bg-gray-50 border-[#E2E8F0] text-gray-900 focus:border-[#F59E0B]/50",
+    selectBg: "bg-gray-50 border-[#E2E8F0] text-gray-900",
+    placeholder: "placeholder:text-gray-400",
+};
+
+const darkStyles = {
+    bg: "bg-[#0F1219]",
+    textTitle: "text-white",
+    subtitle: "text-[#64748B]",
+    containerBg: "bg-[#1A1F2E]",
+    border: "border-[#1E2A3B]",
+    cardBg: "bg-[#1A1F2E] border-[#1E2A3B] hover:bg-white/[0.02]",
+    itemTitle: "text-white",
+    inputBg: "bg-[#0F1219] border-[#1E2A3B] text-white focus:border-amber-500/50",
+    selectBg: "bg-[#0F1219] border-[#1E2A3B] text-white",
+    placeholder: "placeholder:text-[#334155]",
+};
+
+function ScoreBadge({ score, isLight }: { score: number; isLight?: boolean }) {
     const cfg = score >= 80
-        ? { cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20", label: `${score}%` }
+        ? { cls: isLight ? "bg-green-100 text-green-800 border-green-200" : "bg-emerald-400/10 text-emerald-400 border-emerald-400/20", label: `${score}%` }
         : score >= 60
-            ? { cls: "bg-amber-400/10 text-amber-400 border-amber-400/20", label: `${score}%` }
-            : { cls: "bg-red-400/10 text-red-400 border-red-400/20", label: `${score}%` };
+            ? { cls: isLight ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-amber-400/10 text-amber-400 border-amber-400/20", label: `${score}%` }
+            : { cls: isLight ? "bg-red-100 text-red-800 border-red-200" : "bg-red-400/10 text-red-400 border-red-400/20", label: `${score}%` };
     return (
         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${cfg.cls}`}>
             {cfg.label}
@@ -38,16 +65,28 @@ function ScoreBadge({ score }: { score: number }) {
     );
 }
 
-function StatusBadge({ status }: { status?: string }) {
-    return status === "cerrada"
-        ? <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"><CheckCircle2 className="w-3 h-3" />Cerrada</span>
-        : <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20"><Clock className="w-3 h-3" />Abierta</span>;
+function StatusBadge({ status, isLight }: { status?: string; isLight?: boolean }) {
+    const classes = status === "cerrada"
+        ? (isLight ? "bg-green-100 text-green-800 border-green-200" : "bg-emerald-400/10 text-emerald-400 border-emerald-400/20")
+        : (isLight ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-amber-400/10 text-amber-400 border-amber-400/20");
+
+    return (
+        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${classes}`}>
+            {status === "cerrada" ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
+            {status === "cerrada" ? "Cerrada" : "Abierta"}
+        </span>
+    );
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export default function InspectionsListPage() {
     const router = useRouter();
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => { setMounted(true); }, []);
+
     const [inspections, setInspections] = useState<Inspection[]>([]);
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
@@ -55,6 +94,9 @@ export default function InspectionsListPage() {
     const [filterTemplate, setFilterTemplate] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
     const { activeCompany } = useActiveCompany();
+
+    const isLight = resolvedTheme === "light";
+    const s = isLight ? lightStyles : darkStyles;
 
     const load = useCallback(async () => {
         if (!activeCompany) return;
@@ -84,6 +126,8 @@ export default function InspectionsListPage() {
         return matchText && matchTemplate && matchStatus;
     });
 
+    if (!mounted) return null;
+
     // ── Counters ───────────────────────────────────────────────────────────────
     const openCount = inspections.filter((i) => i.status !== "cerrada").length;
     const critCount = inspections.filter((i) => (i.score_percent ?? 100) < 60).length;
@@ -92,12 +136,12 @@ export default function InspectionsListPage() {
     const companyName = (id?: string) => companies.find((c) => c.id === id)?.razon_social ?? "—";
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className={`flex-1 flex flex-col h-full overflow-hidden ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* HEADER */}
             <DashboardHeader onRefresh={load} loading={loading}>
                 <div className="flex items-center justify-between flex-1">
                     <div>
-                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Inspecciones</h1>
+                        <h1 className={`${s.textTitle} font-black text-xl tracking-tight leading-none uppercase`}>Inspecciones</h1>
                         <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
                             Dec. 1072/2015 — Res. 4272/2021 — RETIE
                         </p>
@@ -149,24 +193,24 @@ export default function InspectionsListPage() {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 space-y-4">
+                <div className={`${s.containerBg} border ${s.border} rounded-2xl p-6 space-y-4`}>
                     <div className="relative w-full">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748B] pointer-events-none" />
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar por inspector, ubicación..."
-                            className="bg-[#0F1219] border border-[#1E2A3B] !pl-[44px] rounded-xl pr-4 py-2.5 text-white text-xs font-bold outline-none focus:border-amber-500/50 w-full placeholder:text-[#334155]"
+                            className={`${s.inputBg} border ${s.border} !pl-[44px] rounded-xl pr-4 py-2.5 text-xs font-bold outline-none font-sans w-full ${s.placeholder}`}
                         />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <select value={filterTemplate} onChange={(e) => setFilterTemplate(e.target.value)}
-                            className="bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]/50 appearance-none">
+                            className={`${s.selectBg} border ${s.border} rounded-xl px-4 py-2.5 ${s.textTitle} text-xs font-bold outline-none focus:border-[#F59E0B]/50 appearance-none`}>
                             <option value="all">Todos los templates</option>
                             {INSPECTION_TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                         </select>
                         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                            className="bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]/50 appearance-none">
+                            className={`${s.selectBg} border ${s.border} rounded-xl px-4 py-2.5 ${s.textTitle} text-xs font-bold outline-none focus:border-[#F59E0B]/50 appearance-none`}>
                             <option value="all">Todos los estados</option>
                             <option value="abierta">Abiertas</option>
                             <option value="cerrada">Cerradas</option>
@@ -178,7 +222,7 @@ export default function InspectionsListPage() {
                 {loading ? (
                     <InspectionListSkeleton />
                 ) : filtered.length === 0 ? (
-                    <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-12 text-center">
+                    <div className={`${s.containerBg} border ${s.border} rounded-2xl p-12 text-center`}>
                         <ClipboardList className="w-10 h-10 text-[#334155] mx-auto mb-3" />
                         <p className="text-[#64748B] font-semibold">
                             {inspections.length === 0 ? "Sin inspecciones registradas" : "Sin resultados para este filtro"}
@@ -198,19 +242,19 @@ export default function InspectionsListPage() {
                             const template = INSPECTION_TEMPLATES.find((t) => t.id === insp.template_id);
                             return (
                                 <button key={insp.id} onClick={() => router.push(`/dashboard/inspections/${insp.id}`)}
-                                    className="w-full text-left bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 hover:border-[#F59E0B]/30 hover:bg-white/[0.02] transition-all flex items-center gap-6 cursor-pointer">
+                                    className={`w-full text-left ${s.cardBg} border ${s.border} rounded-2xl p-6 hover:border-[#F59E0B]/30 transition-all flex items-center gap-6 cursor-pointer`}>
                                     {/* Template icon */}
-                                    <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-lg flex-shrink-0">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg flex-shrink-0 border ${isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"}`}>
                                         <DynamicIcon name={template?.icon ?? "clipboard-list"} className="w-6 h-6 text-[#F59E0B]" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center flex-wrap gap-2 mb-1">
-                                            <span className="text-white font-semibold text-sm truncate">
+                                            <span className={`${s.itemTitle} font-semibold text-sm truncate`}>
                                                 {insp.template_name ?? template?.name ?? "Inspección"}
                                             </span>
-                                            <StatusBadge status={insp.status} />
+                                            <StatusBadge status={insp.status} isLight={isLight} />
                                             {openFindings > 0 && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-red-400/10 text-red-400 border border-red-400/20">
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border ${isLight ? "bg-red-100 text-red-800 border-red-200" : "bg-red-400/10 text-red-400 border-red-400/20"}`}>
                                                     <AlertCircle className="w-3 h-3" />
                                                     {openFindings} hallazgo{openFindings > 1 ? "s" : ""}
                                                 </span>
@@ -223,7 +267,7 @@ export default function InspectionsListPage() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-3 flex-shrink-0">
-                                        <ScoreBadge score={score} />
+                                        <ScoreBadge score={score} isLight={isLight} />
                                         <ChevronRight className="w-4 h-4 text-[#334155]" />
                                     </div>
                                 </button>

@@ -6,6 +6,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
     ArrowLeft, CheckCircle2, XCircle, AlertCircle,
     Plus, Trash2, Loader2, Save, Lock, Clock, ChevronDown, ChevronUp,
@@ -29,19 +30,50 @@ function DynamicIcon({ name, className }: { name: string; className?: string }) 
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function ScoreBar({ score }: { score: number }) {
+const lightStyles = {
+    bg: "bg-[#F8F9FA]",
+    headerBg: "bg-white border-b border-[#E2E8F0]",
+    cardBg: "bg-white border border-[#E2E8F0]",
+    containerBg: "bg-white",
+    border: "border-[#E2E8F0]",
+    itemTitle: "text-[#1E293B]",
+    subtitle: "text-[#64748B]",
+    inputBg: "bg-gray-50 border-[#E2E8F0] text-gray-900 focus:border-[#F59E0B]/50",
+    selectBg: "bg-gray-50 border-[#E2E8F0] text-gray-900 focus:border-[#F59E0B]/50",
+    buttonSecondaryBg: "bg-[#E2E8F0] text-[#475569] hover:text-[#1E293B]",
+    cardSubBg: "bg-slate-50",
+    placeholder: "placeholder:text-gray-400",
+};
+
+const darkStyles = {
+    bg: "bg-[#0F1420]",
+    headerBg: "bg-[#141824] border-b border-[#1E2A3B]",
+    cardBg: "bg-[#141824] border border-[#1E2A3B]",
+    containerBg: "bg-[#141824]",
+    border: "border-[#1E2A3B]",
+    itemTitle: "text-white",
+    subtitle: "text-[#64748B]",
+    inputBg: "bg-[#0F1420] border-[#1E2A3B] text-white focus:border-amber-500/50",
+    selectBg: "bg-[#0F1420] border-[#1E2A3B] text-white focus:border-amber-500/50",
+    buttonSecondaryBg: "bg-[#1E2A3B] text-[#94A3B8] hover:text-white",
+    cardSubBg: "bg-[#0F1219]",
+    placeholder: "placeholder:text-[#334155]",
+};
+
+function ScoreBar({ score, isLight }: { score: number; isLight?: boolean }) {
     const color = score >= 80 ? "bg-emerald-500" : score >= 60 ? "bg-amber-500" : "bg-red-500";
     return (
-        <div className="w-full bg-[#1E2A3B] rounded-full h-2">
+        <div className={`w-full ${isLight ? "bg-slate-200" : "bg-[#1E2A3B]"} rounded-full h-2`}>
             <div className={`h-2 rounded-full transition-all ${color}`} style={{ width: `${score}%` }} />
         </div>
     );
 }
 
-function ActionStatusSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+function ActionStatusSelect({ value, onChange, disabled, isLight }: { value: string; onChange: (v: string) => void; disabled?: boolean; isLight?: boolean }) {
+    const s = isLight ? lightStyles : darkStyles;
     return (
         <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}
-            className="bg-[#0F1420] border border-[#1E2A3B] rounded-lg px-2 py-1.5 text-white text-xs outline-none focus:border-[#F59E0B]/50 disabled:opacity-50 cursor-pointer">
+            className={`${s.selectBg} border ${s.border} rounded-lg px-2 py-1.5 ${s.itemTitle} text-xs outline-none disabled:opacity-50 cursor-pointer`}>
             <option value="pendiente">Pendiente</option>
             <option value="en_ejecucion">En ejecución</option>
             <option value="completada">Completada</option>
@@ -53,12 +85,13 @@ function ActionStatusSelect({ value, onChange, disabled }: { value: string; onCh
     );
 }
 
-function FInput({ value, onChange, placeholder, disabled }: { value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean }) {
+function FInput({ value, onChange, placeholder, disabled, isLight }: { value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean; isLight?: boolean }) {
     const ref = useRef<HTMLInputElement>(null);
+    const s = isLight ? lightStyles : darkStyles;
     return (
         <input ref={ref} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
             onFocus={() => ref.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
-            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#F59E0B]/50 placeholder:text-[#334155] disabled:opacity-50" />
+            className={`w-full ${s.inputBg} border ${s.border} rounded-xl px-3 py-2 text-sm outline-none disabled:opacity-50 ${s.placeholder}`} />
     );
 }
 
@@ -67,6 +100,10 @@ function FInput({ value, onChange, placeholder, disabled }: { value: string; onC
 export default function InspectionDetailPage() {
     const router = useRouter();
     const { id } = useParams<{ id: string }>();
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => { setMounted(true); }, []);
 
     const [inspection, setInspection] = useState<Inspection | null>(null);
     const [company, setCompany] = useState<Company | null>(null);
@@ -77,6 +114,9 @@ export default function InspectionDetailPage() {
     const [actionPlan, setActionPlan] = useState<InspectionActionItem[]>([]);
     const [expandedFinding, setExpandedFinding] = useState<string | null>(null);
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const isLight = resolvedTheme === "light";
+    const s = isLight ? lightStyles : darkStyles;
 
     const isClosed = inspection?.status === "cerrada";
     const score = inspection?.score_percent ?? 0;
@@ -192,38 +232,40 @@ export default function InspectionDetailPage() {
     const allActionsSet = failed.length > 0 && failed.every((f) => actionPlan.some((a) => a.finding_id === f.id));
 
     // ── Render ─────────────────────────────────────────────────────────────────
+    if (!mounted) return null;
+
     if (loading) return (
-        <div className="min-h-screen bg-[#0F1420] flex items-center justify-center">
+        <div className={`min-h-screen ${s.bg} flex items-center justify-center`}>
             <Loader2 className="w-6 h-6 text-[#F59E0B] animate-spin" />
         </div>
     );
 
     if (!inspection) return (
-        <div className="min-h-screen bg-[#0F1420] flex items-center justify-center">
+        <div className={`min-h-screen ${s.bg} flex items-center justify-center`}>
             <div className="text-center space-y-3">
                 <AlertCircle className="w-10 h-10 text-red-400 mx-auto" />
-                <p className="text-white font-bold">Inspección no encontrada</p>
+                <p className={`${s.itemTitle} font-bold`}>Inspección no encontrada</p>
                 <button onClick={() => router.back()} className="text-[#F59E0B] text-sm underline">Volver</button>
             </div>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className={`min-h-screen ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* HEADER */}
-            <header className="bg-[#141824] border-b border-[#1E2A3B] px-4 sm:px-6 py-4 flex items-center gap-3 sticky top-0 z-30">
-                <button onClick={() => router.push("/dashboard/inspections")} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0 cursor-pointer">
+            <header className={`${s.headerBg} px-4 sm:px-6 py-4 flex items-center gap-3 sticky top-0 z-30`}>
+                <button onClick={() => router.push("/dashboard/inspections")} className={`p-2 rounded-lg text-[#64748B] hover:text-[#1B253B] transition-all flex-shrink-0 cursor-pointer`}>
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-white font-bold text-sm leading-none flex items-center gap-2">
+                        <h1 className={`${s.itemTitle} font-bold text-sm flex items-center gap-2`}>
                             <DynamicIcon name={template?.icon ?? "clipboard-list"} className="w-4 h-4" />
                             {inspection.template_name ?? template?.name ?? "Inspección"}
                         </h1>
                         {isClosed
-                            ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"><Lock className="w-3 h-3" />Cerrada</span>
-                            : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-400/10 text-amber-400 border border-amber-400/20"><Clock className="w-3 h-3" />Abierta</span>
+                            ? <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border ${isLight ? "bg-green-100 text-green-800 border-green-200" : "bg-emerald-400/10 text-emerald-400 border-emerald-400/20"}`}><Lock className="w-3 h-3" />Cerrada</span>
+                            : <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold border ${isLight ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-amber-400/10 text-amber-400 border-amber-400/20"}`}><Clock className="w-3 h-3" />Abierta</span>
                         }
                     </div>
                     <p className="text-[#64748B] text-xs mt-0.5 truncate">
@@ -236,7 +278,7 @@ export default function InspectionDetailPage() {
                     {saved && !saving && <span className="text-emerald-400 text-xs font-semibold hidden sm:inline">Guardado ✓</span>}
                     {!isClosed && (
                         <button onClick={() => save(true)} disabled={saving}
-                            className="flex items-center gap-1.5 px-3 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-xs font-semibold transition-colors">
+                            className={`flex items-center gap-1.5 px-3 py-2 ${s.buttonSecondaryBg} rounded-xl text-xs font-semibold transition-colors`}>
                             <Save className="w-3.5 h-3.5" />
                             <span className="hidden sm:inline">Guardar</span>
                         </button>
@@ -246,23 +288,23 @@ export default function InspectionDetailPage() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 space-y-5">
                 {/* Score card */}
-                <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-[#94A3B8] text-sm font-semibold">Cumplimiento general</span>
                         <span className={`text-2xl font-black ${score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400"}`}>
                             {score}%
                         </span>
                     </div>
-                    <ScoreBar score={score} />
+                    <ScoreBar score={score} isLight={isLight} />
                     <div className="grid grid-cols-3 gap-2 mt-4">
                         {[
-                            { label: "OK", count: passed.length, color: "text-emerald-400" },
-                            { label: "Fallidos", count: failed.length, color: "text-red-400" },
+                            { label: "OK", count: passed.length, color: "text-emerald-500" },
+                            { label: "Fallidos", count: failed.length, color: "text-red-500" },
                             { label: "Sin evaluar", count: notEval.length, color: "text-[#64748B]" },
-                        ].map((s) => (
-                            <div key={s.label} className="text-center bg-[#0F1420] rounded-xl p-2">
-                                <p className={`text-lg font-black ${s.color}`}>{s.count}</p>
-                                <p className="text-[#64748B] text-xs">{s.label}</p>
+                        ].map((sItem) => (
+                            <div key={sItem.label} className={`text-center ${s.cardSubBg} border ${s.border} rounded-xl p-2`}>
+                                <p className={`text-lg font-black ${sItem.color}`}>{sItem.count}</p>
+                                <p className="text-[#64748B] text-xs">{sItem.label}</p>
                             </div>
                         ))}
                     </div>
@@ -273,10 +315,10 @@ export default function InspectionDetailPage() {
 
                 {/* Findings + action plan */}
                 {failed.length > 0 && (
-                    <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                    <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                         <div className="flex items-center gap-2 mb-4">
-                            <AlertCircle className="w-4 h-4 text-red-400" />
-                            <h2 className="text-white font-semibold text-sm">Hallazgos ({failed.length})</h2>
+                            <AlertCircle className="w-4 h-4 text-red-500" />
+                            <h2 className={`${s.itemTitle} font-semibold text-sm`}>Hallazgos ({failed.length})</h2>
                             <span className="text-[#64748B] text-xs ml-auto">Plan de acción requerido por cada hallazgo</span>
                         </div>
 
@@ -285,48 +327,48 @@ export default function InspectionDetailPage() {
                                 const action = actionPlan.find((a) => a.finding_id === item.id);
                                 const expanded = expandedFinding === item.id;
                                 return (
-                                    <div key={item.id} className={`border rounded-xl overflow-hidden ${action ? "border-amber-700/30" : "border-red-700/30"}`}>
+                                    <div key={item.id} className={`border rounded-xl overflow-hidden ${action ? (isLight ? "border-amber-200" : "border-amber-700/30") : (isLight ? "border-red-200" : "border-red-700/30")}`}>
                                         {/* Finding header */}
-                                        <div className="flex items-start gap-3 p-3 bg-[#0F1420]">
-                                            <XCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                        <div className={`flex items-start gap-3 p-3 ${s.cardSubBg}`}>
+                                            <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-white text-sm font-medium leading-snug">{item.label}</p>
+                                                <p className={`${s.itemTitle} text-sm font-medium leading-snug`}>{item.label}</p>
                                                 {item.observation && (
                                                     <p className="text-[#64748B] text-xs mt-1 italic">"{item.observation}"</p>
                                                 )}
                                                 {item.photo_url && (
                                                     <a href={item.photo_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-2">
-                                                        <img src={item.photo_url} alt="Evidencia" className="h-16 w-16 object-cover rounded-lg border border-[#1E2A3B] hover:opacity-80 transition-opacity" />
+                                                        <img src={item.photo_url} alt="Evidencia" className={`h-16 w-16 object-cover rounded-lg border ${s.border} hover:opacity-80 transition-opacity`} />
                                                     </a>
                                                 )}
                                                 {item.norm && (
-                                                    <p className="text-[#334155] text-xs mt-1.5">{item.norm}</p>
+                                                    <p className="text-[#475569] text-xs mt-1.5">{item.norm}</p>
                                                 )}
                                             </div>
                                             {action ? (
                                                 <button onClick={() => setExpandedFinding(expanded ? null : item.id)}
-                                                    className="flex items-center gap-1 text-amber-400 text-xs font-semibold flex-shrink-0">
+                                                    className="flex items-center gap-1 text-amber-500 text-xs font-semibold flex-shrink-0">
                                                     Acción definida
                                                     {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                                 </button>
                                             ) : !isClosed ? (
                                                 <button onClick={() => addAction(item)}
-                                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-red-400/10 text-red-400 border border-red-400/20 rounded-lg text-xs font-semibold hover:bg-red-400/20 transition-colors flex-shrink-0">
+                                                    className={`flex items-center gap-1 px-2.5 py-1.5 ${isLight ? "bg-red-50 text-red-600 border-red-200" : "bg-red-400/10 text-red-400 border-red-400/20"} border rounded-lg text-xs font-semibold hover:opacity-80 transition-opacity flex-shrink-0`}>
                                                     <Plus className="w-3 h-3" /> Acción
                                                 </button>
                                             ) : (
-                                                <span className="text-red-400 text-xs font-semibold flex-shrink-0">Sin acción</span>
+                                                <span className="text-red-500 text-xs font-semibold flex-shrink-0">Sin acción</span>
                                             )}
                                         </div>
 
                                         {/* Action form */}
                                         {action && (expanded || !action.action) && (
-                                            <div className="p-3 border-t border-[#1E2A3B] bg-[#141824] space-y-3">
+                                            <div className={`p-3 border-t ${s.border} ${s.containerBg} space-y-3`}>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <div className="sm:col-span-2">
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Acción correctiva *</label>
                                                         <div className="space-y-2">
-                                                            <FInput value={action.action} onChange={(v) => updateAction(action.id, { action: v })} placeholder="Describe la acción a tomar..." disabled={isClosed} />
+                                                            <FInput value={action.action} onChange={(v) => updateAction(action.id, { action: v })} placeholder="Describe la acción a tomar..." disabled={isClosed} isLight={isLight} />
                                                             {action.voice_url && (
                                                                 <audio src={action.voice_url} controls className="h-8 max-w-full" />
                                                             )}
@@ -335,27 +377,27 @@ export default function InspectionDetailPage() {
                                                     {/* Expanded responsible fields */}
                                                     <div className="sm:col-span-2">
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Nombre del responsable *</label>
-                                                        <FInput value={action.responsible} onChange={(v) => updateAction(action.id, { responsible: v })} placeholder="Nombre y cargo" disabled={isClosed} />
+                                                        <FInput value={action.responsible} onChange={(v) => updateAction(action.id, { responsible: v })} placeholder="Nombre y cargo" disabled={isClosed} isLight={isLight} />
                                                     </div>
                                                     <div>
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Teléfono (opcional)</label>
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="text-[#64748B] text-sm px-2 py-2 bg-[#0F1420] border border-[#1E2A3B] rounded-xl">+57</span>
-                                                            <FInput value={action.responsible_phone ?? ""} onChange={(v) => updateAction(action.id, { responsible_phone: v.replace(/\D/g, "").slice(0, 10) })} placeholder="3001234567" disabled={isClosed} />
+                                                            <span className={`text-[#64748B] text-sm px-2 py-2 ${s.inputBg} border ${s.border} rounded-xl`}>+57</span>
+                                                            <FInput value={action.responsible_phone ?? ""} onChange={(v) => updateAction(action.id, { responsible_phone: v.replace(/\D/g, "").slice(0, 10) })} placeholder="3001234567" disabled={isClosed} isLight={isLight} />
                                                         </div>
                                                     </div>
                                                     <div>
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Email (opcional)</label>
-                                                        <FInput value={action.responsible_email ?? ""} onChange={(v) => updateAction(action.id, { responsible_email: v })} placeholder="correo@empresa.com" disabled={isClosed} />
+                                                        <FInput value={action.responsible_email ?? ""} onChange={(v) => updateAction(action.id, { responsible_email: v })} placeholder="correo@empresa.com" disabled={isClosed} isLight={isLight} />
                                                     </div>
                                                     <div>
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Fecha límite *</label>
                                                         <input type="date" value={action.deadline} onChange={(e) => updateAction(action.id, { deadline: e.target.value })} disabled={isClosed}
-                                                            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#F59E0B]/50 disabled:opacity-50" />
+                                                            className={`w-full ${s.inputBg} border ${s.border} rounded-xl px-3 py-2 ${s.itemTitle} text-sm outline-none disabled:opacity-50`} />
                                                     </div>
                                                     <div>
                                                         <label className="text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5 block">Estado</label>
-                                                        <ActionStatusSelect value={action.status} onChange={(v) => updateAction(action.id, { status: v as InspectionActionItem["status"] })} disabled={isClosed} />
+                                                        <ActionStatusSelect value={action.status} onChange={(v) => updateAction(action.id, { status: v as InspectionActionItem["status"] })} disabled={isClosed} isLight={isLight} />
                                                     </div>
                                                     {/* Notify row */}
                                                     <div className="sm:col-span-2 flex flex-wrap items-center gap-2 pt-1">
@@ -421,20 +463,20 @@ export default function InspectionDetailPage() {
                                                         )}
                                                     </div>
                                                     {action.status === "completada" && (
-                                                        <div className="sm:col-span-2 mt-2 p-3 sm:p-4 bg-[#0F1420] border border-[#1E2A3B] rounded-xl space-y-4">
-                                                            <div className="flex items-center gap-2 border-b border-[#1E2A3B] pb-2">
+                                                        <div className={`sm:col-span-2 mt-2 p-3 sm:p-4 ${s.inputBg} border ${s.border} rounded-xl space-y-4`}>
+                                                            <div className={`flex items-center gap-2 border-b ${s.border} pb-2`}>
                                                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                                                                 <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Verificación de Eficacia (Dec. 1072)</span>
                                                             </div>
                                                             <div>
                                                                 <label className="text-[#64748B] text-[10px] uppercase block mb-1.5">Nota de cierre / Observaciones de Verificación</label>
-                                                                <FInput value={action.verification_note || ""} onChange={(v) => updateAction(action.id, { verification_note: v })} disabled={isClosed} placeholder="E.g. área limpia y delimitada, se cerró el hallazgo." />
+                                                                <FInput value={action.verification_note || ""} onChange={(v) => updateAction(action.id, { verification_note: v })} disabled={isClosed} isLight={isLight} placeholder="E.g. área limpia y delimitada, se cerró el hallazgo." />
                                                             </div>
                                                             <div>
                                                                 <label className="text-[#64748B] text-[10px] uppercase block mb-1.5 mt-2">Evidencia fotográfica</label>
                                                                 {action.verification_photo_url ? (
                                                                     <div className="relative inline-block mt-1">
-                                                                        <img src={action.verification_photo_url} className="h-24 w-24 object-cover rounded-xl border-2 border-[#1E2A3B]" alt="Verificación" />
+                                                                        <img src={action.verification_photo_url} className={`h-24 w-24 object-cover rounded-xl border-2 ${s.border}`} alt="Verificación" />
                                                                         {!isClosed && (
                                                                             <button onClick={() => updateAction(action.id, { verification_photo_url: undefined })} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-400 transition-colors cursor-pointer"><XCircle className="w-3.5 h-3.5" /></button>
                                                                         )}
@@ -454,7 +496,7 @@ export default function InspectionDetailPage() {
                                                         </div>
                                                     )}
                                                     {(action.status === "verificada" || action.status === "cerrado") && (
-                                                        <div className="sm:col-span-2 mt-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                                                        <div className={`sm:col-span-2 mt-2 p-3 ${isLight ? "bg-emerald-50 border-emerald-200" : "bg-emerald-500/10 border border-emerald-500/20"} rounded-xl`}>
                                                             <div className="flex items-center gap-2 mb-2">
                                                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                                                                 <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Acción Verificada</span>
@@ -490,8 +532,8 @@ export default function InspectionDetailPage() {
 
                 {/* Pass items (collapsed) */}
                 {passed.length > 0 && (
-                    <details className="bg-[#141824] border border-[#1E2A3B] rounded-2xl overflow-hidden">
-                        <summary className="flex items-center gap-2 px-4 sm:px-6 py-4 cursor-pointer text-white font-semibold text-sm hover:bg-[#1E2A3B]/30 transition-colors list-none">
+                    <details className={`${s.cardBg} rounded-2xl overflow-hidden`}>
+                        <summary className={`flex items-center gap-2 px-4 sm:px-6 py-4 cursor-pointer ${s.itemTitle} font-semibold text-sm hover:opacity-80 transition-opacity list-none`}>
                             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                             Ítems aprobados ({passed.length})
                         </summary>
@@ -509,7 +551,7 @@ export default function InspectionDetailPage() {
 
                 {/* Close / status section */}
                 {!isClosed ? (
-                    <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                    <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                         <h3 className="text-white font-semibold text-sm mb-1">Cierre de la Inspección</h3>
                         <p className="text-[#64748B] text-xs mb-4">
                             {allActionsSet || failed.length === 0
@@ -526,7 +568,7 @@ export default function InspectionDetailPage() {
                         )}
                     </div>
                 ) : (
-                    <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4 sm:p-6 flex items-center gap-3">
+                    <div className={`border-2 ${isLight ? "bg-emerald-50 border-emerald-200" : "bg-emerald-500/10 border-emerald-500/25"} rounded-2xl p-4 sm:p-6 flex items-center gap-3`}>
                         <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0" />
                         <div>
                             <p className="text-emerald-400 font-semibold">Inspección cerrada</p>

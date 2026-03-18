@@ -90,7 +90,7 @@ export function Sidebar() {
                 {/* Company Selector */}
                 {companies.length > 0 && (
                     <div className="mt-10 relative" ref={dropdownRef}>
-                        <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] px-2 mb-2 block">
+                        <label className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] px-2 mb-2 block">
                             Empresa en Gestión
                         </label>
 
@@ -232,7 +232,7 @@ export function Sidebar() {
                     <p className="text-[var(--text-primary)] text-sm font-bold leading-none truncate">Carlos Mendez</p>
                     <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider mt-1 truncate">Senior Consultant</p>
                 </div>
-                
+
                 <button
                     onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                     className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:border-amber-500/50 transition-all cursor-pointer flex items-center justify-center shrink-0"
