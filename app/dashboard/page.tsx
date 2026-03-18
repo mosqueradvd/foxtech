@@ -13,6 +13,7 @@ import {
     AlertTriangle,
     ClipboardList,
     Building2,
+    ClipboardCheck,
     FileText,
     Bell,
     Search,
@@ -49,6 +50,7 @@ type EnrichedIncident = Incident & {
 export default function DashboardPage() {
     const router = useRouter();
     const [incidents, setIncidents] = useState<EnrichedIncident[]>([]);
+    const [actionStats, setActionStats] = useState({ pending: 0, overdue: 0 });
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeNav, setActiveNav] = useState("dashboard");
@@ -71,19 +73,37 @@ export default function DashboardPage() {
     const fetchData = useCallback(async () => {
         if (!activeCompany) return;
         setLoading(true);
-        const [{ data: incData }] = await Promise.all([
-            supabase.from("incidents").select("*").eq("company_id", activeCompany.id).order("created_at", { ascending: false }).limit(20)
-        ]);
+        try {
+            const [{ data: incData }, { data: invs }, { data: insps }] = await Promise.all([
+                supabase.from("incidents").select("*").eq("company_id", activeCompany.id).order("created_at", { ascending: false }).limit(20),
+                supabase.from("investigations").select("action_plan").eq("company_id", activeCompany.id),
+                supabase.from("inspections").select("action_plan").eq("company_id", activeCompany.id)
+            ]);
 
-        const enriched = (incData ?? []).map((inc: Incident) => ({
-            ...inc,
-            company_name: activeCompany.razon_social,
-            company_location: activeCompany.direccion,
-        }));
+            const actions = [
+                ...(invs ?? []).flatMap((inv: any) => inv.action_plan || []),
+                ...(insps ?? []).flatMap((insp: any) => insp.action_plan || [])
+            ];
 
-        setIncidents(enriched);
-        setCompanies([activeCompany as Company]);
-        setLoading(false);
+            const pending = actions.filter((a: any) => a.status !== "cerrado").length;
+            const todayStr = new Date().toISOString().split("T")[0];
+            const overdue = actions.filter((a: any) => a.status !== "cerrado" && a.deadline && a.deadline < todayStr).length;
+
+            setActionStats({ pending, overdue });
+
+            const enriched = (incData ?? []).map((inc: Incident) => ({
+                ...inc,
+                company_name: activeCompany.razon_social,
+                company_location: activeCompany.direccion,
+            }));
+
+            setIncidents(enriched);
+            setCompanies([activeCompany as Company]);
+        } catch (error) {
+            console.error("Error fetching dashboard data:", error);
+        } finally {
+            setLoading(false);
+        }
     }, [activeCompany]);
 
     useEffect(() => {
@@ -175,7 +195,7 @@ export default function DashboardPage() {
                     ) : (
                         <>
                             <StatCard
-                                title="INCIDENTES"
+                                title="EVENTOS (ATEL)"
                                 subtitle="Este mes"
                                 value={totalIncidents}
                                 trend={2}
@@ -193,14 +213,18 @@ export default function DashboardPage() {
                                 icon={ClipboardList}
                             />
                             <StatCard
-                                title="CUMPLIMIENTO"
-                                subtitle="Promedio %"
-                                value={avgCompliance}
-                                unit="%"
-                                trend={1}
-                                trendIsUp={false}
-                                color="#22C55E"
-                                icon={Building2}
+                                title="ACCIONES PENDIENTES"
+                                subtitle={
+                                    actionStats.overdue > 0 ? (
+                                        <span className="text-red-500 font-black">⚠ {actionStats.overdue} vencidas</span>
+                                    ) : (
+                                        <span className="text-emerald-500 font-bold">✓ Al día</span>
+                                    )
+                                }
+                                value={actionStats.pending}
+                                color={actionStats.overdue > 0 ? "#EF4444" : actionStats.pending > 0 ? "#F59E0B" : "#22C55E"}
+                                borderBottomColor={actionStats.overdue > 0 ? "#EF4444" : actionStats.pending > 0 ? "#F59E0B" : "#22C55E"}
+                                icon={ClipboardCheck}
                             />
                         </>
                     )}

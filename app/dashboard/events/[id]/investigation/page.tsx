@@ -130,7 +130,7 @@ function CauseCheckbox({ code, label, checked, onChange, disabled }: {
     code: string; label: string; checked: boolean;
     onChange: (v: boolean) => void; disabled?: boolean;
 }) {
-    const id = `cause-${code}`;
+    const id = `cause-${code}-${label.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
     return (
         <label htmlFor={id} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${checked ? "bg-amber-400/8 border border-amber-400/20" : "hover:bg-white/3 border border-transparent"
             } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
@@ -477,7 +477,7 @@ export default function InvestigationPage() {
     const statusCfg = STATUS_LABELS[investigation?.status ?? "en_proceso"];
 
     return (
-        <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="h-full flex flex-col bg-[#0F1420] overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* HEADER */}
             <header className="bg-[#141824] border-b border-[#1E2A3B] px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-30">
                 <button onClick={() => router.push(`/dashboard/events/${incidentId}`)} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0 cursor-pointer">
@@ -509,6 +509,8 @@ export default function InvestigationPage() {
                     {isClosed && <Lock className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
                 </div>
             </header>
+
+            <div className="flex-1 overflow-y-auto">
 
             {/* INCIDENT STRIP */}
             {incident && (
@@ -1184,6 +1186,7 @@ export default function InvestigationPage() {
                     )}
                 </div>
             )}
+            </div>
         </div>
     );
 }

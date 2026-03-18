@@ -5,12 +5,13 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface StatCardProps {
     title: string;
-    subtitle: string;
+    subtitle: string | React.ReactNode;
     value: number | string;
     unit?: string;
     trend?: string | number;
     trendIsUp?: boolean;
     color: string;
+    borderBottomColor?: string;
     icon: React.ElementType;
     progress?: number;
 }
@@ -23,6 +24,7 @@ export function StatCard({
     trend,
     trendIsUp,
     color,
+    borderBottomColor,
     icon: Icon,
     progress
 }: StatCardProps) {
@@ -31,7 +33,7 @@ export function StatCard({
         : value;
 
     return (
-        <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 transition-all hover:bg-white/[0.02]">
+        <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 transition-all hover:bg-white/[0.02] relative overflow-hidden">
             <div className="flex items-start justify-between mb-4">
                 <div>
                     <h3 className="text-white text-[12px] font-black tracking-widest leading-none mb-1 uppercase">{title}</h3>

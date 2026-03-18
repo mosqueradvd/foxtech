@@ -45,7 +45,7 @@ function ClassificationStatusBadge({ status }: { status?: string }) {
     };
     const s = map[status ?? "pending"] ?? map.pending;
     return (
-        <span className={`inline-flex text-center items-center px-3 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wider ${s.cls}`}>
+        <span className={`inline-flex items-center self-center leading-none px-3 py-1 rounded-full border text-[11px] font-bold uppercase tracking-wider ${s.cls}`}>
             {s.label}
         </span>
     );
@@ -69,7 +69,7 @@ function OriginalReportCard({ event }: { event: Event }) {
                     <FileText className="w-4 h-4 text-[#F59E0B]" />
                     Reporte Preliminar
                 </h3>
-                <ClassificationStatusBadge status={event.classification_status} />
+
             </div>
 
             <div className="grid grid-cols-3 gap-4">
@@ -747,51 +747,58 @@ export default function EventCharacterizationPage() {
         <div className="flex-1 overflow-y-auto bg-[#1A1F2E] flex flex-col">
             {/* ── HEADER ── */}
             <header className="sticky top-0 z-20 bg-[#1A1F2E]/95 backdrop-blur border-b border-[#334155]">
-                <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-                    <button
-                        onClick={() => router.push("/dashboard")}
-                        className="w-9 h-9 rounded-xl bg-[#1A1F2E] border border-[#334155] flex items-center justify-center hover:border-[#64748B] transition-colors flex-shrink-0 cursor-pointer"
-                    >
-                        <ArrowLeft className="w-4 h-4 text-[#64748B]" />
-                    </button>
-                    <div className="flex-1">
-                        <h1 className="text-white font-black text-base leading-none">
-                            Caracterización y Clasificación
-                        </h1>
-                        <p className="text-[#64748B] text-xs mt-0.5">ID: {eventId.slice(0, 8)}…</p>
+                <div className="max-w-6xl mx-auto px-6 relative">
+                    {/* Row 1: Title & Actions */}
+                    <div className="py-4 flex items-center gap-4">
+                        <button
+                            onClick={() => router.push("/dashboard")}
+                            className="w-9 h-9 rounded-xl bg-[#1A1F2E] border border-[#334155] flex items-center justify-center hover:border-[#64748B] transition-colors flex-shrink-0 cursor-pointer"
+                        >
+                            <ArrowLeft className="w-4 h-4 text-[#64748B]" />
+                        </button>
+                        <div>
+                            <h1 className="text-white font-black text-base leading-none">
+                                Caracterización y Clasificación
+                            </h1>
+                            <p className="text-[#64748B] text-xs mt-0.5">ID: {eventId.slice(0, 8)}…</p>
+                        </div>
                     </div>
-                    <ClassificationStatusBadge status={event.classification_status} />
-                </div>
 
-                {/* Step indicator */}
-                <div className="max-w-6xl mx-auto px-6 py-3 flex items-center gap-0">
-                    {STEPS.map((s, idx) => {
-                        const Icon = s.icon;
-                        const isDone = step > s.id;
-                        const isActive = step === s.id;
-                        return (
-                            <div key={s.id} className="flex items-center">
-                                <button
-                                    onClick={() => setStep(s.id)}
-                                    className={[
-                                        "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer",
-                                        isActive ? "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30" : "",
-                                        isDone ? "text-green-400" : "",
-                                        !isActive && !isDone ? "text-[#64748B] hover:text-white" : "",
-                                    ].join(" ")}
-                                >
-                                    {isDone
-                                        ? <Check className="w-4 h-4 text-green-400" />
-                                        : <Icon className="w-4 h-4" />
-                                    }
-                                    <span>{s.label}</span>
-                                </button>
-                                {idx < STEPS.length - 1 && (
-                                    <ChevronRight className="w-4 h-4 text-[#334155] mx-1" />
-                                )}
-                            </div>
-                        );
-                    })}
+                    {/* Step indicator */}
+                    <div className="py-3 flex items-center gap-0">
+                        {STEPS.map((s, idx) => {
+                            const Icon = s.icon;
+                            const isDone = step > s.id;
+                            const isActive = step === s.id;
+                            return (
+                                <div key={s.id} className="flex items-center">
+                                    <button
+                                        onClick={() => setStep(s.id)}
+                                        className={[
+                                            "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all cursor-pointer",
+                                            isActive ? "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30" : "",
+                                            isDone ? "text-green-400" : "",
+                                            !isActive && !isDone ? "text-[#64748B] hover:text-white" : "",
+                                        ].join(" ")}
+                                    >
+                                        {isDone
+                                            ? <Check className="w-4 h-4 text-green-400" />
+                                            : <Icon className="w-4 h-4" />
+                                        }
+                                        <span>{s.label}</span>
+                                    </button>
+                                    {idx < STEPS.length - 1 && (
+                                        <ChevronRight className="w-4 h-4 text-[#334155] mx-1" />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Absolute-Centered Badge to full height box */}
+                    <div className="absolute right-6 top-1/2 -translate-y-1/2">
+                        <ClassificationStatusBadge status={event.classification_status} />
+                    </div>
                 </div>
             </header>
 

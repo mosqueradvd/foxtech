@@ -64,7 +64,7 @@ const StatCard = ({
     <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 transition-all hover:bg-white/[0.02]">
         <div className="flex items-start justify-between mb-4">
             <div>
-                <h3 className="text-white text-[10px] font-black tracking-widest leading-none mb-1 uppercase">{title}</h3>
+                <h3 className="text-white text-[12px] font-black tracking-widest leading-none mb-1 uppercase">{title}</h3>
                 <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">{subtitle}</p>
             </div>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">
@@ -77,8 +77,8 @@ const StatCard = ({
                 <span className="text-base ml-0.5">{unit}</span>
             </div>
             <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${trendIsUp
-                    ? "bg-red-500/10 text-red-500 border-red-500/20"
-                    : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                ? "bg-red-500/10 text-red-500 border-red-500/20"
+                : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                 }`}>
                 {trendIsUp ? <TrendingUp className="w-2 h-2" /> : <TrendingDown className="w-2 h-2" />}
                 {trend}%
@@ -114,7 +114,7 @@ const AbsenteeismCard = ({
             <div className={`text-4xl font-black ${textColor} leading-none mb-2`}>
                 {value < 0.01 && value > 0 ? "< 0.01" : value.toFixed(2)}
             </div>
-            <p className="text-[#475569] text-[9px] font-bold uppercase tracking-widest">
+            <p className="text-white text-[12px] font-bold uppercase tracking-widest">
                 Índice de ausentismo por HHT
             </p>
         </div>
@@ -139,8 +139,8 @@ const SummaryChip = ({
 
     return (
         <div className={`px-4 py-2.5 rounded-xl border flex items-center gap-3 transition-opacity hover:opacity-80 cursor-default ${variants[color]}`}>
-            <span className="text-lg font-black leading-none">{value}</span>
-            <span className="text-[10px] font-black tracking-widest uppercase">{label}</span>
+            <span className="text-lg font-black leading-none text-[12px]">{value}</span>
+            <span className="text-[10px] font-black tracking-widest uppercase text-[12px]">{label}</span>
         </div>
     );
 };
@@ -579,7 +579,7 @@ export function StatsPage() {
                     <SummaryChip label="AT" value={stats.totalAT} color="amber" />
                     <SummaryChip label="AT GRAVE" value={stats.atGrave} color="orange" />
                     <SummaryChip label="AT FATAL" value={stats.atFatal} color="red" />
-                    <SummaryChip label="INCIDENTES REPORTADOS" value={stats.incidentes} color="blue" />
+                    <SummaryChip label="EVENTOS REPORTADOS" value={stats.incidentes} color="blue" />
                 </div>
 
                 {/* ── CENTRAL SECTION: TREND CHART & ABSENTEEISM ── */}
@@ -683,9 +683,9 @@ export function StatsPage() {
                                 <button
                                     key={f}
                                     onClick={() => setCieFilter(f as any)}
-                                    className={`px-4 py-1.5 rounded-md text-[10px] font-black tracking-widest uppercase transition-all ${cieFilter === f
-                                            ? "bg-[#1E2A3B] text-white shadow"
-                                            : "text-[#64748B] hover:text-white"
+                                    className={`px-4 py-1.5 rounded-md text-[10px] font-black tracking-widest uppercase transition-all cursor-pointer ${cieFilter === f
+                                        ? "bg-[#1E2A3B] text-white shadow"
+                                        : "text-[#64748B] hover:text-white"
                                         }`}
                                 >
                                     {f}
@@ -724,7 +724,7 @@ export function StatsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-8 py-4 text-white font-bold">{row.description}
-                                                    <span className="ml-2 text-[9px] text-[#64748B] uppercase px-1.5 py-0.5 border border-[#334155] rounded">{row.version}</span>
+                                                    <span className="ml-2 text-[9px] text-[#64748B] uppercase px-1.5 py-0.5 border border-[#334155 rounded">{row.version}</span>
                                                 </td>
                                                 <td className="px-8 py-4 text-[#94A3B8] font-bold text-center w-32">{row.incapacitiesCount}</td>
                                                 <td className="px-8 py-4 text-red-400 font-bold text-center w-32">{row.totalDays}</td>
@@ -781,9 +781,9 @@ export function StatsPage() {
                                             <td className="px-8 py-4 text-[#94A3B8] text-xs font-bold">{ev.worker_name || "Sin asignar"}</td>
                                             <td className="px-8 py-4">
                                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${ev.classification === "ACCIDENTE_TRABAJO_FATAL" ? "bg-red-500/10 text-red-500" :
-                                                        ev.classification === "ACCIDENTE_TRABAJO_GRAVE" ? "bg-orange-500/10 text-orange-400" :
-                                                            ev.classification === "ACCIDENTE_TRABAJO" ? "bg-amber-500/10 text-amber-500" :
-                                                                "bg-blue-500/10 text-blue-400"
+                                                    ev.classification === "ACCIDENTE_TRABAJO_GRAVE" ? "bg-orange-500/10 text-orange-400" :
+                                                        ev.classification === "ACCIDENTE_TRABAJO" ? "bg-amber-500/10 text-amber-500" :
+                                                            "bg-blue-500/10 text-blue-400"
                                                     }`}>
                                                     {ev.classification?.replace(/_/g, " ") || "INCIDENTE"}
                                                 </span>
@@ -810,7 +810,7 @@ export function StatsPage() {
                         <button
                             onClick={handleExportHistorical}
                             disabled={exportState.status === "generating"}
-                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 text-black font-black text-[10px] tracking-widest uppercase hover:bg-emerald-400 transition-all disabled:opacity-50"
+                            className="flex items-center gap-2 px-6 py-2.5 rounded-xl cursor-pointer bg-emerald-500 text-white font-black text-[10px] tracking-widest uppercase hover:bg-emerald-400 transition-all disabled:opacity-50"
                         >
                             <Download className="w-4 h-4" />
                             {exportState.status === "generating" ? "Exportando..." : "Exportar Excel"}

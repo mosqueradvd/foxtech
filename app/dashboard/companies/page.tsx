@@ -72,7 +72,7 @@ export default function CompaniesPage() {
                     </div>
                     <button
                         onClick={() => router.push("/dashboard/companies/new")}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[#F59E0B] text-black text-xs font-black rounded-lg hover:bg-amber-400 transition-colors uppercase tracking-tight"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[#F59E0B] text-black text-xs font-black rounded-lg hover:bg-amber-400 transition-colors uppercase tracking-tight cursor-pointer"
                     >
                         <Building2 className="w-4 h-4" /> Nueva Empresa
                     </button>

@@ -13,12 +13,19 @@ interface IncidentRowProps {
 }
 
 function getEventBadge(eventType?: string): StatusVariant {
-    if (eventType === "accidente") return "accidente";
-    if (eventType === "accidente_grave") return "accidente_grave";
-    if (eventType === "casi_accidente") return "casi_accidente";
-    if (eventType === "condicion_insegura") return "condicion_insegura";
-    if (eventType === "enfermedad_laboral") return "enfermedad_laboral";
-    if (eventType === "impacto_ambiental") return "impacto_ambiental";
+    if (!eventType) return "otro";
+    const t = eventType.toLowerCase();
+    
+    if (t.includes("fatal")) return "accidente_fatal";
+    if (t.includes("grave")) return "accidente_grave";
+    if (t.includes("accidente")) {
+        if (t.includes("casi")) return "casi_accidente";
+        return "accidente";
+    }
+    if (t.includes("condicion") && t.includes("insegura")) return "condicion_insegura";
+    if (t.includes("enfermedad")) return "enfermedad_laboral";
+    if (t.includes("ambiental")) return "impacto_ambiental";
+    if (t.includes("dano") || t.includes("daño") || t.includes("propiedad")) return "dano_propiedad";
     return "otro";
 }
 
@@ -67,7 +74,7 @@ export function IncidentRow({ incident, onClick }: IncidentRowProps) {
                 <p className="text-[#64748B] text-xs mt-0.5">{incident.company_location ?? ""}</p>
             </td>
             <td className="py-4 px-4">
-                <StatusBadge variant={getEventBadge(incident.event_type)} />
+                <StatusBadge variant={getEventBadge(incident.classification || incident.event_type)} />
             </td>
             <td className="py-4 px-4 text-[#64748B] text-sm">{formatTime(incident.created_at)}</td>
             <td className="py-4 px-4">

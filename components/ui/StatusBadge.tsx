@@ -4,7 +4,7 @@
  */
 import React from "react";
 
-export type StatusVariant = "synced" | "pending" | "error" | "scheduled" | "accidente" | "accidente_grave" | "casi_accidente" | "condicion_insegura" | "enfermedad_laboral" | "impacto_ambiental" | "otro";
+export type StatusVariant = "synced" | "pending" | "error" | "scheduled" | "accidente" | "accidente_grave" | "accidente_fatal" | "casi_accidente" | "condicion_insegura" | "enfermedad_laboral" | "impacto_ambiental" | "dano_propiedad" | "otro";
 
 interface StatusBadgeProps {
     variant: StatusVariant;
@@ -43,6 +43,11 @@ const styles: Record<StatusVariant, { bg: string; text: string; label: string }>
         text: "text-red-500",
         label: "Accidente Grave",
     },
+    accidente_fatal: {
+        bg: "bg-red-950 border border-red-600",
+        text: "text-red-500",
+        label: "Accidente Fatal",
+    },
     casi_accidente: {
         bg: "bg-amber-800/50 border border-amber-700/50",
         text: "text-amber-400",
@@ -62,6 +67,11 @@ const styles: Record<StatusVariant, { bg: string; text: string; label: string }>
         bg: "bg-emerald-900/40 border border-emerald-700/40",
         text: "text-emerald-400",
         label: "Impacto Amb.",
+    },
+    dano_propiedad: {
+        bg: "bg-violet-900/40 border border-violet-700/50",
+        text: "text-violet-400",
+        label: "Daño a Propiedad",
     },
     otro: {
         bg: "bg-slate-800 border border-slate-700",
