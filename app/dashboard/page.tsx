@@ -223,7 +223,6 @@ export default function DashboardPage() {
                                 }
                                 value={actionStats.pending}
                                 color={actionStats.overdue > 0 ? "#EF4444" : actionStats.pending > 0 ? "#F59E0B" : "#22C55E"}
-                                borderBottomColor={actionStats.overdue > 0 ? "#EF4444" : actionStats.pending > 0 ? "#F59E0B" : "#22C55E"}
                                 icon={ClipboardCheck}
                             />
                         </>
