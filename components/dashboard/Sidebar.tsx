@@ -49,7 +49,7 @@ export function Sidebar() {
     const [searchQuery, setSearchQuery] = useState("");
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const { theme, setTheme } = useTheme();
+    const { theme, setTheme, resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -205,6 +205,8 @@ export function Sidebar() {
                         ? pathname === "/dashboard"
                         : pathname.startsWith(item.href);
 
+                    const isLightMode = mounted && (theme === "light" || resolvedTheme === "light");
+
                     return (
                         <button
                             key={item.id}
@@ -212,8 +214,12 @@ export function Sidebar() {
                             className={[
                                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer",
                                 isActive
-                                    ? "bg-amber-500 text-black dark:bg-amber-500/10 dark:text-amber-500 border border-amber-500/20"
-                                    : "text-[var(--text-muted)] hover:bg-[#F1F5F9] hover:text-[#0F1219] dark:hover:bg-white/5 dark:hover:text-white",
+                                    ? (isLightMode 
+                                        ? "bg-amber-500 text-black border border-amber-500/20" 
+                                        : "bg-amber-500/10 text-amber-500 border border-amber-500/20")
+                                    : (isLightMode 
+                                        ? "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F1219]" 
+                                        : "text-[#94A3B8] hover:bg-white/5 hover:text-white"),
                             ].join(" ")}
                         >
                             <Icon className="w-4 h-4" />

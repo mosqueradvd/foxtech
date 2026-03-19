@@ -38,6 +38,7 @@ import {
     type SignerRole,
     type LessonsLearned,
 } from "@/lib/supabase";
+import { useTheme } from "next-themes";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -64,21 +65,21 @@ const SIGNER_ROLES: { role: SignerRole; label: string; short: string }[] = [
     { role: "SST_PROFESSIONAL", label: "Profesional SST con Licencia", short: "SST" },
 ];
 
-const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-    en_proceso: { label: "En Proceso", color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/25" },
-    plan_accion_definido: { label: "Plan Definido", color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/25" },
-    en_seguimiento: { label: "En Seguimiento", color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/25" },
-    cerrado: { label: "Cerrado", color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/25" },
+const STATUS_LABELS: Record<string, { label: string; color: string; colorLight: string; bg: string; bgLight: string }> = {
+    en_proceso: { label: "En Proceso", color: "text-amber-400", colorLight: "text-amber-600", bg: "bg-amber-400/10 border-amber-400/25", bgLight: "bg-amber-50 border-amber-200" },
+    plan_accion_definido: { label: "Plan Definido", color: "text-blue-400", colorLight: "text-blue-600", bg: "bg-blue-400/10 border-blue-400/25", bgLight: "bg-blue-50 border-blue-200" },
+    en_seguimiento: { label: "En Seguimiento", color: "text-purple-400", colorLight: "text-purple-600", bg: "bg-purple-400/10 border-purple-400/25", bgLight: "bg-purple-50 border-purple-200" },
+    cerrado: { label: "Cerrado", color: "text-emerald-400", colorLight: "text-emerald-600", bg: "bg-emerald-400/10 border-emerald-400/25", bgLight: "bg-emerald-50 border-emerald-200" },
 };
 
 // ── Reusable field components ─────────────────────────────────────────────────
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-    return <label className="block text-[#94A3B8] text-xs font-semibold uppercase tracking-wider mb-1.5">{children}</label>;
+function FieldLabel({ children, isLight }: { children: React.ReactNode; isLight?: boolean }) {
+    return <label className={`block ${isLight ? "text-gray-500" : "text-[#94A3B8]"} text-xs font-semibold uppercase tracking-wider mb-1.5`}>{children}</label>;
 }
 
-function FInput({ value, onChange, placeholder, disabled }: {
-    value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean;
+function FInput({ value, onChange, placeholder, disabled, isLight }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean; isLight?: boolean;
 }) {
     const ref = useRef<HTMLInputElement>(null);
     return (
@@ -89,13 +90,13 @@ function FInput({ value, onChange, placeholder, disabled }: {
             onFocus={() => ref.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
             placeholder={placeholder}
             disabled={disabled}
-            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155] disabled:opacity-50"
+            className={`w-full ${isLight ? "bg-gray-50 border-gray-200 text-[#1E293B]" : "bg-[#0F1420] border border-[#1E2A3B] text-white"} rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors ${isLight ? "placeholder:text-[#94A3B8]" : "placeholder:text-[#334155]"} disabled:opacity-50`}
         />
     );
 }
 
-function FTextarea({ value, onChange, placeholder, rows = 4, disabled }: {
-    value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; disabled?: boolean;
+function FTextarea({ value, onChange, placeholder, rows = 4, disabled, isLight }: {
+    value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; disabled?: boolean; isLight?: boolean;
 }) {
     const ref = useRef<HTMLTextAreaElement>(null);
     return (
@@ -107,73 +108,74 @@ function FTextarea({ value, onChange, placeholder, rows = 4, disabled }: {
             placeholder={placeholder}
             rows={rows}
             disabled={disabled}
-            className="w-full bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors placeholder:text-[#334155] resize-none disabled:opacity-50"
+            className={`w-full ${isLight ? "bg-gray-50 border-gray-200 text-[#1E293B]" : "bg-[#0F1420] border border-[#1E2A3B] text-white"} rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors ${isLight ? "placeholder:text-[#94A3B8]" : "placeholder:text-[#334155]"} resize-none disabled:opacity-50`}
         />
     );
 }
 
-function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+function SectionTitle({ icon: Icon, children, isLight }: { icon: React.ElementType; children: React.ReactNode; isLight?: boolean }) {
     return (
         <div className="flex items-center gap-2 mb-4">
             <Icon className="w-4 h-4 text-[#F59E0B]" />
-            <h3 className="text-white font-semibold text-sm">{children}</h3>
+            <h3 className={`${isLight ? "text-[#1E293B]" : "text-white"} font-semibold text-sm`}>{children}</h3>
         </div>
     );
 }
 
 // ── NTC 3701 cause selector components ────────────────────────────────────────
 
-function CauseCheckbox({ code, label, checked, onChange, disabled }: {
+function CauseCheckbox({ code, label, checked, onChange, disabled, isLight }: {
     code: string; label: string; checked: boolean;
-    onChange: (v: boolean) => void; disabled?: boolean;
+    onChange: (v: boolean) => void; disabled?: boolean; isLight?: boolean;
 }) {
     const id = `cause-${code}`;
     return (
-        <label htmlFor={id} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${checked ? "bg-amber-400/8 border border-amber-400/20" : "hover:bg-white/3 border border-transparent"
+        <label htmlFor={id} className={`flex items-center gap-2.5 py-1.5 px-2 rounded-lg cursor-pointer transition-colors ${checked ? (isLight ? "bg-amber-50 border border-amber-200" : "bg-amber-400/8 border border-amber-400/20") : (isLight ? "hover:bg-gray-50 border border-transparent" : "hover:bg-white/3 border border-transparent")
             } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}>
             <input id={id} type="checkbox" checked={checked} disabled={disabled}
                 onChange={(e) => onChange(e.target.checked)}
                 className="mt-0.5 max-w-3.5 max-h-3.5 accent-amber-400 flex-shrink-0 cursor-pointer" />
             <span className="text-xs leading-relaxed">
-                <span className="text-amber-400/80 font-mono font-bold mr-1">{code}</span>
-                <span className="text-[#CBD5E1]">{label}</span>
+                <span className="text-amber-500 font-mono font-bold mr-1">{code}</span>
+                <span className={`${isLight ? "text-[#1E293B]" : "text-[#CBD5E1]"}`}>{label}</span>
             </span>
         </label>
     );
 }
 
-function SubCategoryAccordion({ category, selected, onToggle, disabled }: {
+function SubCategoryAccordion({ category, selected, onToggle, disabled, isLight }: {
     category: CauseCategory;
     selected: string[];
     onToggle: (key: string) => void;
     disabled?: boolean;
+    isLight?: boolean;
 }) {
     const [open, setOpen] = useState(false);
     const selectedCount = category.causes.filter(c => selected.includes(`${c.code} ${c.label}`)).length;
     return (
-        <div className="border border-[#1E2A3B] rounded-xl overflow-hidden mb-2">
+        <div className={`border ${isLight ? "border-gray-100" : "border-[#1E2A3B]"} rounded-xl overflow-hidden mb-2`}>
             <button onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center justify-between px-3 py-2.5 bg-[#0F1420] hover:bg-white/3 transition-colors cursor-pointer">
+                className={`w-full flex items-center justify-between px-3 py-2.5 ${isLight ? "bg-gray-50/50 hover:bg-gray-100/50" : "bg-[#0F1420] hover:bg-white/3"} transition-colors cursor-pointer`}>
                 <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-amber-400/70 font-mono text-[11px] font-bold flex-shrink-0">{category.code}</span>
-                    <span className="text-[#94A3B8] text-xs font-semibold truncate text-left">{category.label}</span>
+                    <span className="text-amber-500 font-mono text-[11px] font-bold flex-shrink-0">{category.code}</span>
+                    <span className={`${isLight ? "text-gray-600" : "text-[#94A3B8]"} text-xs font-semibold truncate text-left`}>{category.label}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                     {selectedCount > 0 && (
-                        <span className="bg-amber-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{selectedCount}</span>
+                        <span className="bg-amber-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full">{selectedCount}</span>
                     )}
                     <ChevronDown className={`w-3.5 h-3.5 text-[#64748B] transition-transform ${open ? "rotate-180" : ""}`} />
                 </div>
             </button>
             {open && (
-                <div className="px-3 py-2 bg-[#0A0F1A] space-y-0.5">
+                <div className={`px-3 py-2 ${isLight ? "bg-white" : "bg-[#0A0F1A]"} space-y-0.5`}>
                     {category.causes.map(c => {
                         const key = `${c.code} ${c.label}`;
                         return (
                             <CauseCheckbox key={c.code} code={c.code} label={c.label}
                                 checked={selected.includes(key)}
                                 onChange={() => onToggle(key)}
-                                disabled={disabled} />
+                                disabled={disabled} isLight={isLight} />
                         );
                     })}
                 </div>
@@ -182,25 +184,25 @@ function SubCategoryAccordion({ category, selected, onToggle, disabled }: {
     );
 }
 
-function CausesAccordion({ title, norm, count, defaultOpen, children }: {
-    title: string; norm: string; count: number; defaultOpen?: boolean; children: React.ReactNode;
+function CausesAccordion({ title, norm, count, defaultOpen, children, isLight }: {
+    title: string; norm: string; count: number; defaultOpen?: boolean; children: React.ReactNode; isLight?: boolean;
 }) {
     const [open, setOpen] = useState(defaultOpen ?? false);
     return (
-        <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl overflow-hidden">
+        <div className={`${isLight ? "bg-white border border-gray-100" : "bg-[#141824] border border-[#1E2A3B]"} rounded-2xl overflow-hidden`}>
             <button onClick={() => setOpen(o => !o)}
                 className="w-full flex items-center justify-between px-4 sm:px-6 py-4 hover:bg-white/2 transition-colors cursor-pointer">
                 <div className="flex flex-col items-start gap-0.5">
                     <div className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-[#F59E0B]" />
-                        <span className="text-white font-semibold text-sm">{title}</span>
+                        <span className={`${isLight ? "text-[#1E293B]" : "text-white"} font-semibold text-sm`}>{title}</span>
                         {count > 0 && (
-                            <span className="bg-amber-400 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            <span className="bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
                                 {count} seleccionada{count !== 1 ? "s" : ""}
                             </span>
                         )}
                     </div>
-                    <span className="text-[#475569] text-[10px] ml-6">{norm}</span>
+                    <span className={`${isLight ? "text-gray-400" : "text-[#475569]"} text-[10px] ml-6`}>{norm}</span>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-[#64748B] transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
             </button>
@@ -211,15 +213,15 @@ function CausesAccordion({ title, norm, count, defaultOpen, children }: {
 
 // ── Signature status badge ────────────────────────────────────────────────────
 
-function SigBadge({ status }: { status: string }) {
-    const cfg: Record<string, { label: string; cls: string }> = {
-        PENDING: { label: "Pendiente", cls: "bg-amber-400/10 text-amber-400 border-amber-400/25" },
-        SIGNED: { label: "Firmado ✓", cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/25" },
-        EXPIRED: { label: "Expirado", cls: "bg-red-400/10 text-red-400 border-red-400/25" },
+function SigBadge({ status, isLight }: { status: string; isLight?: boolean }) {
+    const cfg: Record<string, { label: string; cls: string; clsLight: string }> = {
+        PENDING: { label: "Pendiente", cls: "bg-amber-400/10 text-amber-400 border-amber-400/25", clsLight: "bg-amber-50 text-amber-600 border-amber-200" },
+        SIGNED: { label: "Firmado ✓", cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/25", clsLight: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+        EXPIRED: { label: "Expirado", cls: "bg-red-400/10 text-red-400 border-red-400/25", clsLight: "bg-red-50 text-red-600 border-red-200" },
     };
     const c = cfg[status] ?? cfg.PENDING;
     return (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${c.cls}`}>
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${isLight ? c.clsLight : c.cls}`}>
             {c.label}
         </span>
     );
@@ -250,6 +252,35 @@ export default function InvestigationPage() {
     const router = useRouter();
     const params = useParams();
     const incidentId = params.id as string;
+
+    const { theme, resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isLight = mounted && (theme === "light" || resolvedTheme === "light");
+
+    const lightStyles = {
+        bg: "bg-[#F8FAFC]",
+        containerBg: "bg-white",
+        headerBg: "bg-white border-b border-gray-100",
+        tabGroup: "bg-gray-100 border border-gray-200",
+        cardBg: "bg-white border border-gray-200",
+        textTitle: "text-[#1E293B]",
+        textSub: "text-[#64748B]",
+        divider: "border-gray-200",
+    };
+
+    const darkStyles = {
+        bg: "bg-[#0F1420]",
+        containerBg: "bg-[#0F1420]",
+        headerBg: "bg-[#141824] border-b border-[#1E2A3B]",
+        tabGroup: "bg-[#141824] border border-[#1E2A3B]",
+        cardBg: "bg-[#141824] border border-[#1E2A3B]",
+        textTitle: "text-white",
+        textSub: "text-[#64748B]",
+        divider: "border-[#1E2A3B]",
+    };
+
+    const s = isLight ? lightStyles : darkStyles;
 
     const [incident, setIncident] = useState<Event | null>(null);
     const [investigation, setInv] = useState<Investigation | null>(null);
@@ -460,7 +491,7 @@ export default function InvestigationPage() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     if (loading) return (
-        <div className="min-h-screen bg-[#0F1420] flex items-center justify-center">
+        <div className={`min-h-screen ${isLight ? "bg-[#F8FAFC]" : "bg-[#0F1420]"} flex items-center justify-center`}>
             <Loader2 className="w-6 h-6 text-[#F59E0B] animate-spin" />
         </div>
     );
@@ -468,17 +499,17 @@ export default function InvestigationPage() {
     const statusCfg = STATUS_LABELS[investigation?.status ?? "en_proceso"];
 
     return (
-        <div className="min-h-screen bg-[#0F1420]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className={`min-h-screen ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* HEADER */}
-            <header className="bg-[#141824] border-b border-[#1E2A3B] px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-30">
-                <button onClick={() => router.push(`/dashboard/events/${incidentId}`)} className="p-2 rounded-lg text-[#64748B] hover:text-white hover:bg-white/5 transition-all flex-shrink-0 cursor-pointer">
+            <header className={`${s.headerBg} px-4 sm:px-6 py-4 flex items-center gap-3 sm:gap-4 sticky top-0 z-30`}>
+                <button onClick={() => router.push(`/dashboard/events/${incidentId}`)} className={`p-2 rounded-lg ${isLight ? "text-gray-500 hover:bg-gray-100" : "text-[#64748B] hover:text-white hover:bg-white/5"} transition-all flex-shrink-0 cursor-pointer`}>
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                        <h1 className="text-white font-bold text-sm sm:text-base leading-none">INVESTIGACIÓN</h1>
+                        <h1 className={`${s.textTitle} font-bold text-sm sm:text-base leading-none`}>INVESTIGACIÓN</h1>
                         {investigation && (
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${statusCfg.bg} ${statusCfg.color}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${isLight ? statusCfg.bgLight : statusCfg.bg} ${isLight ? statusCfg.colorLight : statusCfg.color}`}>
                                 {statusCfg.label}
                             </span>
                         )}
@@ -503,7 +534,7 @@ export default function InvestigationPage() {
 
             {/* INCIDENT STRIP */}
             {incident && (
-                <div className="bg-[#141824]/60 border-b border-[#1E2A3B] px-4 sm:px-6 py-2 flex items-center gap-4 text-xs text-[#64748B] flex-wrap">
+                <div className={`${isLight ? "bg-gray-50/80" : "bg-[#141824]/60"} border-b ${s.divider} px-4 sm:px-6 py-2 flex items-center gap-4 text-xs text-[#64748B] flex-wrap`}>
                     <span className="flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
                         {incident.classification?.replace(/_/g, " ") ?? "Sin clasificar"}
@@ -537,13 +568,13 @@ export default function InvestigationPage() {
             ) : (
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
                     {/* TABS */}
-                    <div className="flex gap-1 bg-[#141824] border border-[#1E2A3B] rounded-2xl p-1 mb-6">
+                    <div className={`flex gap-1 ${s.cardBg} rounded-2xl p-1 mb-6`}>
                         {TABS.map((tab) => {
                             const Icon = tab.icon;
                             return (
                                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                                     className={["flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer",
-                                        activeTab === tab.id ? "bg-[#F59E0B] text-black" : "text-[#64748B] hover:text-white"].join(" ")}>
+                                        activeTab === tab.id ? "bg-[#F59E0B] text-black" : `${isLight ? "text-gray-500 hover:text-[#1E293B]" : "text-[#64748B] hover:text-white"}`].join(" ")}>
                                     <Icon className="w-4 h-4 flex-shrink-0" />
                                     <span>{tab.label}</span>
                                 </button>
@@ -554,32 +585,32 @@ export default function InvestigationPage() {
                     {/* TAB 1: EQUIPO & NARRATIVA */}
                     {activeTab === 0 && (
                         <div className="space-y-6">
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={Users}>Equipo Investigador</SectionTitle>
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
+                                <SectionTitle icon={Users} isLight={isLight}>Equipo Investigador</SectionTitle>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
-                                        <FieldLabel>Responsable SST *</FieldLabel>
-                                        <FInput value={team.sst} onChange={(v) => { setTeam((t) => ({ ...t, sst: v })); scheduleSave(); }} placeholder="Nombre del profesional SST" disabled={isClosed} />
+                                        <FieldLabel isLight={isLight}>Responsable SST *</FieldLabel>
+                                        <FInput value={team.sst} onChange={(v) => { setTeam((t) => ({ ...t, sst: v })); scheduleSave(); }} placeholder="Nombre del profesional SST" disabled={isClosed} isLight={isLight} />
                                     </div>
                                     <div>
-                                        <FieldLabel>Jefe Inmediato *</FieldLabel>
-                                        <FInput value={team.jefe} onChange={(v) => { setTeam((t) => ({ ...t, jefe: v })); scheduleSave(); }} placeholder="Nombre del jefe inmediato" disabled={isClosed} />
+                                        <FieldLabel isLight={isLight}>Jefe Inmediato *</FieldLabel>
+                                        <FInput value={team.jefe} onChange={(v) => { setTeam((t) => ({ ...t, jefe: v })); scheduleSave(); }} placeholder="Nombre del jefe inmediato" disabled={isClosed} isLight={isLight} />
                                     </div>
                                     <div>
-                                        <FieldLabel>Representante COPASST *</FieldLabel>
-                                        <FInput value={team.copasst} onChange={(v) => { setTeam((t) => ({ ...t, copasst: v })); scheduleSave(); }} placeholder="Nombre del representante" disabled={isClosed} />
+                                        <FieldLabel isLight={isLight}>Representante COPASST *</FieldLabel>
+                                        <FInput value={team.copasst} onChange={(v) => { setTeam((t) => ({ ...t, copasst: v })); scheduleSave(); }} placeholder="Nombre del representante" disabled={isClosed} isLight={isLight} />
                                     </div>
                                     <div>
-                                        <FieldLabel>Otros participantes</FieldLabel>
-                                        <FInput value={team.extra} onChange={(v) => { setTeam((t) => ({ ...t, extra: v })); scheduleSave(); }} placeholder="Otros investigadores" disabled={isClosed} />
+                                        <FieldLabel isLight={isLight}>Otros participantes</FieldLabel>
+                                        <FInput value={team.extra} onChange={(v) => { setTeam((t) => ({ ...t, extra: v })); scheduleSave(); }} placeholder="Otros investigadores" disabled={isClosed} isLight={isLight} />
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={AlertTriangle}>Narrativa Ampliada del Evento</SectionTitle>
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
+                                <SectionTitle icon={AlertTriangle} isLight={isLight}>Narrativa Ampliada del Evento</SectionTitle>
                                 <p className="text-[#64748B] text-xs mb-3">Describe qué ocurrió, en qué secuencia, y cuáles fueron las circunstancias. Es el sustento de las causas.</p>
                                 <FTextarea value={narrative} onChange={(v) => { setNarrative(v); scheduleSave(); }}
-                                    placeholder="El día [fecha] a las [hora], el trabajador [nombre] se encontraba [actividad] cuando..." rows={8} disabled={isClosed} />
+                                    placeholder="El día [fecha] a las [hora], el trabajador [nombre] se encontraba [actividad] cuando..." rows={8} disabled={isClosed} isLight={isLight} />
                             </div>
                         </div>
                     )}
@@ -588,85 +619,85 @@ export default function InvestigationPage() {
                     {activeTab === 1 && (
                         <div className="space-y-4">
                             {/* Vehicle toggle */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+                            <div className={`${s.cardBg} rounded-2xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4`}>
                                 <div className="flex items-center gap-2">
-                                    <Car className="w-4 h-4 text-blue-400" />
-                                    <span className="text-white text-sm font-semibold">¿El evento involucró un vehículo?</span>
+                                    <Car className="w-4 h-4 text-blue-500" />
+                                    <span className={`${s.textTitle} text-sm font-semibold`}>¿El evento involucró un vehículo?</span>
                                 </div>
                                 <button disabled={isClosed}
-                                    onClick={() => { setInvolucraVehiculo((v: boolean) => !v); scheduleSave(); }}
-                                    className={`relative inline-flex w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${involucraVehiculo ? "bg-blue-500" : "bg-[#1E2A3B]"} ${isClosed ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
+                                    onClick={() => { setInvolucraVehiculo((v : boolean) => !v); scheduleSave(); }}
+                                    className={`relative inline-flex w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${involucraVehiculo ? "bg-blue-500" : (isLight ? "bg-gray-200" : "bg-[#1E2A3B]")} ${isClosed ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
                                     <span className={`inline-block w-4 h-4 mt-1 rounded-full bg-white shadow transition-transform duration-200 ${involucraVehiculo ? "translate-x-6" : "translate-x-1"}`} />
                                 </button>
                             </div>
 
                             {/* §5.2 — Causas Inmediatas */}
-                            <CausesAccordion title="§5.2 — Causas Inmediatas" norm="NTC 3701"
+                            <CausesAccordion title="§5.2 — Causas Inmediatas" norm="NTC 3701" isLight={isLight}
                                 count={causesSelected.inmediatas.condiciones.length + causesSelected.inmediatas.actos.length}
                                 defaultOpen={true}>
                                 <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-1">A — Condiciones Ambientales Subestándar</p>
                                 {CONDICIONES_SUBESTANDAR.map(cat => (
                                     <SubCategoryAccordion key={cat.code} category={cat}
-                                        selected={causesSelected.inmediatas.condiciones}
+                                         isLight={isLight} selected={causesSelected.inmediatas.condiciones}
                                         onToggle={(key) => toggleCause("inmediatas", "condiciones", key)}
                                         disabled={isClosed} />
                                 ))}
                                 <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-4">B — Actos Subestándar</p>
                                 {ACTOS_SUBESTANDAR.map(cat => (
                                     <SubCategoryAccordion key={cat.code} category={cat}
-                                        selected={causesSelected.inmediatas.actos}
+                                         isLight={isLight} selected={causesSelected.inmediatas.actos}
                                         onToggle={(key) => toggleCause("inmediatas", "actos", key)}
                                         disabled={isClosed} />
                                 ))}
                                 <div className="mt-4">
-                                    <FieldLabel>Otra causa inmediata no listada</FieldLabel>
+                                    <FieldLabel isLight={isLight}>Otra causa inmediata no listada</FieldLabel>
                                     <FTextarea rows={2} value={causesSelected.inmediatas.otra}
                                         onChange={(v) => { setCausesSelected(p => ({ ...p, inmediatas: { ...p.inmediatas, otra: v } })); scheduleSave(); }}
-                                        placeholder="Describe si hay otra causa no listada..." disabled={isClosed} />
+                                         isLight={isLight} placeholder="Describe si hay otra causa no listada..." disabled={isClosed} />
                                 </div>
                             </CausesAccordion>
 
                             {/* §5.3 — Causas Básicas */}
-                            <CausesAccordion title="§5.3 — Causas Básicas" norm="NTC 3701"
+                            <CausesAccordion title="§5.3 — Causas Básicas" norm="NTC 3701" isLight={isLight}
                                 count={causesSelected.basicas.factores_personales.length + causesSelected.basicas.factores_trabajo.length}>
                                 <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-1">A — Factores Personales</p>
                                 {FACTORES_PERSONALES.map(cat => (
                                     <SubCategoryAccordion key={cat.code} category={cat}
-                                        selected={causesSelected.basicas.factores_personales}
+                                         isLight={isLight} selected={causesSelected.basicas.factores_personales}
                                         onToggle={(key) => toggleCause("basicas", "factores_personales", key)}
                                         disabled={isClosed} />
                                 ))}
                                 <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-4">B — Factores del Trabajo</p>
                                 {FACTORES_TRABAJO.map(cat => (
                                     <SubCategoryAccordion key={cat.code} category={cat}
-                                        selected={causesSelected.basicas.factores_trabajo}
+                                         isLight={isLight} selected={causesSelected.basicas.factores_trabajo}
                                         onToggle={(key) => toggleCause("basicas", "factores_trabajo", key)}
                                         disabled={isClosed} />
                                 ))}
                                 <div className="mt-4">
-                                    <FieldLabel>Otra causa básica no listada</FieldLabel>
+                                    <FieldLabel isLight={isLight}>Otra causa básica no listada</FieldLabel>
                                     <FTextarea rows={2} value={causesSelected.basicas.otra}
                                         onChange={(v) => { setCausesSelected(p => ({ ...p, basicas: { ...p.basicas, otra: v } })); scheduleSave(); }}
-                                        placeholder="Describe si hay otra causa no listada..." disabled={isClosed} />
+                                         isLight={isLight} placeholder="Describe si hay otra causa no listada..." disabled={isClosed} />
                                 </div>
                             </CausesAccordion>
 
                             {/* §5.4 — Fallas en Control Administrativo (unchanged — free text) */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={AlertTriangle}>Fallas en el Control Administrativo (§5.4)</SectionTitle>
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
+                                <SectionTitle icon={AlertTriangle} isLight={isLight}>Fallas en el Control Administrativo (§5.4)</SectionTitle>
                                 <FTextarea value={controlFails} onChange={(v) => { setControlFails(v); scheduleSave(); }}
-                                    placeholder="Deficiencias del sistema de gestión que permitieron que las causas básicas existieran..." rows={4} disabled={isClosed} />
+                                     isLight={isLight} placeholder="Deficiencias del sistema de gestión que permitieron que las causas básicas existieran..." rows={4} disabled={isClosed} />
                             </div>
 
                             {/* §5.5 — Factores PESV (conditional on vehicle toggle) */}
                             {involucraVehiculo && (
-                                <CausesAccordion title="§5.5 — Factores PESV" norm="PESV — Res. 1565/2014"
+                                <CausesAccordion title="§5.5 — Factores PESV" norm="PESV — Res. 1565/2014" isLight={isLight}
                                     count={causesSelected.pesv.factor_humano.length + causesSelected.pesv.factor_vehiculo.length + causesSelected.pesv.factor_infraestructura.length}>
                                     <p className="text-[#64748B] text-xs font-semibold uppercase tracking-wider mb-2 mt-1">A — Factor Humano</p>
                                     <div className="space-y-0.5 mb-4">
                                         {PESV_FACTOR_HUMANO.map(item => (
                                             <CauseCheckbox key={item} code="—" label={item}
-                                                checked={causesSelected.pesv.factor_humano.includes(item)}
+                                                 isLight={isLight} checked={causesSelected.pesv.factor_humano.includes(item)}
                                                 onChange={() => toggleCause("pesv", "factor_humano", item)}
                                                 disabled={isClosed} />
                                         ))}
@@ -675,7 +706,7 @@ export default function InvestigationPage() {
                                     <div className="space-y-0.5 mb-4">
                                         {PESV_FACTOR_VEHICULO.map(item => (
                                             <CauseCheckbox key={item} code="—" label={item}
-                                                checked={causesSelected.pesv.factor_vehiculo.includes(item)}
+                                                 isLight={isLight} checked={causesSelected.pesv.factor_vehiculo.includes(item)}
                                                 onChange={() => toggleCause("pesv", "factor_vehiculo", item)}
                                                 disabled={isClosed} />
                                         ))}
@@ -684,16 +715,16 @@ export default function InvestigationPage() {
                                     <div className="space-y-0.5 mb-4">
                                         {PESV_FACTOR_INFRAESTRUCTURA.map(item => (
                                             <CauseCheckbox key={item} code="—" label={item}
-                                                checked={causesSelected.pesv.factor_infraestructura.includes(item)}
+                                                 isLight={isLight} checked={causesSelected.pesv.factor_infraestructura.includes(item)}
                                                 onChange={() => toggleCause("pesv", "factor_infraestructura", item)}
                                                 disabled={isClosed} />
                                         ))}
                                     </div>
                                     <div className="mt-2">
-                                        <FieldLabel>Otro factor PESV no listado</FieldLabel>
+                                        <FieldLabel isLight={isLight}>Otro factor PESV no listado</FieldLabel>
                                         <FTextarea rows={2} value={causesSelected.pesv.otra}
                                             onChange={(v) => { setCausesSelected(p => ({ ...p, pesv: { ...p.pesv, otra: v } })); scheduleSave(); }}
-                                            placeholder="Describe si hay otro factor PESV no listado..." disabled={isClosed} />
+                                             isLight={isLight} placeholder="Describe si hay otro factor PESV no listado..." disabled={isClosed} />
                                     </div>
                                 </CausesAccordion>
                             )}
@@ -703,10 +734,10 @@ export default function InvestigationPage() {
                     {/* TAB 3: PLAN DE ACCIÓN */}
                     {activeTab === 2 && (
                         <div className="space-y-6">
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={ClipboardList}>Plan de Acción Correctiva</SectionTitle>
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
+                                <SectionTitle icon={ClipboardList} isLight={isLight}>Plan de Acción Correctiva</SectionTitle>
                                 {actionPlan.length === 0 && !isClosed && (
-                                    <div className="text-center py-6 text-[#334155] text-sm border border-dashed border-[#1E2A3B] rounded-xl mb-4">
+                                    <div className={`text-center py-6 text-[#334155] text-sm border border-dashed ${isLight ? "border-gray-200" : "border-[#1E2A3B]"} rounded-xl mb-4`}>
                                         Sin acciones definidas
                                     </div>
                                 )}
@@ -747,8 +778,9 @@ export default function InvestigationPage() {
                                         updAction(i, { notified_at: now, notified_via: via, token: tok });
                                         await save(false);
                                     };
+                                    const cardClass = `${isLight ? "bg-white border-gray-200" : "bg-[#0F1420] border-[#1E2A3B]"} border rounded-xl p-4 mb-3`;
                                     return (
-                                        <div key={i} className="bg-[#0F1420] border border-[#1E2A3B] rounded-xl p-4 mb-3">
+                                        <div key={i} className={cardClass}>
                                             <div className="flex items-center justify-between mb-3">
                                                 <span className="text-[#F59E0B] text-xs font-bold">Acción #{i + 1}</span>
                                                 {!isClosed && (
@@ -770,7 +802,7 @@ export default function InvestigationPage() {
                                                 <div>
                                                     <FieldLabel>Teléfono (opcional)</FieldLabel>
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className="text-[#64748B] text-sm px-2 py-2.5 bg-[#141824] border border-[#1E2A3B] rounded-xl">+57</span>
+                                                        <span className={`text-[#64748B] text-sm px-2 py-2.5 ${isLight ? "bg-gray-50 border-gray-200" : "bg-[#141824] border-[#1E2A3B]"} border rounded-xl`}>+57</span>
                                                         <FInput value={item.responsible_phone ?? ""} onChange={(v) => updAction(i, { responsible_phone: v.replace(/\D/g, "").slice(0, 10) })} placeholder="3001234567" disabled={isClosed} />
                                                     </div>
                                                 </div>
@@ -781,12 +813,12 @@ export default function InvestigationPage() {
                                                 <div>
                                                     <FieldLabel>Fecha límite *</FieldLabel>
                                                     <input type="date" value={item.deadline} onChange={(e) => updAction(i, { deadline: e.target.value })} disabled={isClosed}
-                                                        className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50" />
+                                                        className={`w-full ${isLight ? "bg-white border-gray-200 text-[#1E293B]" : "bg-[#141824] border-[#1E2A3B] text-white"} rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50`} />
                                                 </div>
                                                 <div>
                                                     <FieldLabel>Estado</FieldLabel>
                                                     <select value={item.status} onChange={(e) => updAction(i, { status: e.target.value as ActionItem["status"] })} disabled={isClosed}
-                                                        className="w-full bg-[#141824] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50">
+                                                        className={`w-full ${isLight ? "bg-white border-gray-200 text-[#1E293B]" : "bg-[#141824] border-[#1E2A3B] text-white"} rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50`}>
                                                         <option value="pendiente">Pendiente</option>
                                                         <option value="en_curso">En Curso</option>
                                                         <option value="cerrado">Cerrado</option>
@@ -828,20 +860,20 @@ export default function InvestigationPage() {
                                 })}
 
                                 {!isClosed && (
-                                    <button onClick={addAction} className="flex items-center gap-2 px-4 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white rounded-xl text-sm font-semibold transition-colors mt-2 cursor-pointer">
+                                    <button onClick={addAction} className={`flex items-center gap-2 px-4 py-2 ${isLight ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-[#1E2A3B] text-[#94A3B8] hover:text-white"} rounded-xl text-sm font-semibold transition-colors mt-2 cursor-pointer`}>
                                         <Plus className="w-4 h-4" /> Agregar acción
                                     </button>
                                 )}
                             </div>
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={ChevronRight}>Conclusiones</SectionTitle>
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
+                                <SectionTitle icon={ChevronRight} isLight={isLight}>Conclusiones</SectionTitle>
                                 <FTextarea value={conclusions} onChange={(v) => { setConclusions(v); scheduleSave(); }}
                                     placeholder="Resumen de causas determinadas, lecciones aprendidas y compromisos de la empresa..." rows={5} disabled={isClosed} />
                             </div>
                             {/* Close */}
                             {!isClosed ? (
-                                <div className="bg-[#141824] border border-red-500/20 rounded-2xl p-4 sm:p-6">
-                                    <h3 className="text-white font-semibold text-sm mb-1">Cierre de la Investigación</h3>
+                                <div className={`${isLight ? "bg-red-50/50 border-red-200" : "bg-[#141824] border-red-500/20"} border rounded-2xl p-4 sm:p-6`}>
+                                    <h3 className={`${s.textTitle} font-semibold text-sm mb-1`}>Cierre de la Investigación</h3>
                                     <p className="text-[#64748B] text-xs mb-4">Al cerrar, el evento queda como <strong className="text-white">"Investigado"</strong> y se bloquea la edición.</p>
                                     <button onClick={handleClose} disabled={closing || actionPlan.length === 0}
                                         className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
@@ -866,67 +898,67 @@ export default function InvestigationPage() {
                     {activeTab === 3 && (
                         <div className="space-y-4">
                             {/* header info */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <div className="flex items-center gap-2 mb-1">
                                     <BookOpen className="w-4 h-4 text-[#F59E0B]" />
-                                    <h3 className="text-white font-semibold text-sm">Lección Aprendida</h3>
+                                    <h3 className={`${s.textTitle} font-semibold text-sm`}>Lección Aprendida</h3>
                                 </div>
                                 <p className="text-[#64748B] text-xs">Este documento se adjuntará como última sección del PDF final de investigación.</p>
                             </div>
 
                             {/* ¿Qué ocurrió? */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">1</span>
-                                    <FieldLabel>¿Qué ocurrió? — Resumen ejecutivo</FieldLabel>
+                                    <FieldLabel isLight={isLight}>¿Qué ocurrió? — Resumen ejecutivo</FieldLabel>
                                 </div>
-                                <FTextarea rows={3} value={lessonsLearned.que_ocurrio}
+                                <FTextarea rows={3} value={lessonsLearned.que_ocurrio} isLight={isLight}
                                     onChange={(v) => { setLessons(p => ({ ...p, que_ocurrio: v })); scheduleSave(); }}
                                     placeholder="Describe brevemente qué ocurrió en términos claros para cualquier trabajador..."
                                     disabled={isClosed} />
                             </div>
 
                             {/* ¿Por qué ocurrió? */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">2</span>
-                                    <FieldLabel>¿Por qué ocurrió? — Causa raíz en lenguaje simple</FieldLabel>
+                                    <FieldLabel isLight={isLight}>¿Por qué ocurrió? — Causa raíz en lenguaje simple</FieldLabel>
                                 </div>
-                                <FTextarea rows={3} value={lessonsLearned.por_que_ocurrio}
+                                <FTextarea rows={3} value={lessonsLearned.por_que_ocurrio} isLight={isLight}
                                     onChange={(v) => { setLessons(p => ({ ...p, por_que_ocurrio: v })); scheduleSave(); }}
                                     placeholder="Explica la causa raíz de manera que cualquier persona lo entienda..."
                                     disabled={isClosed} />
                             </div>
 
                             {/* ¿Qué aprendimos? */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">3</span>
-                                    <FieldLabel>¿Qué aprendimos?</FieldLabel>
+                                    <FieldLabel isLight={isLight}>¿Qué aprendimos?</FieldLabel>
                                 </div>
-                                <FTextarea rows={3} value={lessonsLearned.que_aprendimos}
+                                <FTextarea rows={3} value={lessonsLearned.que_aprendimos} isLight={isLight}
                                     onChange={(v) => { setLessons(p => ({ ...p, que_aprendimos: v })); scheduleSave(); }}
                                     placeholder="Lecciones clave que deja este evento para el equipo y la organización..."
                                     disabled={isClosed} />
                             </div>
 
                             {/* ¿Cómo lo prevenimos? */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">4</span>
-                                    <FieldLabel>¿Cómo lo prevenimos? — Medidas implementadas</FieldLabel>
+                                    <FieldLabel isLight={isLight}>¿Cómo lo prevenimos? — Medidas implementadas</FieldLabel>
                                 </div>
-                                <FTextarea rows={3} value={lessonsLearned.como_prevenimos}
+                                <FTextarea rows={3} value={lessonsLearned.como_prevenimos} isLight={isLight}
                                     onChange={(v) => { setLessons(p => ({ ...p, como_prevenimos: v })); scheduleSave(); }}
                                     placeholder="Controles, procedimientos o cambios implementados para prevenir la recurrencia..."
                                     disabled={isClosed} />
                             </div>
 
                             {/* Evidencia fotográfica del cierre */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">5</span>
-                                    <FieldLabel>Evidencia fotográfica del cierre</FieldLabel>
+                                    <FieldLabel isLight={isLight}>Evidencia fotográfica del cierre</FieldLabel>
                                 </div>
                                 {lessonsLearned.foto_cierre ? (
                                     <div className="space-y-3">
@@ -945,12 +977,12 @@ export default function InvestigationPage() {
                                         )}
                                     </div>
                                 ) : (
-                                    <label className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed border-[#1E2A3B] rounded-xl p-8 w-full transition-colors ${isClosed ? "opacity-50 cursor-not-allowed" : "hover:border-amber-400/40 cursor-pointer"}`}>
+                                    <label className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed ${isLight ? "border-gray-200" : "border-[#1E2A3B]"} rounded-xl p-8 w-full transition-colors ${isClosed ? "opacity-50 cursor-not-allowed" : "hover:border-amber-400/40 cursor-pointer"}`}>
                                         <div className="w-12 h-12 rounded-full bg-amber-400/10 flex items-center justify-center">
                                             <Image className="w-6 h-6 text-[#F59E0B]" />
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-white text-sm font-semibold">Adjuntar foto de evidencia</p>
+                                            <p className="${s.textTitle} text-sm font-semibold">Adjuntar foto de evidencia</p>
                                             <p className="text-[#64748B] text-xs mt-0.5">Toca para seleccionar desde cámara o galeria</p>
                                         </div>
                                         <input type="file" accept="image/*" capture="environment" disabled={isClosed} className="hidden"
@@ -970,14 +1002,14 @@ export default function InvestigationPage() {
                             </div>
 
                             {/* Fecha de divulgación */}
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <span className="w-6 h-6 rounded-full bg-amber-400 text-black text-xs font-black flex items-center justify-center flex-shrink-0">6</span>
-                                    <FieldLabel>Fecha de divulgación al personal</FieldLabel>
+                                    <FieldLabel isLight={isLight}>Fecha de divulgación al personal</FieldLabel>
                                 </div>
                                 <input type="date" value={lessonsLearned.fecha_divulgacion} disabled={isClosed}
                                     onChange={(e) => { setLessons(p => ({ ...p, fecha_divulgacion: e.target.value })); scheduleSave(); }}
-                                    className="w-full sm:w-64 bg-[#0F1420] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50" />
+                                    className={`w-full sm:w-64 ${isLight ? "bg-white border-gray-200 text-[#1E293B]" : "bg-[#0F1420] border-[#1E2A3B] text-white"} rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50`} />
                                 {lessonsLearned.fecha_divulgacion && (
                                     <p className="text-[#64748B] text-xs mt-2">
                                         Divulgado el {new Date(lessonsLearned.fecha_divulgacion + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
@@ -990,8 +1022,8 @@ export default function InvestigationPage() {
                     {/* TAB 5: FIRMAS */}
                     {activeTab === 4 && (
                         <div className="space-y-4">
-                            <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-4 sm:p-6">
-                                <SectionTitle icon={PenLine}>Firmas Digitales</SectionTitle>
+                            <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
+                                <SectionTitle icon={PenLine} isLight={isLight}>Firmas Digitales</SectionTitle>
                                 <p className="text-[#64748B] text-xs mb-5">
                                     Genera un enlace único por firmante. Se envía por WhatsApp o copias el link.
                                     El firmante firma desde su celular. Las firmas tienen validez de 72 horas.
@@ -1004,11 +1036,11 @@ export default function InvestigationPage() {
                                         const isLoading = genLoadingRole === role;
 
                                         return (
-                                            <div key={role} className={`border rounded-2xl p-4 transition-colors ${isSigned ? "bg-emerald-400/5 border-emerald-400/20" : "bg-[#0F1420] border-[#1E2A3B]"
+                                            <div key={role} className={`border rounded-2xl p-4 transition-colors ${isSigned ? "bg-emerald-400/5 border-emerald-400/20" : (isLight ? "bg-white border-gray-200" : "bg-[#0F1420] border-[#1E2A3B]")
                                                 }`}>
                                                 <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                                                     <div>
-                                                        <p className="text-white font-semibold text-sm">{label}</p>
+                                                        <p className={`${s.textTitle} font-semibold text-sm`}>{label}</p>
                                                         {existing && <Countdown expiresAt={existing.expires_at} />}
                                                     </div>
                                                     {existing && <SigBadge status={existing.status} />}
@@ -1017,9 +1049,8 @@ export default function InvestigationPage() {
                                                 {/* Name input */}
                                                 {!isSigned && (
                                                     <div className="mb-3">
-                                                        <FieldLabel>Nombre del firmante</FieldLabel>
-                                                        <FInput
-                                                            value={signerNames[role]}
+                                                        <FieldLabel isLight={isLight}>Nombre del firmante</FieldLabel>
+                                                        <FInput isLight={isLight} value={signerNames[role]}
                                                             onChange={(v) => setSignerNames((n) => ({ ...n, [role]: v }))}
                                                             placeholder={`Nombre del ${short}`}
                                                         />
@@ -1043,7 +1074,7 @@ export default function InvestigationPage() {
                                                         {existing && (
                                                             <>
                                                                 <button onClick={() => copyLink(existing.token, existing.id)}
-                                                                    className="flex items-center gap-1.5 px-3 py-2 bg-[#1E2A3B] text-[#94A3B8] hover:text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">
+                                                                    className={`flex items-center gap-1.5 px-3 py-2 ${isLight ? "bg-gray-100 text-gray-700 hover:bg-gray-200" : "bg-[#1E2A3B] text-[#94A3B8] hover:text-white"} text-xs font-semibold rounded-lg transition-colors cursor-pointer`}>
                                                                     {copiedId === existing.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                                                                     {copiedId === existing.id ? "¡Copiado!" : "Copiar enlace"}
                                                                 </button>
@@ -1063,10 +1094,10 @@ export default function InvestigationPage() {
                             </div>
 
                             {/* PDF Final */}
-                            <div className={`border rounded-2xl p-4 sm:p-6 ${allSigned ? "bg-[#141824] border-[#1E2A3B]" : "bg-[#0F1420] border-[#1E2A3B] opacity-60"}`}>
+                            <div className={`border rounded-2xl p-4 sm:p-6 ${allSigned ? (isLight ? "bg-white border-gray-200" : "bg-[#141824] border-[#1E2A3B]") : (isLight ? "bg-gray-100 border-gray-200 opacity-60" : "bg-[#0F1420] border-[#1E2A3B] opacity-60")}`}>
                                 <div className="flex items-center gap-2 mb-2">
                                     <FileText className="w-4 h-4 text-[#F59E0B]" />
-                                    <h3 className="text-white font-semibold text-sm">PDF Final de Investigación</h3>
+                                    <h3 className={`${s.textTitle} font-semibold text-sm`}>PDF Final de Investigación</h3>
                                 </div>
                                 <p className="text-[#64748B] text-xs mb-4">
                                     {allSigned

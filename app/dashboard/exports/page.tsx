@@ -7,6 +7,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
 import {
     ArrowLeft,
@@ -72,7 +73,9 @@ function SectionHeader({
     icon,
     title,
     subtitle,
+    isLight,
 }: {
+    isLight?: boolean;
     icon: React.ReactNode;
     title: string;
     subtitle: string;
@@ -83,16 +86,15 @@ function SectionHeader({
                 {icon}
             </div>
             <div>
-                <h2 className="text-white font-bold text-base">{title}</h2>
-                <p className="text-[#64748B] text-xs mt-0.5">{subtitle}</p>
+                <h2 className={`${isLight ? "text-[#1E293B]" : "text-white"} font-bold text-base`}>{title}</h2>
             </div>
         </div>
     );
 }
 
-function InfoBadge({ children }: { children: React.ReactNode }) {
+function InfoBadge({ children, isLight }: { children: React.ReactNode; isLight?: boolean }) {
     return (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-950/50 border border-blue-800/30 text-blue-300 text-xs">
+        <div className={`flex items-start gap-2 p-3 rounded-lg ${isLight ? "bg-blue-50 border-blue-200 text-blue-800" : "bg-blue-950/50 border border-blue-800/30 text-blue-300"} text-xs`}>
             <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
             <span>{children}</span>
         </div>
@@ -159,10 +161,10 @@ function DownloadButton({
 
 function SeverityBadge({ severity }: { severity?: string }) {
     const map: Record<string, { label: string; cls: string }> = {
-        mortal: { label: "Mortal", cls: "bg-red-800/20 text-red-500 border-red-500/20" },
-        grave: { label: "Grave", cls: "bg-red-800/20 text-red-500 border-red-500/20" },
-        leve: { label: "Leve", cls: "bg-green-800/20 text-green-500 border-green-500/20" },
-        incidente: { label: "Incidente", cls: "bg-amber-800/20 text-amber-500 border-amber-500/20" },
+        mortal: { label: "Mortal", cls: "bg-red-500/10 text-red-500 border-red-500/25" },
+        grave: { label: "Grave", cls: "bg-red-500/10 text-red-500 border-red-500/25" },
+        leve: { label: "Leve", cls: "bg-green-500/10 text-green-500 border-green-500/25" },
+        incidente: { label: "Incidente", cls: "bg-amber-500/10 text-amber-500 border-amber-500/25" },
     };
     const s = map[severity ?? ""] ?? {
         label: "Sin clasificar",
@@ -179,6 +181,27 @@ function SeverityBadge({ severity }: { severity?: string }) {
 
 export default function ExportsPage() {
     const [incidents, setIncidents] = useState<Event[]>([]);
+    const { theme, resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const isLight = mounted && (theme === "light" || resolvedTheme === "light");
+
+    const lightStyles = {
+        bg: "bg-[#F8FAFC]",
+        cardBg: "bg-white border border-gray-100",
+        textTitle: "text-[#1E293B]",
+        inputBg: "bg-white border border-gray-200 text-[#1E293B]",
+    };
+
+    const darkStyles = {
+        bg: "bg-[#0F1219]",
+        cardBg: "bg-[#1A1F2E] border border-[#1E2A3B]",
+        textTitle: "text-white",
+        inputBg: "bg-[#0F1219] border border-[#1E2A3B] text-white",
+    };
+
+    const s = isLight ? lightStyles : darkStyles;
+
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
     const [profileSaved, setProfileSaved] = useState(false);
@@ -392,12 +415,12 @@ export default function ExportsPage() {
     if (!isMounted) return null;
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]">
+        <div className={`flex-1 flex flex-col h-full overflow-hidden ${s.bg}`}>
             {/* ── Top bar ── */}
             <DashboardHeader onRefresh={() => window.location.reload()} loading={loading}>
                 <div className="flex items-center gap-4 flex-1">
                     <div>
-                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Exportaciones</h1>
+                        <h1 className={`${isLight ? "text-[#1E293B]" : "text-white"} font-black text-xl tracking-tight leading-none uppercase`}>Exportaciones</h1>
                         <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
                             Excel RUC/CCS y PDF de eventos laborales
                         </p>
@@ -408,7 +431,7 @@ export default function ExportsPage() {
             <div className="flex-1 max-w-7xl mx-auto px-10 py-10 space-y-8 w-full overflow-y-auto">
 
                 {/* ── Compact Company Profile ── */}
-                <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden shadow-xl">
+                <section className={`${s.cardBg} rounded-2xl overflow-hidden shadow-xl`}>
                     <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-2xl bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center text-[#F59E0B] shadow-inner">
@@ -416,7 +439,7 @@ export default function ExportsPage() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-3">
-                                    <h2 className="text-white font-black text-lg tracking-tight uppercase leading-none">
+                                    <h2 className={`${isLight ? "text-[#1E293B]" : "text-white"} font-black text-lg tracking-tight uppercase leading-none`}>
                                         {profile.name || "Empresa No Configurada"}
                                     </h2>
                                     <span className="px-2 py-0.5 rounded bg-[#F59E0B]/10 border border-[#F59E0B]/20 text-[#F59E0B] text-[10px] font-black tracking-widest uppercase">
@@ -447,7 +470,7 @@ export default function ExportsPage() {
 
                     {/* Inline Edit Form */}
                     {isEditingProfile && (
-                        <div className="border-t border-[#1E2A3B] bg-[#0F1219]/50 p-6 animate-in slide-in-from-top duration-300">
+                        <div className={`border-t ${isLight ? "border-gray-100 bg-gray-50/50" : "border-[#1E2A3B] bg-[#0F1219]/50"} p-6 animate-in slide-in-from-top duration-300`}>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {[
                                     { key: "consultantName", label: "Empresa Consultora", placeholder: "Ej. FOXTECH SAS" },
@@ -467,7 +490,7 @@ export default function ExportsPage() {
                                             placeholder={placeholder}
                                             value={(profile as any)[key]}
                                             onChange={(e) => setProfile((p) => ({ ...p, [key]: e.target.value }))}
-                                            className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2 text-white text-xs font-bold placeholder:text-[#334155] outline-none focus:border-[#F59E0B] transition-colors"
+                                            className={`w-full ${s.inputBg} rounded-xl px-4 py-2 text-xs font-bold ${isLight ? "placeholder:text-gray-400" : "placeholder:text-[#334155]"} outline-none focus:border-[#F59E0B] transition-colors`}
                                         />
                                     </div>
                                 ))}
@@ -478,7 +501,7 @@ export default function ExportsPage() {
                                     <select
                                         value={profile.riskClass}
                                         onChange={(e) => setProfile((p) => ({ ...p, riskClass: Number(e.target.value) }))}
-                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2 text-white text-xs font-bold outline-none focus:border-[#F59E0B] transition-colors"
+                                        className={`w-full ${s.inputBg} rounded-xl px-4 py-2 text-xs font-bold outline-none focus:border-[#F59E0B] transition-colors`}
                                     >
                                         {[1, 2, 3, 4, 5].map((r) => (
                                             <option key={r} value={r}>Clase {r}</option>
@@ -506,18 +529,19 @@ export default function ExportsPage() {
 
                     {/* COLUMNA IZQUIERDA: RUC–CCS */}
                     <div className="space-y-6">
-                        <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                        <section className={`${s.cardBg} rounded-2xl p-6 shadow-xl relative overflow-hidden`}>
                             <div className="absolute top-0 right-0 p-3 opacity-5">
-                                <FileSpreadsheet className="w-20 h-20 text-white" />
+                                <FileSpreadsheet className={`w-20 h-20 ${isLight ? "text-slate-300" : "text-white"}`} />
                             </div>
                             
                             <SectionHeader
                                 icon={<FileSpreadsheet className="w-5 h-5" />}
                                 title="Archivo Plano RUC — CCS"
                                 subtitle="Configuración mensual de indicadores SST"
+                                isLight={isLight}
                             />
 
-                            <InfoBadge>
+                            <InfoBadge isLight={isLight}>
                                 Este generador cumple con los estándares regulatorios del CCS para la presentación mensual de indicadores de SST.
                             </InfoBadge>
 
@@ -528,7 +552,7 @@ export default function ExportsPage() {
                                         <select
                                             value={rucMonth}
                                             onChange={(e) => setRucMonth(Number(e.target.value))}
-                                            className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B] appearance-none"
+                                            className={`w-full ${s.inputBg} rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-[#F59E0B] appearance-none`}
                                         >
                                             {MONTHS.map((m, i) => (
                                                 <option key={i} value={i + 1}>{m}</option>
@@ -543,7 +567,7 @@ export default function ExportsPage() {
                                         type="number"
                                         value={rucYear}
                                         onChange={(e) => setRucYear(Number(e.target.value))}
-                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
+                                        className={`w-full ${s.inputBg} rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-[#F59E0B]`}
                                     />
                                 </div>
                             </div>
@@ -555,7 +579,7 @@ export default function ExportsPage() {
                                         type="number"
                                         value={rucWorkersCount}
                                         onChange={(e) => setRucWorkersCount(Number(e.target.value))}
-                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
+                                        className={`w-full ${s.inputBg} rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-[#F59E0B]`}
                                     />
                                 </div>
                                 <div>
@@ -564,14 +588,14 @@ export default function ExportsPage() {
                                         type="number"
                                         value={rucHHT}
                                         onChange={(e) => setRucHHT(Number(e.target.value))}
-                                        className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl px-4 py-2.5 text-white text-xs font-bold outline-none focus:border-[#F59E0B]"
+                                        className={`w-full ${s.inputBg} rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-[#F59E0B]`}
                                     />
                                 </div>
                             </div>
 
-                            <div className="mt-6 p-5 bg-[#0F1219] rounded-2xl border border-[#1E2A3B] space-y-4">
+                            <div className={`mt-6 p-5 ${isLight ? "bg-gray-50 border-gray-200" : "bg-[#0F1219] border border-[#1E2A3B]"} rounded-2xl space-y-4`}>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-white font-black text-[10px] uppercase tracking-widest">
+                                    <span className={`${isLight ? "text-[#1E293B]" : "text-white"} font-black text-[10px] uppercase tracking-widest`}>
                                         Resumen Periodo: {MONTHS[rucMonth - 1].slice(0, 3)} {rucYear}
                                     </span>
                                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-400/10 border border-emerald-400/20 text-emerald-400 text-[9px] font-black">
@@ -588,7 +612,7 @@ export default function ExportsPage() {
                                     ].map((s) => (
                                         <div key={s.label} className="flex items-center justify-between text-[11px] font-bold">
                                             <span className="text-[#64748B] uppercase tracking-wider">{s.label}</span>
-                                            <span className={s.highlight ? "text-emerald-400" : "text-white"}>{s.val}</span>
+                                            <span className={s.highlight ? "text-emerald-400" : (isLight ? "text-[#1E293B]" : "text-white")}>{s.val}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -607,16 +631,16 @@ export default function ExportsPage() {
 
                     {/* COLUMNA DERECHA: Centro de Reportes PDF */}
                     <div className="space-y-6">
-                        <section className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl flex flex-col h-full shadow-xl overflow-hidden">
+                        <section className={`${s.cardBg} rounded-2xl flex flex-col h-full shadow-xl overflow-hidden`}>
                             <div className="px-6 py-4 border-b border-[#1E2A3B] flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/20 flex items-center justify-center text-[#F59E0B]">
                                         <FileText className="w-4 h-4" />
                                     </div>
-                                    <h2 className="text-white font-black text-lg uppercase tracking-tight">Centro de Reportes PDF</h2>
+                                    <h2 className={`${isLight ? "text-[#1E293B]" : "text-white"} font-black text-lg uppercase tracking-tight`}>Centro de Reportes PDF</h2>
                                 </div>
 
-                                <div className="flex gap-2 p-1.5 bg-[#0F1219] rounded-xl border border-[#1E2A3B]">
+                                <div className={`flex gap-2 p-1.5 ${isLight ? "bg-gray-100 border-gray-200" : "bg-[#0F1219] border-[#1E2A3B]"} rounded-xl`}>
                                     {[
                                         { id: "all", label: "TODOS" },
                                         { id: "incidentes", label: "INCIDENTES" },
@@ -632,7 +656,7 @@ export default function ExportsPage() {
                                                 "px-6 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all cursor-pointer",
                                                 pdfFilter === tab.id
                                                     ? "bg-[#F59E0B] text-black shadow-lg shadow-amber-500/10"
-                                                    : "text-[#64748B] hover:text-white"
+                                                    : `text-[#64748B] ${isLight ? "hover:text-[#1E293B]" : "hover:text-white"}`
                                             ].join(" ")}
                                         >
                                             {tab.label}
@@ -641,7 +665,7 @@ export default function ExportsPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-[1fr_120px_180px_80px] px-8 py-5 border-b border-[#1E2A3B] bg-[#1E2A3B]/10">
+                            <div className={`grid grid-cols-[1fr_120px_180px_80px] px-8 py-5 border-b ${isLight ? "border-gray-100 bg-gray-50/50" : "border-[#1E2A3B] bg-[#1E2A3B]/10"}`}>
                                 <span className="text-[#64748B] text-sm font-black uppercase tracking-widest">Evento / Fecha</span>
                                 <span className="text-[#64748B] text-sm font-black uppercase tracking-widest text-center">Severidad</span>
                                 <span className="text-[#64748B] text-sm font-black uppercase tracking-widest text-center">Estado</span>
@@ -660,11 +684,11 @@ export default function ExportsPage() {
                                         <p className="text-sm font-bold uppercase tracking-widest">No se encontraron reportes</p>
                                     </div>
                                 ) : (
-                                    <div className="divide-y divide-[#1E2A3B]">
+                                    <div className={`divide-y ${isLight ? "divide-gray-100" : "divide-[#1E2A3B]"}`}>
                                 {paginatedReports.map((report) => (
-                                    <div key={report.id} className="grid grid-cols-[1fr_120px_180px_80px] items-center px-8 py-6 hover:bg-white/[0.02] transition-colors group">
+                                    <div key={report.id} className={`grid grid-cols-[1fr_120px_180px_80px] items-center px-8 py-6 ${isLight ? "hover:bg-gray-50/50" : "hover:bg-white/[0.02]"} transition-colors group`}>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-white font-bold text-lg truncate uppercase tracking-tight mb-1.5">
+                                             <p className={`${isLight ? "text-[#1E293B]" : "text-white"} font-bold text-lg truncate uppercase tracking-tight mb-1.5`}>
                                                 {report.title}
                                             </p>
                                             <p className="text-[#64748B] text-sm font-bold uppercase tracking-wider">
@@ -693,8 +717,7 @@ export default function ExportsPage() {
                                             <button
                                                 onClick={() => report.onDownload()}
                                                 disabled={pdfStates[report.id]?.status === "generating"}
-                                                className="w-10 h-10 flex items-center justify-center bg-[#0F1219] border border-[#1E2A3B] text-[#64748B] rounded-xl hover:border-[#F59E0B]/50 hover:text-[#F59E0B] transition-all cursor-pointer disabled:opacity-50"
-                                            >
+                                                className={`w-10 h-10 flex items-center justify-center ${s.inputBg} text-[#64748B] rounded-xl hover:border-[#F59E0B]/50 hover:text-[#F59E0B] transition-all cursor-pointer disabled:opacity-50`}>
                                                 {pdfStates[report.id]?.status === "generating" ? (
                                                     <Loader2 className="w-4 h-4 animate-spin" />
                                                 ) : (
@@ -709,7 +732,7 @@ export default function ExportsPage() {
                     </div>
 
                     {/* Footer / Pagination */}
-                    <div className="px-10 py-8 bg-[#1E2A3B]/30 border-t border-[#1E2A3B] flex items-center justify-between">
+                    <div className={`px-10 py-8 ${isLight ? "bg-gray-50 border-t border-gray-100" : "bg-[#1E2A3B]/30 border-t border-[#1E2A3B]"} flex items-center justify-between`}>
                         <span className="text-[#64748B] text-sm font-black uppercase tracking-widest">
                             MOSTRANDO {filteredReports.length > 0 ? (pdfPage - 1) * pageSize + 1 : 0} DE {filteredReports.length} REPORTES
                         </span>
@@ -717,15 +740,13 @@ export default function ExportsPage() {
                             <button
                                 disabled={pdfPage === 1}
                                 onClick={() => setPdfPage(p => p - 1)}
-                                className="w-10 h-10 rounded-xl bg-[#0F1219] border border-[#1E2A3B] flex items-center justify-center text-white disabled:opacity-30 hover:border-[#F59E0B]/30 transition-all cursor-pointer"
-                            >
+                                className={`w-10 h-10 rounded-xl ${s.inputBg} flex items-center justify-center ${isLight ? "text-[#1E293B]" : "text-white"} disabled:opacity-30 hover:border-[#F59E0B]/30 transition-all cursor-pointer`}>
                                 <ChevronLeft className="w-5 h-5" />
                             </button>
                             <button
                                 disabled={pdfPage >= Math.ceil(filteredReports.length / pageSize)}
                                 onClick={() => setPdfPage(p => p + 1)}
-                                className="w-10 h-10 rounded-xl bg-[#0F1219] border border-[#1E2A3B] flex items-center justify-center text-white disabled:opacity-30 hover:border-[#F59E0B]/30 transition-all cursor-pointer"
-                            >
+                                className={`w-10 h-10 rounded-xl ${s.inputBg} flex items-center justify-center ${isLight ? "text-[#1E293B]" : "text-white"} disabled:opacity-30 hover:border-[#F59E0B]/30 transition-all cursor-pointer`}>
                                 <ChevronRight className="w-5 h-5" />
                             </button>
                         </div>
