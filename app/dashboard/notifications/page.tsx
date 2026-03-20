@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useTheme } from "next-themes";
 import { useActiveCompany } from "@/hooks/useActiveCompany";
 import { NotificationListSkeleton } from "@/components/dashboard/skeletons";
 import {
@@ -153,6 +154,15 @@ function loadCompanyProfile(): Partial<CompanyLegal> {
 
 export default function NotificationsPage() {
     const router = useRouter();
+    const { theme, resolvedTheme } = useTheme();
+    const isLight = resolvedTheme === "light";
+
+    const s = {
+        bg: isLight ? "bg-[#F8FAFC]" : "bg-[#0A0D14]",
+        cardBg: isLight ? "bg-white border-gray-200/80 shadow-sm" : "bg-[#131A26] border-slate-800/40",
+        hoverCardBg: isLight ? "hover:bg-gray-50 hover:border-gray-200" : "hover:border-amber-500/30 hover:bg-[#161F2E]",
+        emptyBg: isLight ? "bg-white border-gray-200 shadow-sm" : "bg-[#131A26]/30 border-slate-800/50",
+    };
 
     // All grave/mortal incidents
     const [incidents, setIncidents] = useState<EnrichedIncident[]>([]);
@@ -340,12 +350,12 @@ export default function NotificationsPage() {
     });
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0A0D14]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className={`flex-1 flex flex-col h-full overflow-hidden ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* ── HEADER ────────────────────────────────────────────────── */}
             <DashboardHeader onRefresh={loadData} loading={loading}>
                 <div className="flex items-center gap-6 flex-1">
                     <div>
-                        <h1 className="text-white font-black text-2xl tracking-tight leading-none uppercase">Notificaciones Legales</h1>
+                        <h1 className={`${isLight ? "text-[#1E293B]" : "text-white"} font-black text-2xl tracking-tight leading-none uppercase`}>Notificaciones Legales</h1>
                         <p className="text-[#475569] text-xs font-bold uppercase tracking-wider mt-1">
                             Cartas Mintrabajo · ARL · EPS
                         </p>
@@ -360,7 +370,7 @@ export default function NotificationsPage() {
             </DashboardHeader>
 
             {/* ── TABS ─────────────────────────────────────────────────── */}
-            <div className="px-6 border-b border-slate-800/50 bg-[#0A0D14] flex gap-4">
+            <div className={`px-6 border-b ${isLight ? "border-gray-200 bg-white" : "border-slate-800/50 bg-[#0A0D14]"} flex gap-4`}>
                 {(["pendientes", "enviadas", "archivadas"] as const).map((tab) => (
                     <button
                         key={tab}
@@ -385,7 +395,7 @@ export default function NotificationsPage() {
                 {loading ? (
                     <p className="text-slate-500 text-sm">Cargando...</p>
                 ) : filteredIncidents.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-48 text-center bg-[#131A26]/30 rounded-2xl border border-slate-800/50">
+                    <div className={`flex flex-col items-center justify-center h-48 text-center ${s.emptyBg} rounded-2xl border`}>
                         <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2 opacity-60" />
                         <p className="text-slate-300 text-sm font-semibold">Sin notificaciones en esta categoría</p>
                     </div>
@@ -400,7 +410,7 @@ export default function NotificationsPage() {
                             <div
                                 key={inc.id}
                                 onClick={() => router.push(`/dashboard/notifications/${inc.id}`)}
-                                className="group bg-[#131A26] rounded-xl border border-slate-800/40 p-4 flex items-center justify-between hover:border-amber-500/30 hover:bg-[#161F2E] transition-all cursor-pointer shadow-lg hover:shadow-black/20"
+                                className={`group ${s.cardBg} rounded-xl p-4 flex items-center justify-between ${s.hoverCardBg} transition-all cursor-pointer shadow-lg hover:shadow-black/20`}
                             >
                                 <div className="space-y-2 flex-1">
                                     <div className="flex items-center gap-2">
@@ -423,7 +433,7 @@ export default function NotificationsPage() {
                                         </span>
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-bold text-sm group-hover:text-amber-500 transition-colors">
+                                        <h3 className={`${isLight ? "text-[#1E293B]" : "text-white"} font-bold text-sm group-hover:text-amber-500 transition-colors`}>
                                             {incidentTitle(inc)} — {formatDate(inc.created_at)}
                                         </h3>
                                         <p className="text-slate-500 text-xs mt-0.5">

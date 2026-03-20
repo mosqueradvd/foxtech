@@ -8,6 +8,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
     ArrowLeft, BarChart2, TrendingUp, TrendingDown,
     Minus, AlertTriangle, RefreshCw, Settings, Download, Loader2, CheckCircle2,
@@ -60,38 +61,45 @@ const StatCard = ({
     trendIsUp: boolean;
     color: string;
     icon: any;
-}) => (
-    <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 transition-all hover:bg-white/[0.02]">
-        <div className="flex items-start justify-between mb-4">
-            <div>
-                <h3 className="text-white text-[10px] font-black tracking-widest leading-none mb-1 uppercase">{title}</h3>
-                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">{subtitle}</p>
+}) => {
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    const isDark = mounted && resolvedTheme === "dark";
+
+    return (
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6 transition-all hover:bg-white/[0.02]">
+            <div className="flex items-start justify-between mb-4">
+                <div>
+                    <h3 className="text-[var(--text-primary)] text-[10px] font-black tracking-widest leading-none mb-1 uppercase">{title}</h3>
+                    <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">{subtitle}</p>
+                </div>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--border)] ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
+                    <Icon className="w-4 h-4" style={{ color }} />
+                </div>
             </div>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 border border-white/10">
-                <Icon className="w-4 h-4" style={{ color }} />
+            <div className="flex items-end gap-3 mb-4">
+                <div className="text-3xl font-black text-[var(--text-primary)] leading-none">
+                    {value < 0.01 && value > 0 ? "<0.01" : value.toLocaleString("es-CO", { maximumFractionDigits: 2 })}
+                    <span className="text-base ml-0.5">{unit}</span>
+                </div>
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${trendIsUp
+                        ? "bg-red-500/10 text-red-500 border-red-500/20"
+                        : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                    }`}>
+                    {trendIsUp ? <TrendingUp className="w-2 h-2" /> : <TrendingDown className="w-2 h-2" />}
+                    {trend}%
+                </div>
+            </div>
+            <div className={`w-full h-1 rounded-full overflow-hidden ${isDark ? "bg-white/5" : "bg-slate-100"}`}>
+                <div
+                    className="h-full rounded-full transition-all duration-1000"
+                    style={{ width: `${Math.min(value * (title === "TA" ? 10 : 20), 100)}%`, backgroundColor: color }}
+                />
             </div>
         </div>
-        <div className="flex items-end gap-3 mb-4">
-            <div className="text-3xl font-black text-white leading-none">
-                {value < 0.01 && value > 0 ? "<0.01" : value.toLocaleString("es-CO", { maximumFractionDigits: 2 })}
-                <span className="text-base ml-0.5">{unit}</span>
-            </div>
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black border ${trendIsUp
-                    ? "bg-red-500/10 text-red-500 border-red-500/20"
-                    : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                }`}>
-                {trendIsUp ? <TrendingUp className="w-2 h-2" /> : <TrendingDown className="w-2 h-2" />}
-                {trend}%
-            </div>
-        </div>
-        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-            <div
-                className="h-full rounded-full transition-all duration-1000"
-                style={{ width: `${Math.min(value * (title === "TA" ? 10 : 20), 100)}%`, backgroundColor: color }}
-            />
-        </div>
-    </div>
-);
+    );
+};
 
 const AbsenteeismCard = ({
     label,
@@ -102,11 +110,11 @@ const AbsenteeismCard = ({
     value: number,
     color: "orange" | "blue"
 }) => {
-    const textColor = color === "orange" ? "text-orange-400" : "text-blue-400";
+    const textColor = color === "orange" ? "text-orange-500 dark:text-orange-400" : "text-blue-500 dark:text-blue-400";
     const barColor = color === "orange" ? "bg-orange-500" : "bg-blue-500";
 
     return (
-        <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 flex-1 flex flex-col justify-center">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-6 flex-1 flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-4">
                 <div className={`w-1.5 h-1.5 rounded-full ${barColor}`} />
                 <span className="text-[#64748B] text-[10px] font-black tracking-widest uppercase">{label}</span>
@@ -114,7 +122,7 @@ const AbsenteeismCard = ({
             <div className={`text-4xl font-black ${textColor} leading-none mb-2`}>
                 {value < 0.01 && value > 0 ? "< 0.01" : value.toFixed(2)}
             </div>
-            <p className="text-[#475569] text-[9px] font-bold uppercase tracking-widest">
+            <p className="text-[#475569] dark:text-[#94A3B8] text-[9px] font-bold uppercase tracking-widest">
                 Índice de ausentismo por HHT
             </p>
         </div>
@@ -130,11 +138,16 @@ const SummaryChip = ({
     value: number,
     color: "amber" | "orange" | "red" | "blue"
 }) => {
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    const isDark = mounted && resolvedTheme === "dark";
+
     const variants = {
-        amber: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-        orange: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+        amber: isDark ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20",
+        orange: isDark ? "bg-orange-500/10 text-orange-400 border-orange-500/20" : "bg-orange-500/10 text-orange-600 border-orange-500/20",
         red: "bg-red-500/10 text-red-500 border-red-500/20",
-        blue: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+        blue: isDark ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" : "bg-cyan-500/10 text-cyan-600 border-cyan-500/20"
     };
 
     return (
@@ -180,6 +193,11 @@ function KPICard({
     prev?: number;
     description: string;
 }) {
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    const isDark = mounted && resolvedTheme === "dark";
+
     const color = colorFn ? colorFn(value) : "text-white";
     const diff = prev !== undefined ? value - prev : undefined;
     const hasChange = diff !== undefined && isFinite(diff);
@@ -192,11 +210,11 @@ function KPICard({
                         Math.round(value).toLocaleString("es-CO");
 
     return (
-        <div className="bg-[#141824] border border-[#1E2A3B] rounded-2xl p-5 flex flex-col gap-3 hover:border-[#F59E0B]/30 transition-colors cursor-pointer">
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-5 flex flex-col gap-3 hover:border-[#F59E0B]/30 transition-colors cursor-pointer">
             <div className="flex items-start justify-between">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color === "text-emerald-400" ? "bg-emerald-400/10" :
-                    color === "text-amber-400" ? "bg-amber-400/10" :
-                        color === "text-red-400" ? "bg-red-400/10" : "bg-white/5"
+                        color === "text-amber-400" ? "bg-amber-400/10" :
+                            color === "text-red-400" ? "bg-red-400/10" : (isDark ? "bg-white/5" : "bg-slate-100")
                     }`}>
                     <Icon className={`w-4 h-4 ${color}`} />
                 </div>
@@ -236,13 +254,13 @@ function ChartTooltip({ active, payload, label }: {
 }) {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-[#1E2A3B] border border-[#334155] rounded-xl p-3 text-xs">
-            <p className="text-white font-bold mb-2">{label}</p>
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl p-3 text-xs shadow-lg">
+            <p className="text-[var(--text-primary)] font-bold mb-2">{label}</p>
             {payload.map((p) => (
                 <div key={p.name} className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                    <span className="text-[#94A3B8]">{p.name}:</span>
-                    <span className="text-white font-semibold">{p.value}</span>
+                    <span className="text-[var(--text-muted)]">{p.name}:</span>
+                    <span className="text-[var(--text-primary)] font-semibold">{p.value}</span>
                 </div>
             ))}
         </div>
@@ -253,6 +271,10 @@ function ChartTooltip({ active, payload, label }: {
 
 export function StatsPage() {
     const router = useRouter();
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    const isDark = !mounted || resolvedTheme === "dark"; // Default to dark during SSR or mounted dark
 
     // Data
     const [allEvents, setAllEvents] = useState<Event[]>([]);
@@ -489,7 +511,7 @@ export function StatsPage() {
 
     // ── Render ────────────────────────────────────────────────────────────
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--bg-primary)]" style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* ── TOP HEADER (FILTERS) ── */}
             <DashboardHeader onRefresh={fetchData} loading={loading}>
                 <div className="flex items-center gap-8">
@@ -502,7 +524,7 @@ export function StatsPage() {
                             <select
                                 value={period}
                                 onChange={(e) => setPeriod(e.target.value as PeriodPreset)}
-                                className="appearance-none bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10"
+                                className="appearance-none bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--text-primary)] text-xs font-bold focus:outline-none focus:border-amber-500/50 cursor-pointer pr-10"
                             >
                                 <option value="year">2026</option>
                                 <option value="quarter">Trimestre Actual</option>
@@ -525,7 +547,7 @@ export function StatsPage() {
                             placeholder={dbWorkerCount.toString()}
                             value={workerOverride}
                             onChange={(e) => setWorkerOverride(e.target.value)}
-                            className="bg-[#0F1219] border border-[#1E2A3B] rounded-lg px-4 py-2 text-white text-xs font-bold focus:outline-none focus:border-amber-500/50 w-24"
+                            className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--text-primary)] text-xs font-bold focus:outline-none focus:border-amber-500/50 w-24"
                         />
                     </div>
                 </div>
@@ -585,10 +607,10 @@ export function StatsPage() {
                 {/* ── CENTRAL SECTION: TREND CHART & ABSENTEEISM ── */}
                 <div id="central-section" className="grid grid-cols-12 gap-6">
                     {/* Trend Area Chart (65%) */}
-                    <div className="col-span-8 bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-8">
+                    <div className="col-span-8 bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-8">
                         <div className="flex items-center justify-between mb-8">
                             <div>
-                                <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Tendencia de Accidentalidad</h3>
+                                <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">Tendencia de Accidentalidad</h3>
                                 <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 12 meses</p>
                             </div>
                             <div className="flex gap-4">
@@ -606,7 +628,7 @@ export function StatsPage() {
                         <div className="h-64 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={trendData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#1E2A3B" vertical={false} />
+                                    <CartesianGrid strokeDasharray="3 3" stroke={isDark ? "#1E2A3B" : "#E2E8F0"} vertical={false} />
                                     <XAxis
                                         dataKey="label"
                                         axisLine={false}
@@ -619,10 +641,7 @@ export function StatsPage() {
                                         tickLine={false}
                                         tick={{ fill: '#64748B', fontSize: 10, fontWeight: 700 }}
                                     />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#1A1F2E', border: '1px solid #1E2A3B', borderRadius: '12px' }}
-                                        itemStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }}
-                                    />
+                                    <Tooltip content={<ChartTooltip />} />
                                     <Line
                                         type="monotone"
                                         dataKey="at"
@@ -662,7 +681,7 @@ export function StatsPage() {
                 <div id="gtc45-section">
                     <div className="flex items-center justify-between mb-6">
                         <div>
-                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Distribución por Peligros GTC-45</h3>
+                            <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">Distribución por Peligros GTC-45</h3>
                             <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Análisis de criticidad por centro de trabajo</p>
                         </div>
                     </div>
@@ -670,22 +689,22 @@ export function StatsPage() {
                 </div>
 
                 {/* ── DIAGNOSIS ABSENTEEISM TABLE ── */}
-                <div id="diagnosis-absenteeism-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
-                    <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                <div id="diagnosis-absenteeism-section" className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden mb-8">
+                    <div className="px-8 py-6 border-b border-[var(--border)] flex items-center justify-between">
                         <div>
-                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Ausentismo por Diagnóstico</h3>
+                            <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">Ausentismo por Diagnóstico</h3>
                             <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Top diagnósticos (CIE-10 / CIE-11)</p>
                         </div>
 
                         {/* Toggle filter */}
-                        <div className="flex bg-[#0F1219] p-1 rounded-lg border border-[#1E2A3B]">
+                        <div className="flex bg-[var(--bg-primary)] p-1 rounded-lg border border-[var(--border)]">
                             {["Todos", "CIE-10", "CIE-11"].map(f => (
                                 <button
                                     key={f}
                                     onClick={() => setCieFilter(f as any)}
                                     className={`px-4 py-1.5 rounded-md text-[10px] font-black tracking-widest uppercase transition-all ${cieFilter === f
-                                            ? "bg-[#1E2A3B] text-white shadow"
-                                            : "text-[#64748B] hover:text-white"
+                                            ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow border border-[var(--border)]"
+                                            : "text-[#64748B] hover:text-[var(--text-primary)]"
                                         }`}
                                 >
                                     {f}
@@ -695,10 +714,10 @@ export function StatsPage() {
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
-                            <thead className="bg-[#0F1219]">
+                            <thead className="bg-[var(--bg-primary)]">
                                 <tr>
                                     {["Código CIE", "Descripción del Diagnóstico", "Nº Incapacidades", "Días Perdidos", "% Ausentismo"].map((h) => (
-                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[var(--border)]">
                                             {h}
                                         </th>
                                     ))}
@@ -717,23 +736,23 @@ export function StatsPage() {
                                             ? (row.totalDays / absenteeismByDiagnosis.totalDaysAll) * 100
                                             : 0;
                                         return (
-                                            <tr key={row.code} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors group">
+                                            <tr key={row.code} className="border-b border-[var(--border)]/50 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors group">
                                                 <td className="px-8 py-4">
-                                                    <span className="bg-white/5 text-amber-500 px-2 py-1 rounded border border-amber-500/20 font-black tracking-wider">
+                                                    <span className="bg-[var(--bg-primary)] text-amber-500 px-2 py-1 rounded border border-amber-500/20 font-black tracking-wider">
                                                         {row.code}
                                                     </span>
                                                 </td>
-                                                <td className="px-8 py-4 text-white font-bold">{row.description}
-                                                    <span className="ml-2 text-[9px] text-[#64748B] uppercase px-1.5 py-0.5 border border-[#334155] rounded">{row.version}</span>
+                                                <td className="px-8 py-4 text-[var(--text-primary)] font-bold">{row.description}
+                                                    <span className="ml-2 text-[9px] text-[#64748B] uppercase px-1.5 py-0.5 border border-[var(--border)] rounded">{row.version}</span>
                                                 </td>
                                                 <td className="px-8 py-4 text-[#94A3B8] font-bold text-center w-32">{row.incapacitiesCount}</td>
                                                 <td className="px-8 py-4 text-red-400 font-bold text-center w-32">{row.totalDays}</td>
                                                 <td className="px-8 py-4 w-48">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="flex-1 h-1.5 bg-[#0F1219] rounded-full overflow-hidden">
+                                                        <div className="flex-1 h-1.5 bg-[var(--bg-primary)] rounded-full overflow-hidden">
                                                             <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
                                                         </div>
-                                                        <span className="text-white font-black">{pct.toFixed(1)}%</span>
+                                                        <span className="text-[var(--text-primary)] font-black">{pct.toFixed(1)}%</span>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -746,22 +765,22 @@ export function StatsPage() {
                 </div>
 
                 {/* ── EVENT DETAILS TABLE ── */}
-                <div id="table-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden">
-                    <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                <div id="table-section" className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+                    <div className="px-8 py-6 border-b border-[var(--border)] flex items-center justify-between">
                         <div>
-                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Registro de Eventos</h3>
+                            <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">Registro de Eventos</h3>
                             <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Período Seleccionado</p>
                         </div>
-                        <span className="bg-white/5 text-[#64748B] px-3 py-1 rounded-full text-[10px] font-black border border-white/10 uppercase">
+                        <span className="bg-[var(--bg-primary)] text-[#64748B] px-3 py-1 rounded-full text-[10px] font-black border border-[var(--border)] uppercase">
                             {filteredEvents.length} Totales
                         </span>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-[#0F1219]">
+                            <thead className="bg-[var(--bg-primary)]">
                                 <tr>
                                     {["Fecha", "Trabajador", "Clasificación", "Días", "Estado"].map((h) => (
-                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[var(--border)]">
                                             {h}
                                         </th>
                                     ))}
@@ -776,8 +795,8 @@ export function StatsPage() {
                                     </tr>
                                 ) : (
                                     filteredEvents.slice(0, 10).map((ev) => (
-                                        <tr key={ev.id} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] cursor-pointer group transition-colors" onClick={() => router.push(`/dashboard/events/${ev.id}`)}>
-                                            <td className="px-8 py-4 text-white text-xs font-bold whitespace-nowrap">{(ev.event_date || "").slice(0, 10)}</td>
+                                        <tr key={ev.id} className="border-b border-[var(--border)]/50 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer group transition-colors" onClick={() => router.push(`/dashboard/events/${ev.id}`)}>
+                                            <td className="px-8 py-4 text-[var(--text-primary)] text-xs font-bold whitespace-nowrap">{(ev.event_date || "").slice(0, 10)}</td>
                                             <td className="px-8 py-4 text-[#94A3B8] text-xs font-bold">{ev.worker_name || "Sin asignar"}</td>
                                             <td className="px-8 py-4">
                                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${ev.classification === "ACCIDENTE_TRABAJO_FATAL" ? "bg-red-500/10 text-red-500" :
@@ -788,7 +807,7 @@ export function StatsPage() {
                                                     {ev.classification?.replace(/_/g, " ") || "INCIDENTE"}
                                                 </span>
                                             </td>
-                                            <td className="px-8 py-4 text-white text-xs font-bold">{ev.disability_days || 0}</td>
+                                            <td className="px-8 py-4 text-[var(--text-primary)] text-xs font-bold">{ev.disability_days || 0}</td>
                                             <td className="px-8 py-4">
                                                 <div className={`w-2 h-2 rounded-full ${ev.classification_status === 'classified' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
                                             </td>
@@ -801,10 +820,10 @@ export function StatsPage() {
                 </div>
 
                 {/* ── RUC HISTORY ──────────────────────────────────────────────────────────── */}
-                <div id="ruc-section" className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl overflow-hidden mb-8">
-                    <div className="px-8 py-6 border-b border-[#1E2A3B] flex items-center justify-between">
+                <div id="ruc-section" className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl overflow-hidden mb-8">
+                    <div className="px-8 py-6 border-b border-[var(--border)] flex items-center justify-between">
                         <div>
-                            <h3 className="text-white text-xs font-black tracking-widest uppercase mb-1">Historial Consolidado RUC / CCS</h3>
+                            <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">Historial Consolidado RUC / CCS</h3>
                             <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Últimos 5 años operativos</p>
                         </div>
                         <button
@@ -818,10 +837,10 @@ export function StatsPage() {
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-xs">
-                            <thead className="bg-[#0F1219]">
+                            <thead className="bg-[var(--bg-primary)]">
                                 <tr>
                                     {["Año", "AT Fatal", "AT Incap", "Total AT", "Días", "IF", "IS"].map((h) => (
-                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[#1E2A3B]">
+                                        <th key={h} className="px-8 py-4 text-[#64748B] text-[10px] font-black uppercase tracking-widest border-b border-[var(--border)]">
                                             {h}
                                         </th>
                                     ))}
@@ -829,14 +848,14 @@ export function StatsPage() {
                             </thead>
                             <tbody>
                                 {historicalData.map((row) => (
-                                    <tr key={row.year} className="border-b border-[#1E2A3B]/50 hover:bg-white/[0.02] transition-colors">
-                                        <td className="px-8 py-4 text-white font-black">{row.year}</td>
+                                    <tr key={row.year} className="border-b border-[var(--border)]/50 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                                        <td className="px-8 py-4 text-[var(--text-primary)] font-black">{row.year}</td>
                                         <td className="px-8 py-4 text-[#EF4444] font-bold">{row.atMortales}</td>
                                         <td className="px-8 py-4 text-[#94A3B8]">{row.atConIncap}</td>
                                         <td className="px-8 py-4 text-amber-500 font-bold">{row.totalAT}</td>
                                         <td className="px-8 py-4 text-[#94A3B8]">{row.diasIncap}</td>
-                                        <td className="px-8 py-4 text-white font-black">{row.IF.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-white font-black">{row.IS.toFixed(2)}</td>
+                                        <td className="px-8 py-4 text-[var(--text-primary)] font-black">{row.IF.toFixed(2)}</td>
+                                        <td className="px-8 py-4 text-[var(--text-primary)] font-black">{row.IS.toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>

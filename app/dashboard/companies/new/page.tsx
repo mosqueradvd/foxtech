@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { ArrowLeft, CheckCircle2, ChevronRight, Building2, MapPin, Phone, Settings, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { COLOMBIA_DEPARTMENTS, DEPARTMENT_NAMES } from "@/lib/constants/colombia";
@@ -10,6 +11,15 @@ const ARL_OPTIONS = ["Sura", "Positiva", "Colpatria", "Bolívar", "Equidad", "Ax
 
 export default function NewCompanyWizard() {
     const router = useRouter();
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const isDark = !mounted || resolvedTheme === "dark";
+
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
@@ -128,17 +138,17 @@ export default function NewCompanyWizard() {
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email_empresa);
 
     return (
-        <div className="min-h-screen bg-[#0F1219] flex flex-col">
+        <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col">
             {/* Header */}
-            <header className="bg-[#1A1F2E] border-b border-[#334155] sticky top-0 z-20">
+            <header className="bg-[var(--bg-surface)] border-b border-[var(--border)] sticky top-0 z-20">
                 <div className="w-full px-8 py-5 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => router.back()} className="text-[#64748B] hover:text-white transition-colors cursor-pointer">
+                        <button onClick={() => router.back()} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
                             <ArrowLeft className="w-5 h-5" />
                         </button>
                         <div>
-                            <h1 className="text-white font-black text-lg leading-none uppercase tracking-tight">Nueva Empresa</h1>
-                            <p className="text-[#64748B] text-xs font-bold uppercase tracking-wider mt-1">
+                            <h1 className="text-[var(--text-primary)] font-black text-lg leading-none uppercase tracking-tight">Nueva Empresa</h1>
+                            <p className="text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mt-1">
                                 Onboarding Cliente
                             </p>
                         </div>
@@ -153,7 +163,7 @@ export default function NewCompanyWizard() {
                     <div className="lg:col-span-2 space-y-8">
                         {/* Stepper */}
                         <div className="flex items-center justify-between relative px-4">
-                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-[#1A1F2E] z-0" />
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-[var(--bg-surface)] z-0" />
                             <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-[#F59E0B] z-0 transition-all duration-300" style={{ width: `${((step - 1) / 3) * 100}%` }} />
 
                             {[
@@ -167,54 +177,54 @@ export default function NewCompanyWizard() {
                                 const isDone = step > s.num;
                                 return (
                                     <div key={s.num} className="relative z-10 flex flex-col items-center">
-                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${isActive ? "bg-[#1A1F2E] border-[#F59E0B] text-[#F59E0B]" : isDone ? "bg-[#F59E0B] border-[#F59E0B] text-black" : "bg-[#141824] border-[#1E2A3B] text-[#475569]"}`}>
+                                        <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${isActive ? "bg-[var(--bg-surface)] border-[#F59E0B] text-[#F59E0B]" : isDone ? "bg-[#F59E0B] border-[#F59E0B] text-black" : isDark ? "bg-[#141824] border-[#1E2A3B] text-[#475569]" : "bg-[#F1F5F9] border-[#E2E8F0] text-[#94A3B8]"}`}>
                                             {isDone ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-4 h-4" />}
                                         </div>
-                                        <span className={`absolute top-11 text-[9px] uppercase tracking-wider font-extrabold whitespace-nowrap ${isActive || isDone ? "text-white" : "text-[#475569]"}`}>{s.label}</span>
+                                        <span className={`absolute top-11 text-[9px] uppercase tracking-wider font-extrabold whitespace-nowrap ${isActive || isDone ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}>{s.label}</span>
                                     </div>
                                 )
                             })}
                         </div>
 
-                        <div className="mt-12 bg-[#141824] border border-[#1E2A3B] rounded-[24px] p-6 sm:p-8 shadow-xl shadow-black/20">
+                        <div className="mt-12 bg-[var(--bg-surface)] border border-[var(--border)] rounded-[10px] p-6 sm:p-8 shadow-xl dark:shadow-[0_2px_20px_rgba(0,0,0,0.01)]">
                             {/* Step 1: Identificacion */}
                             {step === 1 && (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                                     <div>
-                                        <h2 className="text-white font-bold text-xl mb-1 leading-none">Identificación de Empresa</h2>
-                                        <p className="text-[#64748B] text-xs">Datos básicos y legales del cliente.</p>
+                                        <h2 className="text-[var(--text-primary)] font-bold text-xl mb-1 leading-none">Identificación de Empresa</h2>
+                                        <p className="text-[var(--text-secondary)] text-xs">Datos básicos y legales del cliente.</p>
                                     </div>
 
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Razón Social *</label>
-                                            <input type="text" name="razon_social" value={formData.razon_social} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B] transition-colors" placeholder="Ej: Empresa S.A.S" />
+                                            <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Razón Social *</label>
+                                            <input type="text" name="razon_social" value={formData.razon_social} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B] transition-colors" placeholder="Ej: Empresa S.A.S" />
                                         </div>
                                         <div className="grid grid-cols-[1fr_100px] gap-4">
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">NIT *</label>
-                                                <input type="text" name="nit" value={formData.nit} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B] transition-colors" placeholder="Ej: 900123456" />
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">NIT *</label>
+                                                <input type="text" name="nit" value={formData.nit} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B] transition-colors" placeholder="Ej: 900123456" />
                                             </div>
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">DV</label>
-                                                <input type="text" name="nit_dv" value={formData.nit_dv} onChange={handleChange} maxLength={1} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B] text-center" placeholder="1" />
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">DV</label>
+                                                <input type="text" name="nit_dv" value={formData.nit_dv} onChange={handleChange} maxLength={1} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B] text-center" placeholder="1" />
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Código CIIU *</label>
-                                                <input type="text" name="ciiu" value={formData.ciiu} onChange={handleChange} maxLength={4} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: 0111" />
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Código CIIU *</label>
+                                                <input type="text" name="ciiu" value={formData.ciiu} onChange={handleChange} maxLength={4} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: 0111" />
                                             </div>
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Clase Riesgo *</label>
-                                                <select name="clase_riesgo" value={formData.clase_riesgo} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer">
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Clase Riesgo *</label>
+                                                <select name="clase_riesgo" value={formData.clase_riesgo} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer">
                                                     {[1, 2, 3, 4, 5].map(v => <option key={v} value={v}>Clase {v}</option>)}
                                                 </select>
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">ARL *</label>
-                                            <select name="arl" value={formData.arl} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer">
+                                            <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">ARL *</label>
+                                            <select name="arl" value={formData.arl} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer">
                                                 {ARL_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
                                             </select>
                                         </div>
@@ -226,30 +236,30 @@ export default function NewCompanyWizard() {
                             {step === 2 && (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                                     <div>
-                                        <h2 className="text-white font-bold text-xl mb-1 leading-none">Ubicación</h2>
-                                        <p className="text-[#64748B] text-xs">Dirección física principal de la empresa.</p>
+                                        <h2 className="text-[var(--text-primary)] font-bold text-xl mb-1 leading-none">Ubicación</h2>
+                                        <p className="text-[var(--text-secondary)] text-xs">Dirección física principal de la empresa.</p>
                                     </div>
 
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Departamento *</label>
-                                                <select name="departamento" value={formData.departamento} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer">
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Departamento *</label>
+                                                <select name="departamento" value={formData.departamento} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer">
                                                     <option value="">Seleccionar...</option>
                                                     {DEPARTMENT_NAMES.map(d => <option key={d} value={d}>{d}</option>)}
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Municipio *</label>
-                                                <select name="municipio" value={formData.municipio} onChange={handleChange} disabled={!formData.departamento} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer disabled:opacity-40">
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Municipio *</label>
+                                                <select name="municipio" value={formData.municipio} onChange={handleChange} disabled={!formData.departamento} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B] appearance-none cursor-pointer disabled:opacity-40">
                                                     <option value="">Seleccionar...</option>
                                                     {cities.map(c => <option key={c} value={c}>{c}</option>)}
                                                 </select>
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Dirección *</label>
-                                            <input type="text" name="direccion" value={formData.direccion} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: Calle 45 #12-34 Sector B" />
+                                            <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Dirección *</label>
+                                            <input type="text" name="direccion" value={formData.direccion} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: Calle 45 #12-34 Sector B" />
                                         </div>
                                     </div>
                                 </div>
@@ -259,24 +269,24 @@ export default function NewCompanyWizard() {
                             {step === 3 && (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                                     <div>
-                                        <h2 className="text-white font-bold text-xl mb-1 leading-none">Contacto Administrativo</h2>
-                                        <p className="text-[#64748B] text-xs">Responsable o Representante Legal.</p>
+                                        <h2 className="text-[var(--text-primary)] font-bold text-xl mb-1 leading-none">Contacto Administrativo</h2>
+                                        <p className="text-[var(--text-secondary)] text-xs">Responsable o Representante Legal.</p>
                                     </div>
 
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Nombre Representante Legal *</label>
-                                            <input type="text" name="representante_legal" value={formData.representante_legal} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: Juan Pérez" />
+                                            <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Nombre Representante Legal *</label>
+                                            <input type="text" name="representante_legal" value={formData.representante_legal} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: Juan Pérez" />
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Teléfono *</label>
-                                                <input type="tel" name="telefono_empresa" value={formData.telefono_empresa} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: +57 300 000 0000" />
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Teléfono *</label>
+                                                <input type="tel" name="telefono_empresa" value={formData.telefono_empresa} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: +57 300 000 0000" />
                                             </div>
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Email Empresarial</label>
-                                                <input type="email" name="email_empresa" value={formData.email_empresa} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: contacto@empresa.com" />
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Email Empresarial</label>
+                                                <input type="email" name="email_empresa" value={formData.email_empresa} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" placeholder="Ej: contacto@empresa.com" />
                                             </div>
                                         </div>
                                     </div>
@@ -287,23 +297,23 @@ export default function NewCompanyWizard() {
                             {step === 4 && (
                                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                                     <div>
-                                        <h2 className="text-white font-bold text-xl mb-1 leading-none">Configuración Indicadores</h2>
-                                        <p className="text-[#64748B] text-xs">Información base para estadísticas HSE.</p>
+                                        <h2 className="text-[var(--text-primary)] font-bold text-xl mb-1 leading-none">Configuración Indicadores</h2>
+                                        <p className="text-[var(--text-secondary)] text-xs">Información base para estadísticas HSE.</p>
                                     </div>
 
                                     <div className="space-y-4">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">Cant. Trabajadores</label>
-                                                <input type="number" name="employee_count" value={formData.employee_count} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B]" min="0" />
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">Cant. Trabajadores</label>
+                                                <input type="number" name="employee_count" value={formData.employee_count} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" min="0" />
                                             </div>
                                             <div>
-                                                <label className="block text-[#94A3B8] text-xs font-bold uppercase tracking-wider mb-2">HHT Anual Proyectadas</label>
-                                                <input type="number" name="hht_annual" value={formData.hht_annual} onChange={handleChange} className="w-full bg-[#0B0D14] border border-[#1E2A3B] rounded-xl px-4 py-3 text-white text-base outline-none focus:border-[#F59E0B]" min="0" />
+                                                <label className="block text-[var(--text-secondary)] text-xs font-bold uppercase tracking-wider mb-2">HHT Anual Proyectadas</label>
+                                                <input type="number" name="hht_annual" value={formData.hht_annual} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" min="0" />
                                             </div>
                                         </div>
-                                        <div className="bg-[#0B0D14] p-4 border border-[#1E2A3B] rounded-xl">
-                                            <p className="text-[#64748B] text-xs italic">
+                                        <div className="bg-[var(--bg-primary)] p-4 border border-[var(--border)] rounded-xl">
+                                            <p className="text-[var(--text-secondary)] text-xs italic">
                                                 Si no tienes HHT o Cant. de Trabajadores exactos aún, puedes dejarlo en 0 y actualizarlo después.
                                             </p>
                                         </div>
@@ -312,9 +322,9 @@ export default function NewCompanyWizard() {
                             )}
 
                             {/* Actions */}
-                            <div className="pt-6 mt-8 border-t border-[#1E2A3B] flex items-center justify-between">
+                            <div className="pt-6 mt-8 border-t border-[var(--border)] flex items-center justify-between">
                                 {step > 1 ? (
-                                    <button onClick={prevStep} className="px-6 py-2.5 rounded-lg text-white font-bold text-xs bg-[#1E2A3B] hover:bg-[#252B3B] transition-colors cursor-pointer">
+                                    <button onClick={prevStep} className={`px-6 py-2.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${isDark ? "bg-[#1E2A3B] hover:bg-[#252B3B] text-white" : "bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#1E293B]"}`}>
                                         Volver
                                     </button>
                                 ) : <div />}
@@ -342,19 +352,19 @@ export default function NewCompanyWizard() {
                     </div>
 
                     {/* ── RIGHT COLUMN: SUMMARY / LIVE PREVIEW ── */}
-                    <div className="lg:col-span-1 border border-[#1E2A3B] rounded-[24px] bg-[#141824] p-6 sticky top-24 space-y-6 shadow-xl shadow-black/20">
+                    <div className="lg:col-span-1 border border-[var(--border)] rounded-[10px] bg-[var(--bg-surface)] p-6 sticky top-24 space-y-6 shadow-xl dark:shadow-[0_2px_20px_rgba(0,0,0,0.01)]">
                         <div>
-                            <h3 className="text-[#64748B] text-[10px] font-extrabold uppercase tracking-wider mb-4">Resumen de Registro</h3>
+                            <h3 className="text-[var(--text-secondary)] text-[12px] font-extrabold uppercase tracking-wider mb-4">Resumen de Registro</h3>
 
-                            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-[#1E2A3B]">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl ${formData.razon_social ? "bg-[#F59E0B] text-black" : "bg-[#1E2A3B] text-[#475569]"}`}>
+                            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-[var(--border)]">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-xl ${formData.razon_social ? "bg-[#F59E0B] text-black" : isDark ? "bg-[#1E2A3B] text-[#475569]" : "bg-[#F1F5F9] text-[#94A3B8]"}`}>
                                     {formData.razon_social ? formData.razon_social.charAt(0).toUpperCase() : "E"}
                                 </div>
                                 <div className="overflow-hidden">
-                                    <h4 className="text-white font-bold text-sm truncate leading-tight" title={formData.razon_social || "Pendiente de nombre"}>
+                                    <h4 className="text-[var(--text-primary)] font-bold text-sm truncate leading-tight" title={formData.razon_social || "Pendiente de nombre"}>
                                         {formData.razon_social || "Pendiente de nombre"}
                                     </h4>
-                                    <p className="text-[#64748B] text-xs font-mono mt-1">
+                                    <p className="text-[var(--text-secondary)] text-xs font-mono mt-1">
                                         NIT: {formData.nit || "---"}{formData.nit_dv ? `-${formData.nit_dv}` : ""}
                                     </p>
                                 </div>
@@ -362,48 +372,48 @@ export default function NewCompanyWizard() {
 
                             <div className="space-y-4 text-sm">
                                 <div className="space-y-1">
-                                    <span className="text-[#475569] font-bold uppercase text-[11px]">Ubicación</span>
-                                    <p className="text-[#94A3B8] flex items-center gap-1.5 text-sm">
+                                    <span className="text-[var(--text-secondary)] font-bold uppercase text-[11px]">Ubicación</span>
+                                    <p className="text-[var(--text-secondary)] flex items-center gap-1.5 text-sm">
                                         <MapPin className="w-3.5 h-3.5" />
                                         {formData.departamento}{formData.municipio ? `, ${formData.municipio}` : ""}
                                     </p>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <span className="text-[#475569] font-bold uppercase text-[11px]">Clasificación</span>
-                                    <p className="text-[#94A3B8] flex items-center gap-2 text-sm">
+                                    <span className="text-[var(--text-secondary)] font-bold uppercase text-[11px]">Clasificación</span>
+                                    <p className="text-[var(--text-secondary)] flex items-center gap-2 text-sm">
                                         Clase {formData.clase_riesgo} • ARL {formData.arl}
                                     </p>
                                 </div>
 
                                 <div className="space-y-1">
-                                    <span className="text-[#475569] font-extrabold uppercase text-[11px]">Contacto</span>
-                                    <p className="text-[#94A3B8] text-sm">
+                                    <span className="text-[var(--text-secondary)] font-extrabold uppercase text-[11px]">Contacto</span>
+                                    <p className="text-[var(--text-secondary)] text-sm">
                                         {formData.representante_legal || "Sin asignar"}
                                     </p>
                                     {formData.telefono_empresa && (
-                                        <p className="text-[#64748B] text-xs font-mono">{formData.telefono_empresa}</p>
+                                        <p className="text-[var(--text-secondary)] text-xs font-mono">{formData.telefono_empresa}</p>
                                     )}
                                 </div>
 
-                                <div className="space-y-1 pt-2 border-t border-[#1E2A3B]">
-                                    <span className="text-[#475569] font-bold uppercase text-[11px]">Indicadores Base</span>
-                                    <div className="flex justify-between text-[#94A3B8] text-sm">
+                                <div className="space-y-1 pt-2 border-t border-[var(--border)]">
+                                    <span className="text-[var(--text-secondary)] font-bold uppercase text-[11px]">Indicadores Base</span>
+                                    <div className="flex justify-between text-[var(--text-secondary)] text-sm">
                                         <span>Trabajadores:</span>
-                                        <span className="text-white font-bold">{formData.employee_count}</span>
+                                        <span className="text-[var(--text-primary)] font-bold">{formData.employee_count}</span>
                                     </div>
-                                    <div className="flex justify-between text-[#94A3B8] text-sm">
+                                    <div className="flex justify-between text-[var(--text-secondary)] text-sm">
                                         <span>HHT Anual:</span>
-                                        <span className="text-white font-bold">{formData.hht_annual}</span>
+                                        <span className="text-[var(--text-primary)] font-bold">{formData.hht_annual}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="bg-[#0B0D14] p-4 rounded-xl border border-[#1E2A3B] mt-4">
+                            <div className="bg-[var(--bg-primary)] p-4 rounded-xl border border-[var(--border)] mt-4">
                                 <span className="text-amber-500/80 text-xs font-extrabold uppercase tracking-wide flex items-center gap-1.5 mb-1">
                                     <Settings className="w-3 h-3" /> Nota Legal
                                 </span>
-                                <p className="text-white text-xs leading-relaxed">
+                                <p className="text-[var(--text-primary)] text-xs leading-relaxed">
                                     Los datos del NIT y Razón Social deben coincidir exactamente con el RUT vigente. Estos aparecerán en todas las cartas legales generadas por FOXTECH.
                                 </p>
                             </div>
