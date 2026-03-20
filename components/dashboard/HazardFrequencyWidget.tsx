@@ -7,6 +7,8 @@
 
 import React from "react";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import {
     PhysicalIcon,
     ChemicalIcon,
@@ -100,13 +102,13 @@ export default function HazardFrequencyWidget({ hazardData, loading = false }: H
     if (loading) return <Skeleton />;
 
     return (
-        <div className="flex flex-col gap-5 w-full bg-[#1A1F2E] p-6 rounded-2xl border border-white/5">
+        <div className="flex flex-col gap-5 w-full bg-[var(--bg-surface)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
             {/* ── ROW 1: Hero (60%) & Secondary (40%) ── */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-5">
                 {hero ? (
                     <HeroCard item={hero} />
                 ) : (
-                    <div className="bg-[#1A1F2E] border border-white/5 rounded-2xl p-12 flex items-center justify-center text-[#475569] italic">
+                    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-12 flex items-center justify-center text-[#475569] italic">
                         Sin datos críticos detectados
                     </div>
                 )}
@@ -117,7 +119,7 @@ export default function HazardFrequencyWidget({ hazardData, loading = false }: H
                     ))}
                     {/* Fill space if less than 2 secondary */}
                     {secondary.length < 2 && Array.from({ length: 2 - secondary.length }).map((_, i) => (
-                        <div key={i} className="flex-1 bg-[#1A1F2E]/30 border border-white/5 border-dashed rounded-2xl" />
+                        <div key={i} className="flex-1 bg-[var(--bg-surface)]/30 border border-[var(--border)] border-dashed rounded-2xl" />
                     ))}
                 </div>
             </div>
@@ -141,7 +143,7 @@ export default function HazardFrequencyWidget({ hazardData, loading = false }: H
             )}
 
             {/* ── FOOTER ── */}
-            <div className="flex flex-wrap items-center justify-between border-t border-white/5 pt-4 mt-2">
+            <div className="flex flex-wrap items-center justify-between border-t border-[var(--border)] pt-4 mt-2">
                 <span className="text-[10px] font-bold text-[#475569] tracking-[0.2em] uppercase">
                     Clasificación según GTC-45 V2012
                 </span>
@@ -159,10 +161,21 @@ export default function HazardFrequencyWidget({ hazardData, loading = false }: H
 
 function HeroCard({ item }: { item: HazardEntry }) {
     const Icon = getIcon(item.label);
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+    const isDark = !mounted || resolvedTheme === "dark";
+
     return (
-        <div className="relative group overflow-hidden rounded-2xl border border-red-500/20 bg-[#1A1F2E] p-8 min-h-[400px] flex flex-col justify-between shadow-[0_0_50px_-12px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_-12px_rgba(239,68,68,0.45)] hover:border-red-500/40 transition-all duration-500">
+        <div className={`relative group overflow-hidden rounded-2xl border p-8 min-h-[400px] flex flex-col justify-between transition-all duration-500 ${isDark 
+            ? "border-red-500/20 bg-[#1A1F2E] shadow-[0_0_50px_-12px_rgba(239,68,68,0.3)] hover:shadow-[0_0_60px_-12px_rgba(239,68,68,0.45)] hover:border-red-500/40" 
+            : "border-red-200 bg-white shadow-md hover:shadow-lg hover:border-red-300"
+        }`}>
             {/* Radial Gradient Background */}
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,_#7F1D1D44_0%,_#1A1F2E_70%)] opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className={`absolute inset-0 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity duration-500 ${isDark 
+                ? "bg-[radial-gradient(circle_at_20%_20%,_#7F1D1D44_0%,_#1A1F2E_70%)]" 
+                : "bg-[radial-gradient(circle_at_20%_20%,_#FEE2E2_40%,_transparent_100%)]"
+            }`} />
 
             <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-8">
@@ -176,10 +189,10 @@ function HeroCard({ item }: { item: HazardEntry }) {
 
                 <div className="flex items-start justify-between">
                     <div className="max-w-[60%]">
-                        <h2 className="text-white text-[32px] font-black leading-none uppercase mb-4 tracking-tight">
+                        <h2 className="text-[var(--text-primary)] text-[32px] font-black leading-none uppercase mb-4 tracking-tight">
                             {item.label}
                         </h2>
-                        <p className="text-[#94A3B8] text-[13px] leading-relaxed font-medium">
+                        <p className="text-[#64748B] text-[13px] leading-relaxed font-medium">
                             Identificado como el factor de riesgo predominante en las operaciones actuales.
                             Requiere intervención inmediata.
                         </p>
@@ -218,19 +231,19 @@ function SecondaryCard({ item, maxVal }: { item: HazardEntry; maxVal: number }) 
     const Icon = getIcon(item.label);
     const progress = (item.value / maxVal) * 100;
     return (
-        <div className="group relative bg-[#252B3B] border-white/5 border-l-[3px] border-l-[#F59E0B] rounded-xl p-5 hover:bg-[#2e364a] transition-all duration-300 h-full flex flex-col justify-between">
+        <div className="group relative bg-[var(--bg-card)] border-[var(--border)] border-l-[3px] border-l-[#F59E0B] rounded-xl p-5 hover:bg-[var(--bg-surface)] hover:shadow-md transition-all duration-300 h-full flex flex-col justify-between">
             <div className="flex items-start justify-between">
-                <div className="p-2.5 rounded-xl bg-[#1A1F2E] border border-white/5">
+                <div className="p-2.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border)]">
                     <Icon color="amber" size={36} />
                 </div>
                 <span className="text-[#F59E0B] text-4xl font-black leading-none">{item.value.toString().padStart(2, '0')}</span>
             </div>
 
             <div>
-                <h3 className="text-white text-sm font-black uppercase tracking-wider mb-3 mt-4">
+                <h3 className="text-[var(--text-primary)] text-sm font-black uppercase tracking-wider mb-3 mt-4">
                     {item.label}
                 </h3>
-                <div className="relative h-[3px] w-full bg-[#1A1F2E] rounded-full overflow-hidden">
+                <div className="relative h-[3px] w-full bg-[var(--bg-surface)] rounded-full overflow-hidden">
                     <div
                         className="absolute top-0 left-0 h-full bg-[#F59E0B] rounded-full transition-all duration-1000"
                         style={{ width: `${Math.max(progress, 5)}%` }}
@@ -248,18 +261,18 @@ function MinorActiveCard({ item, maxVal }: { item: HazardEntry; maxVal: number }
     const Icon = getIcon(item.label);
     const progress = (item.value / maxVal) * 100;
     return (
-        <div className="bg-[#252B3B] border border-white/5 border-l-[3px] border-l-[#F59E0B] rounded-xl p-5 flex flex-col justify-between">
+        <div className="bg-[var(--bg-card)] border border-[var(--border)] border-l-[3px] border-l-[#F59E0B] rounded-xl p-5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
-                <div className="p-2 rounded-lg bg-[#1A1F2E]">
+                <div className="p-2 rounded-lg bg-[var(--bg-surface)] border border-[var(--border)]">
                     <Icon color="amber" size={28} />
                 </div>
                 <div className="text-right">
-                    <p className="text-white text-[10px] font-black uppercase tracking-wider leading-none mb-1">{item.label}</p>
+                    <p className="text-[var(--text-primary)] text-[10px] font-black uppercase tracking-wider leading-none mb-1">{item.label}</p>
                     <span className="text-[#F59E0B] text-2xl font-black leading-none">{item.value.toString().padStart(2, '0')}</span>
                 </div>
             </div>
             <div>
-                <div className="h-[2px] w-full bg-[#161B28] rounded-full overflow-hidden">
+                <div className="h-[2px] w-full bg-[var(--bg-primary)] rounded-full overflow-hidden">
                     <div
                         className="h-full bg-[#F59E0B] rounded-full"
                         style={{ width: `${Math.max(progress, 5)}%` }}
@@ -276,12 +289,12 @@ function MinorActiveCard({ item, maxVal }: { item: HazardEntry; maxVal: number }
 function NoDataCard({ item }: { item: HazardEntry }) {
     const Icon = getIcon(item.label);
     return (
-        <div className="bg-[#252B3B]/60 border border-white/10 rounded-xl px-5 py-4 flex items-center justify-between transition-opacity hover:opacity-100">
+        <div className="bg-[var(--bg-card)]/60 border border-[var(--border)] rounded-xl px-5 py-4 flex items-center justify-between transition-opacity hover:opacity-100">
             <div className="flex items-center gap-4">
                 <Icon color="muted" size={24} />
                 <span className="text-[#64748B] text-[10px] font-bold uppercase tracking-[0.15em]">{item.label}</span>
             </div>
-            <span className="text-[#475569] text-[9px] font-black uppercase bg-[#1A1F2E]/80 px-2 py-1 rounded tracking-widest border border-white/5">
+            <span className="text-[#475569] text-[9px] font-black uppercase bg-[var(--bg-surface)]/80 px-2 py-1 rounded tracking-widest border border-[var(--border)]">
                 No Data
             </span>
         </div>
@@ -299,6 +312,6 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 
 function Skeleton() {
     return (
-        <div className="w-full h-[600px] bg-[#1A1F2E] animate-pulse rounded-2xl border border-white/5" />
+        <div className="w-full h-[600px] bg-[var(--bg-surface)] animate-pulse rounded-2xl border border-[var(--border)]" />
     );
 }

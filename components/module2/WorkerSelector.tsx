@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Search, UserPlus, User, Loader2, Check } from "lucide-react";
+import { useTheme } from "next-themes";
 import { supabase, type Worker } from "@/lib/supabase";
 import { EPS_LIST, ARL_LIST, SEX_OPTIONS, EMPLOYMENT_TYPES, EDUCATION_LEVELS } from "@/lib/constants/colombia";
 
@@ -16,6 +17,16 @@ type WorkerSelectorProps = {
 };
 
 export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSelectorProps) {
+    const { resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // While not mounted, fallback to dark to match server render
+    const isDark = !mounted || resolvedTheme === "dark";
+
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<Worker[]>([]);
     const [searching, setSearching] = useState(false);
@@ -63,19 +74,23 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
 
     if (selectedWorker) {
         return (
-            <div className="flex items-center gap-4 bg-[#1e3a29] border border-green-600/30 rounded-xl p-4">
-                <div className="w-10 h-10 rounded-full bg-green-700 flex items-center justify-center flex-shrink-0">
+            <div className={`flex items-center gap-4 border rounded-xl p-4 ${
+                isDark ? "bg-[#1e3a29] border-green-600/30" : "bg-green-50 border-green-200"
+            }`}>
+                <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0 dark:bg-green-700">
                     <User className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-white font-bold">{selectedWorker.full_name}</p>
-                    <p className="text-green-400 text-xs">CC {selectedWorker.cedula ?? "—"} • {selectedWorker.job_title ?? "Sin cargo"}</p>
+                    <p className={`font-bold ${isDark ? "text-white" : "text-green-800"}`}>{selectedWorker.full_name}</p>
+                    <p className={`text-xs ${isDark ? "text-green-400" : "text-green-600"}`}>CC {selectedWorker.cedula ?? "—"} • {selectedWorker.job_title ?? "Sin cargo"}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-400" />
+                    <Check className="w-4 h-4 text-green-500 dark:text-green-400" />
                     <button
                         onClick={() => { onSelect(null); setQuery(""); }}
-                        className="text-xs text-white/50 hover:text-white transition-colors cursor-pointer"
+                        className={`text-xs transition-colors cursor-pointer ${
+                            isDark ? "text-white/50 hover:text-white" : "text-green-600/70 hover:text-green-800"
+                        }`}
                     >
                         Cambiar
                     </button>
@@ -96,25 +111,25 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Buscar por nombre o cédula..."
-                    className="w-full bg-[#1A1F2E] border border-[#334155] rounded-xl pl-11 pr-10 py-3 text-white placeholder:text-[#64748B] outline-none focus:border-[#F59E0B] transition-colors text-sm"
+                    className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl pl-11 pr-10 py-3 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] outline-none focus:border-[#F59E0B] transition-colors text-sm"
                 />
             </div>
 
             {/* Results dropdown */}
             {results.length > 0 && (
-                <div className="bg-[#1A1F2E] border border-[#334155] rounded-xl overflow-hidden divide-y divide-[#334155]">
+                <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
                     {results.map((w) => (
                         <button
                             key={w.id}
                             onClick={() => { onSelect(w); setQuery(w.full_name); setResults([]); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left cursor-pointer"
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-primary)] transition-colors text-left cursor-pointer"
                         >
-                            <div className="w-8 h-8 rounded-full bg-[#252B3B] flex items-center justify-center flex-shrink-0">
-                                <User className="w-4 h-4 text-[#64748B]" />
+                            <div className="w-8 h-8 rounded-full bg-[var(--bg-primary)] flex items-center justify-center flex-shrink-0 border border-[var(--border)]">
+                                <User className="w-4 h-4 text-[var(--text-secondary)]" />
                             </div>
                             <div>
-                                <p className="text-white text-sm font-semibold">{w.full_name}</p>
-                                <p className="text-[#64748B] text-xs">CC {w.cedula ?? "—"} • {w.job_title ?? "Sin cargo"}</p>
+                                <p className="text-[var(--text-primary)] text-sm font-semibold">{w.full_name}</p>
+                                <p className="text-[var(--text-secondary)] text-xs">CC {w.cedula ?? "—"} • {w.job_title ?? "Sin cargo"}</p>
                             </div>
                         </button>
                     ))}
@@ -141,70 +156,70 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
 
             {/* Create form */}
             {showCreate && (
-                <div className="bg-[#1A1F2E] border border-[#334155] rounded-xl p-5 space-y-4">
-                    <h4 className="text-white font-bold text-sm uppercase tracking-wider">Nuevo Trabajador</h4>
+                <div className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+                    <h4 className="text-[var(--text-primary)] font-bold text-sm uppercase tracking-wider">Nuevo Trabajador</h4>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="col-span-2">
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Nombre completo *</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Nombre completo *</label>
                             <input
                                 type="text"
                                 placeholder="Nombres y apellidos"
                                 value={newWorker.full_name ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, full_name: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B]"
                             />
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Cédula</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Cédula</label>
                             <input
                                 type="text"
                                 placeholder="N.° documento"
                                 value={newWorker.cedula ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, cedula: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B]"
                             />
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Fecha nacimiento</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Fecha nacimiento</label>
                             <input
                                 type="date"
                                 value={newWorker.birth_date ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, birth_date: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             />
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Sexo</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Sexo</label>
                             <select
                                 value={newWorker.sex ?? "M"}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, sex: e.target.value as "M" | "F" | "Otro" }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 {SEX_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                             </select>
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Cargo</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Cargo</label>
                             <input
                                 type="text"
                                 placeholder="Ej: Operador de montacargas"
                                 value={newWorker.job_title ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, job_title: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B]"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B]"
                             />
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">EPS</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">EPS</label>
                             <select
                                 value={newWorker.eps ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, eps: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 <option value="">Seleccionar EPS</option>
                                 {EPS_LIST.map((eps) => <option key={eps} value={eps}>{eps}</option>)}
@@ -212,11 +227,11 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">ARL</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">ARL</label>
                             <select
                                 value={newWorker.arl ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, arl: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 <option value="">Seleccionar ARL</option>
                                 {ARL_LIST.map((arl) => <option key={arl} value={arl}>{arl}</option>)}
@@ -224,22 +239,22 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Tipo de contrato</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Tipo de contrato</label>
                             <select
                                 value={newWorker.employment_type ?? "Indefinido"}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, employment_type: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 {EMPLOYMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Nivel educativo</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Nivel educativo</label>
                             <select
                                 value={newWorker.education_level ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, education_level: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             >
                                 <option value="">Seleccionar</option>
                                 {EDUCATION_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
@@ -247,12 +262,12 @@ export function WorkerSelector({ companyId, onSelect, selectedWorker }: WorkerSe
                         </div>
 
                         <div>
-                            <label className="text-[#64748B] text-xs uppercase tracking-wider font-bold mb-1 block">Fecha ingreso</label>
+                            <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Fecha ingreso</label>
                             <input
                                 type="date"
                                 value={newWorker.hire_date ?? ""}
                                 onChange={(e) => setNewWorker((p) => ({ ...p, hire_date: e.target.value }))}
-                                className="w-full bg-[#252B3B] border border-[#334155] rounded-lg px-3 py-2.5 text-white text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
+                                className="w-full bg-[var(--bg-surface)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer"
                             />
                         </div>
                     </div>

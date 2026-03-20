@@ -9,6 +9,7 @@ import { OfflineBanner } from "@/components/forms/OfflineBanner";
 import { SyncInitializer } from "@/components/SyncInitializer";
 import { RoutePreloader } from "@/components/RoutePreloader";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -50,17 +51,19 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${spaceGrotesk.variable} ${outfit.variable}`}>
-      <body className="font-[var(--font-space-grotesk)] bg-[#1A1F2E] text-white antialiased">
-        {/* Registers public/sw.js (Workbox custom service worker) */}
-        <ServiceWorkerRegistrar />
-        {/* Persistent offline status banner */}
-        <OfflineBanner />
-        {/* Initializes Dexie→Supabase sync engine on client */}
-        <SyncInitializer />
-        {/* Prefetches all primary routes for offline navigation */}
-        <RoutePreloader />
-        {children}
+    <html lang="es" className={`${spaceGrotesk.variable} ${outfit.variable}`} suppressHydrationWarning>
+      <body className="font-[var(--font-space-grotesk)] antialiased">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          {/* Registers public/sw.js (Workbox custom service worker) */}
+          <ServiceWorkerRegistrar />
+          {/* Persistent offline status banner */}
+          <OfflineBanner />
+          {/* Initializes Dexie→Supabase sync engine on client */}
+          <SyncInitializer />
+          {/* Prefetches all primary routes for offline navigation */}
+          <RoutePreloader />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useTheme } from "next-themes";
 import { useActiveCompany } from "@/hooks/useActiveCompany";
 import {
     db,
@@ -34,7 +35,7 @@ import dynamic from "next/dynamic";
 
 const EventMiniMap = dynamic(() => import("@/components/dashboard/EventMiniMap"), {
     ssr: false,
-    loading: () => <div className="flex-1 flex items-center justify-center bg-[#232b3d] text-slate-500 text-xs">Cargando mapa...</div>
+    loading: () => <div className="flex-1 flex items-center justify-center bg-white dark:bg-[#232b3d] text-slate-400 dark:text-slate-500 text-xs">Cargando mapa...</div>
 });
 
 type UrgencyLevel = "ok" | "warning" | "overdue";
@@ -104,6 +105,20 @@ export default function NotificationDetailPage() {
 
     const [incident, setIncident] = useState<EnrichedIncident | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const { theme, resolvedTheme } = useTheme();
+    const isLight = resolvedTheme === "light";
+
+    const s = {
+        bg: isLight ? "bg-[#F8FAFC] text-[#1E293B]" : "bg-[#0e172a] text-slate-200",
+        headerBg: isLight ? "bg-white/95 backdrop-blur-md" : "bg-[#0e172a]/90 backdrop-blur-md",
+        cardBg: isLight ? "bg-white border-gray-100 shadow-sm" : "bg-[#232b3d] border-slate-800/40",
+        inputBg: isLight ? "bg-white border border-gray-200 text-[#1E293B]" : "bg-[#1C2433] border border-slate-800/40 text-white",
+        innerCardBg: isLight ? "bg-gray-50 border border-gray-100/80" : "bg-[#1C2433]/40 border border-slate-800/30",
+        footerBg: isLight ? "bg-white border-t border-gray-100" : "bg-[#0F131D] border-t border-slate-800",
+        textTitle: isLight ? "text-[#1E293B]" : "text-white",
+        iconBoxBg: isLight ? "bg-gray-100 border border-gray-100 text-amber-600" : "bg-[#1A2538] rounded-xl border border-slate-800/60 text-amber-500",
+    };
 
     // Company form
     const [company, setCompany] = useState<CompanyLegal>({
@@ -352,19 +367,19 @@ export default function NotificationDetailPage() {
     const isFatal = incident.severity === "mortal";
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-y-auto bg-[#0e172a] text-slate-200" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className={`flex-1 flex flex-col h-full overflow-y-auto ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
 
             {/* ── HEADER FIJO ─────────────────────────────────────────────── */}
-            <div className="sticky top-0 z-10 bg-[#0e172a]/90 backdrop-blur-md border-b border-slate-800/50 px-6 py-4 flex items-center justify-between shadow-sm shadow-black/20">
+            <div className={`sticky top-0 z-10 ${s.headerBg} border-b ${isLight ? "border-gray-100" : "border-slate-800/50"} px-6 py-4 flex items-center justify-between shadow-sm`}>
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => router.push("/dashboard/notifications")}
-                        className="p-2 rounded-lg hover:bg-slate-800/50 border border-slate-800/20 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                        className={`p-2 rounded-lg ${isLight ? "hover:bg-gray-100 text-slate-500" : "hover:bg-slate-800/50 text-slate-400"} border border-slate-800/20 hover:text-white transition-colors cursor-pointer`}
                     >
                         <ArrowLeft className="w-5 h-5" />
                     </button>
                     <div>
-                        <h1 className="text-lg font-black tracking-tight text-white uppercase flex items-center gap-2">
+                        <h1 className={`text-lg font-black tracking-tight ${s.textTitle} uppercase flex items-center gap-2`}>
                             DETALLE DE EVENTO <span className="text-amber-500">#{id.slice(0, 8).toUpperCase()}</span>
                         </h1>
                     </div>
@@ -411,7 +426,7 @@ export default function NotificationDetailPage() {
             <div className="p-6 space-y-6 max-w-7xl mx-auto w-full flex-1">
 
                 {/* ── BLOQUE 1: Hero Card ───────────────────────────────────── */}
-                <section className="bg-[#232b3d] h-[450px] rounded-[8px] border border-slate-800/40 p-0 grid grid-cols-1 md:grid-cols-[55fr_45fr] shadow-xl shadow-black/10 overflow-hidden">
+                <section className={`${s.cardBg} h-[450px] rounded-[4px] p-0 grid grid-cols-1 md:grid-cols-[55fr_45fr] shadow-xl shadow-black/10 overflow-hidden`}>
                     {/* Left: Pre-report Photo */}
                     <div className="bg-[#0A0F1A] h-60 md:h-full flex items-center justify-center relative border-r border-slate-800/20 group">
                         {incident.photo_url ? (
@@ -424,7 +439,7 @@ export default function NotificationDetailPage() {
                             </div>
                         )}
                         {/* Gradient Fade overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#232b3d]/60 via-transparent to-transparent opacity-80 pointer-events-none" />
+                        <div className={`absolute inset-0 bg-gradient-to-t ${isLight ? "from-[#F8FAFC]/80" : "from-[#232b3d]/60"} via-transparent to-transparent opacity-80 pointer-events-none`} />
 
                         {hasGPS && (
                             <span className="absolute top-4 left-4 bg-[#10B981] text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1">
@@ -439,7 +454,7 @@ export default function NotificationDetailPage() {
                             <p className="text-amber-500 text-[12px] font-black uppercase tracking-wider mb-4">ESTADO DE ALERTA</p>
 
                             <div className="flex items-center gap-3 mb-3">
-                                <h2 className="text-3xl font-black text-white leading-none">
+                                <h2 className={`text-3xl font-black ${s.textTitle} leading-none`}>
                                     {incident.urgency === "overdue" ? "VENCE HOY" :
                                         incident.daysRemaining <= 1 ? "24 HORAS RESTANTES" : `${incident.daysRemaining} DÍAS RESTANTES`}
                                 </h2>
@@ -451,7 +466,7 @@ export default function NotificationDetailPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mt-auto">
-                            <div className="bg-[#1C2433]/40 rounded-xl p-4 border border-slate-800/30">
+                            <div className="${s.innerCardBg} rounded-xl p-4">
                                 <p className="text-slate-500 text-[12px] font-bold uppercase mb-1">IMPACTO</p>
                                 <p className="text-white text-xs font-bold">Legal / Regulatorio</p>
                             </div>
@@ -466,7 +481,7 @@ export default function NotificationDetailPage() {
                 {/* ── BLOQUE 2: Tres Cards Informativas ─────────────────────── */}
                 <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     {/* Card 1: Ubicación */}
-                    <div className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 shadow-lg flex flex-col h-[260px]">
+                    <div className={`${s.cardBg} rounded-2xl p-5 flex flex-col h-[260px]`}>
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-slate-400 text-[12px] font-black uppercase tracking-wider">
                                 UBICACIÓN
@@ -484,7 +499,7 @@ export default function NotificationDetailPage() {
                             )}
                         </div>
                         <div>
-                            <p className="text-white text-md font-black truncate mb-1">
+                            <p className={`text-md font-black truncate mb-1 ${s.textTitle}`}>
                                 {incident.location_name || "Planta Norte - Sección 4B"}
                             </p>
                             <p className="text-slate-500 text-[12px] truncate">
@@ -494,7 +509,7 @@ export default function NotificationDetailPage() {
                     </div>
 
                     {/* Card 2: Personal Involucrado */}
-                    <div className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 shadow-lg flex flex-col h-[260px]">
+                    <div className={`${s.cardBg} rounded-2xl p-5 shadow-lg flex flex-col h-[260px]`}>
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-slate-400 text-[12px] font-black uppercase tracking-wider">
                                 PERSONAL INVOLUCRADO
@@ -503,11 +518,11 @@ export default function NotificationDetailPage() {
                         </div>
 
                         <div className="flex-1 flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-full bg-[#1C2433] border border-slate-800/50 flex items-center justify-center text-amber-500 font-black text-2xl shadow-inner shadow-black/30">
+                            <div className={`w-16 h-16 rounded-full ${isLight ? "bg-gray-100 border-gray-200" : "bg-[#1C2433] border-slate-800/50"} flex items-center justify-center text-amber-500 font-black text-2xl shadow-inner`}>
                                 {incident.worker_name ? incident.worker_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() : "—"}
                             </div>
                             <div>
-                                <p className="text-white text-lg font-black leading-tight mb-0.5">{incident.worker_name || "—"}</p>
+                                <p className={`text-lg font-black leading-tight mb-0.5 ${s.textTitle}`}>{incident.worker_name || "—"}</p>
                                 <p className="text-slate-500 text-sm">ID: {incident.worker_id_number || "—"}</p>
                                 <p className="text-slate-400 text-sm italic font-medium mt-1 uppercase">{incident.worker_position || "—"}</p>
                             </div>
@@ -515,14 +530,14 @@ export default function NotificationDetailPage() {
 
                         <div className="pt-3 border-t border-slate-800/40 flex justify-between items-center">
                             <span className="text-slate-500 text-[12px] font-medium">Antigüedad:</span>
-                            <span className="text-white text-[12px] font-bold">
+                            <span className={`text-[12px] font-bold ${s.textTitle}`}>
                                 {calculateSeniority((incident as any).worker_hire_date || (incident as any).hire_date)}
                             </span>
                         </div>
                     </div>
 
-                    {/* Card 3: Metadatos del Evento */}
-                    <div className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 shadow-lg flex flex-col h-[260px]">
+                    {/* Card 3: Metadatos */}
+                    <div className={`${s.cardBg} rounded-2xl p-5 shadow-lg flex flex-col h-[260px]`}>
                         <div className="flex items-center justify-between mb-4">
                             <span className="text-slate-400 text-[12px] font-black uppercase tracking-wider">
                                 METADATOS DEL EVENTO
@@ -532,30 +547,30 @@ export default function NotificationDetailPage() {
                         <div className="flex-1 flex flex-col justify-center space-y-3.5">
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-slate-500">ID Mintrabajo</span>
-                                <span className="text-white font-bold">{furatNumber || "Pendiente"}</span>
+                                <span className={`font-bold ${s.textTitle}`}>{furatNumber || "Pendiente"}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-slate-500">Fecha/Hora</span>
-                                <span className="text-white font-bold">{formatDate(incident.created_at)}</span>
+                                <span className={`font-bold ${s.textTitle}`}>{formatDate(incident.created_at)}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-slate-500">Gravedad</span>
-                                <span className="flex items-center gap-1.5 text-white font-bold">
+                                <span className={`flex items-center gap-1.5 font-bold ${s.textTitle}`}>
                                     <span className={`w-2 h-2 rounded-full shadow-sm ${isFatal ? "bg-red-500 shadow-red-500/50" : "bg-amber-500 shadow-amber-500/50"}`} />
                                     {isFatal ? "ALTA" : "ALTA"}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-slate-500">Categoría</span>
-                                <span className="text-white font-bold truncate max-w-[60%] text-right">{incidentTitle(incident)}</span>
+                                <span className={`font-bold truncate max-w-[60%] text-right ${s.textTitle}`}>{incidentTitle(incident)}</span>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 {/* ── BLOQUE 3: Cronología ───────────────────────────────────── */}
-                <section className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 shadow-lg">
-                    <p className="text-slate-400 text-white text-[16px] font-black uppercase tracking-wider mb-6">CRONOLOGÍA DEL EVENTO</p>
+                <section className={`${s.cardBg} rounded-2xl p-5`}>
+                    <p className={`${s.textTitle} text-[16px] font-black uppercase tracking-wider mb-6`}>CRONOLOGÍA DEL EVENTO</p>
                     <div className="relative pl-6 space-y-7 before:absolute before:left-[14px] before:top-1.5 before:bottom-1.5 before:w-0.5 before:bg-emerald-500/20">
                         {(() => {
                             const items = [
@@ -603,7 +618,7 @@ export default function NotificationDetailPage() {
                                             )}
                                         </div>
                                         <div className="ml-1">
-                                            <p className="text-white text-sm font-bold mb-1">
+                                            <p className={`${s.textTitle} text-sm font-bold mb-1`}>
                                                 {item.date ? `${formatDate(item.date)} — ` : ""}{item.title}
                                             </p>
                                             <p className="text-slate-300 text-xs">{item.subtitle}</p>
@@ -616,20 +631,20 @@ export default function NotificationDetailPage() {
                 </section>
 
                 {/* ── BLOQUE 4: Datos Adicionales Accordion ───────────────────── */}
-                <section className="bg-[#232b3d] rounded-2xl border border-slate-800/40 shadow-lg overflow-hidden">
+                <section className={`${s.cardBg} rounded-2xl overflow-hidden`}>
                     <button
                         onClick={() => setOpenMintra(o => !o)}
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/3 transition-colors cursor-pointer"
                     >
                         <div className="flex items-center gap-2">
                             <FileText className="w-4 h-4 text-amber-500" />
-                            <h3 className="text-white font-bold text-sm">Datos adicionales Mintrabajo</h3>
+                            <h3 className={`${s.textTitle} font-bold text-sm`}>Datos adicionales Mintrabajo</h3>
                         </div>
                         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${openMintra ? "rotate-180" : ""}`} />
                     </button>
 
                     {openMintra && (
-                        <div className="px-5 pb-5 space-y-4 border-t border-slate-800/50 pt-4">
+                        <div className={`px-5 pb-5 space-y-4 border-t ${isLight ? "border-gray-100" : "border-slate-800/50"} pt-4`}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Fecha conocimiento diagnóstico</label>
@@ -637,7 +652,7 @@ export default function NotificationDetailPage() {
                                         type="date"
                                         value={diagnosisDate}
                                         onChange={async (e) => { setDiagnosisDate(e.target.value); await supabase.from('incidents').update({ diagnosis_date: e.target.value }).eq('id', id); await saveIncidentDraft(id, { diagnosis_date: e.target.value }); }}
-                                        className="w-full bg-[#1C2433] border border-slate-800/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-colors"
+                                        className={`w-full ${s.inputBg} rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 transition-colors`}
                                     />
                                 </div>
                                 <div>
@@ -646,7 +661,7 @@ export default function NotificationDetailPage() {
                                         type="text"
                                         value={furatNumber}
                                         onChange={async (e) => { setFuratNumber(e.target.value); await supabase.from('incidents').update({ furat_number: e.target.value }).eq('id', id); await saveIncidentDraft(id, { furat_number: e.target.value }); }}
-                                        className="w-full bg-[#1C2433] border border-slate-800/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/50 transition-colors"
+                                        className={`w-full ${s.inputBg} rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50 transition-colors`}
                                     />
                                 </div>
                             </div>
@@ -659,7 +674,7 @@ export default function NotificationDetailPage() {
                                                 type="text"
                                                 value={action.description}
                                                 onChange={(e) => { const updated = [...actions]; updated[i] = { description: e.target.value }; setActions(updated); }}
-                                                className="flex-1 bg-[#1C2433] border border-slate-800/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                                className={`flex-1 ${s.inputBg} rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50`}
                                             />
                                         </div>
                                     ))}
@@ -677,46 +692,46 @@ export default function NotificationDetailPage() {
 
                 {/* ── BLOQUE 4: Documentación Legal ──────────────────────────── */}
                 <div>
-                    <p className="text-white text-[16px] font-black uppercase tracking-wider mb-4">DOCUMENTACIÓN LEGAL</p>
+                    <p className={`${s.textTitle} text-[16px] font-black uppercase tracking-wider mb-4`}>DOCUMENTACIÓN LEGAL</p>
                     <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         {/* Card 1: Mintrabajo */}
-                        <div className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 flex flex-col items-start gap-4 shadow-lg group hover:border-amber-500/20 transition-all h-[230px]">
-                            <div className="p-3 bg-[#1A2538] rounded-xl border border-slate-800/60 text-amber-500">
+                        <div className={`\${s.cardBg} rounded-2xl p-5 flex flex-col items-start gap-4 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1)] group hover:border-amber-500/20 transition-all h-[230px]`}>
+                            <div className={`p-3 \${s.iconBoxBg} rounded-xl`}>
                                 <FileText className="w-5 h-5" />
                             </div>
                             <div>
-                                <p className="text-white text-md font-black">Carta Ministerio</p>
+                                <p className={`\${s.textTitle} text-md font-black`}>Carta Ministerio</p>
                                 <p className="text-slate-400 text-[12px] mt-1.5 leading-relaxed">Formato oficial de reporte de accidentes de trabajo según resolución 1401.</p>
                             </div>
-                            <button onClick={handleMintrabajoDownload} className="mt-auto w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-transparent border border-slate-700/60 hover:bg-white/5 text-white transition-all cursor-pointer flex items-center justify-center gap-2">
+                            <button onClick={handleMintrabajoDownload} className={`mt-auto w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-transparent border ${isLight ? "border-gray-200 hover:bg-gray-50 text-[#1E293B]" : "border-slate-700/60 hover:bg-white/5 text-white"} transition-all cursor-pointer flex items-center justify-center gap-2`}>
                                 <FileText className="w-4 h-4 opacity-70" /> {dlLabel(dlMintra, "GENERAR PDF")}
                             </button>
                         </div>
 
                         {/* Card 2: ARL */}
-                        <div className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 flex flex-col items-start gap-4 shadow-lg group hover:border-amber-500/20 transition-all h-[230px]">
-                            <div className="p-3 bg-[#1A2538] rounded-xl border border-slate-800/60 text-amber-500">
+                        <div className={`\${s.cardBg} rounded-2xl p-5 flex flex-col items-start gap-4 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1)] group hover:border-amber-500/20 transition-all h-[230px]`}>
+                            <div className={`p-3 \${s.iconBoxBg} rounded-xl`}>
                                 <FileText className="w-5 h-5 flex items-center justify-center" /> {/* Equivalente conceptual de EQ visible */}
                             </div>
                             <div>
-                                <p className="text-white text-md font-black">Notificación ARL</p>
+                                <p className={`\${s.textTitle} text-md font-black`}>Notificación ARL</p>
                                 <p className="text-slate-400 text-[12px] mt-1.5 leading-relaxed">Generación de reporte FURAT listo para cargue en plataforma AXA/Sura.</p>
                             </div>
-                            <button onClick={handleARLDownload} className="mt-auto w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-transparent border border-slate-700/60 hover:bg-white/5 text-white transition-all cursor-pointer flex items-center justify-center gap-2">
+                            <button onClick={handleARLDownload} className={`mt-auto w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-transparent border ${isLight ? "border-gray-200 hover:bg-gray-50 text-[#1E293B]" : "border-slate-700/60 hover:bg-white/5 text-white"} transition-all cursor-pointer flex items-center justify-center gap-2`}>
                                 <FileText className="w-4 h-4 opacity-70" /> {dlLabel(dlARL, "GENERAR PDF")}
                             </button>
                         </div>
 
                         {/* Card 3: EPS */}
-                        <div className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 flex flex-col items-start gap-4 shadow-lg group hover:border-amber-500/20 transition-all h-[230px]">
-                            <div className="p-3 bg-[#1A2538] rounded-xl border border-slate-800/60 text-amber-500">
+                        <div className={`\${s.cardBg} rounded-2xl p-5 flex flex-col items-start gap-4 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.1)] group hover:border-amber-500/20 transition-all h-[230px]`}>
+                            <div className={`p-3 \${s.iconBoxBg} rounded-xl`}>
                                 <HeartPulse className="w-5 h-5" />
                             </div>
                             <div>
-                                <p className="text-white text-md font-black">Incapacidad EPS</p>
+                                <p className={`\${s.textTitle} text-md font-black`}>Incapacidad EPS</p>
                                 <p className="text-slate-400 text-[12px] mt-1.5 leading-relaxed">Solicitud prestacional y reporte de historia clínica inicial del incidente.</p>
                             </div>
-                            <button onClick={handleEPSDownload} className="mt-auto w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-transparent border border-slate-700/60 hover:bg-white/5 text-white transition-all cursor-pointer flex items-center justify-center gap-2">
+                            <button onClick={handleEPSDownload} className={`mt-auto w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-transparent border ${isLight ? "border-gray-200 hover:bg-gray-50 text-[#1E293B]" : "border-slate-700/60 hover:bg-white/5 text-white"} transition-all cursor-pointer flex items-center justify-center gap-2`}>
                                 <FileText className="w-4 h-4 opacity-70" /> {dlLabel(dlEPS, "GENERAR PDF")}
                             </button>
                         </div>
@@ -724,10 +739,10 @@ export default function NotificationDetailPage() {
                 </div>
 
                 {/* ── BLOQUE 5: Registrar Envío ───────────────────────────────── */}
-                <section className="bg-[#232b3d] rounded-2xl border border-slate-800/40 p-5 shadow-lg space-y-4">
+                <section className={`${s.cardBg} rounded-2xl p-5 shadow-lg space-y-4`}>
                     <div className="flex items-center gap-2 mb-2">
                         <Send className="w-4 h-4 text-amber-500" />
-                        <h3 className="text-white font-bold text-sm">Registrar envío</h3>
+                        <h3 className={`${s.textTitle} font-bold text-sm`}>Registrar envío</h3>
                     </div>
                     <div className="flex flex-col md:flex-row items-end gap-3">
                         <div className="flex-1 w-full">
@@ -737,7 +752,7 @@ export default function NotificationDetailPage() {
                                 placeholder="Ej: MINTRABAJO-2026-000123"
                                 value={radicado}
                                 onChange={(e) => setRadicado(e.target.value)}
-                                className="w-full bg-[#1C2433] border border-slate-800/40 rounded-xl px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-500/50"
+                                className={`w-full ${s.inputBg} rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-amber-500/50`}
                             />
                         </div>
                         <div className="flex gap-2 w-full md:w-auto">
@@ -750,7 +765,7 @@ export default function NotificationDetailPage() {
                                         "flex-1 md:flex-none px-3 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
                                         isNotified(type)
                                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 cursor-default"
-                                            : "bg-[#1C2433] text-white border-slate-800 hover:bg-slate-800"
+                                            : `${isLight ? "bg-white border-gray-200 text-[#1E293B] hover:bg-gray-50" : "bg-[#1C2433] text-white border-slate-800 hover:bg-slate-800"}`
                                     ].join(" ")}
                                 >
                                     {isNotified(type) ? `✓ ${type.toUpperCase()}` : `Marcar ${type.toUpperCase()}`}
@@ -763,7 +778,7 @@ export default function NotificationDetailPage() {
             </div>
 
             {/* ── FOOTER FIJO ─────────────────────────────────────────────── */}
-            <div className="sticky bottom-0 bg-[#0F131D] border-t border-slate-800 px-6 py-4 flex justify-end items-center gap-3">
+            <div className={`sticky bottom-0 ${s.footerBg} px-6 py-4 flex justify-end items-center gap-3`}>
                 <button onClick={() => showToast("Función disponible próximamente")} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/30 transition-all cursor-pointer">
                     VALIDAR EVIDENCIA
                 </button>

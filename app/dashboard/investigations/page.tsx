@@ -11,23 +11,44 @@ import {
     ArrowLeft, Search, ClipboardList, Clock, CheckCircle2,
     AlertTriangle, RefreshCw, ChevronRight, User
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { supabase, type Investigation, type Event } from "@/lib/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { useActiveCompany } from "@/hooks/useActiveCompany";
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
-    en_proceso: { label: "En Proceso", color: "text-amber-400", bg: "bg-amber-400/10 border-amber-400/20", dot: "bg-amber-400" },
-    plan_accion_definido: { label: "Plan de Acción", color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20", dot: "bg-blue-400" },
-    en_seguimiento: { label: "En Seguimiento", color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20", dot: "bg-purple-400" },
-    cerrado: { label: "Cerrado", color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/20", dot: "bg-emerald-400" },
+const STATUS_CONFIG: Record<string, { label: string; color: string; colorLight: string; bg: string; bgLight: string; dot: string }> = {
+    en_proceso: { 
+        label: "En Proceso", 
+        color: "text-amber-400", colorLight: "text-amber-600",
+        bg: "bg-amber-400/10 border-amber-400/20", bgLight: "bg-amber-50 border-amber-200",
+        dot: "bg-amber-400" 
+    },
+    plan_accion_definido: { 
+        label: "Plan de Acción", 
+        color: "text-blue-400", colorLight: "text-blue-600",
+        bg: "bg-blue-400/10 border-blue-400/20", bgLight: "bg-blue-50 border-blue-200",
+        dot: "bg-blue-400" 
+    },
+    en_seguimiento: { 
+        label: "En Seguimiento", 
+        color: "text-purple-400", colorLight: "text-purple-600",
+        bg: "bg-purple-400/10 border-purple-400/20", bgLight: "bg-purple-50 border-purple-200",
+        dot: "bg-purple-400" 
+    },
+    cerrado: { 
+        label: "Cerrado", 
+        color: "text-emerald-400", colorLight: "text-emerald-600",
+        bg: "bg-emerald-400/10 border-emerald-400/20", bgLight: "bg-emerald-50 border-emerald-200",
+        dot: "bg-emerald-400" 
+    },
 };
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, isLight }: { status: string; isLight?: boolean }) {
     const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.en_proceso;
     return (
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${cfg.bg} ${cfg.color}`}>
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${isLight ? cfg.bgLight : cfg.bg} ${isLight ? cfg.colorLight : cfg.color}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
             {cfg.label}
         </span>
@@ -49,6 +70,42 @@ export default function InvestigationsPage() {
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [search, setSearch] = useState("");
     const { activeCompany } = useActiveCompany();
+
+    const { theme, resolvedTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
+
+    const isLight = mounted && (theme === "light" || resolvedTheme === "light");
+
+    const lightStyles = {
+        bg: "bg-[#F8FAFC]",
+        containerBg: "bg-white",
+        cardBg: "bg-white hover:bg-gray-50/50 border-gray-100 p-6 flex items-center gap-6 cursor-pointer rounded-2xl border transition-all hover:border-[#F59E0B]/30",
+        border: "border-gray-100",
+        inputBg: "bg-gray-50 border-gray-100 text-[#1E293B]",
+        selectBg: "bg-gray-50 border-gray-200 text-[#1E293B]",
+        textTitle: "text-[#1E293B]",
+        placeholder: "placeholder:text-[#64748B]",
+        emptyState: "bg-white border-gray-100",
+        iconDefault: "text-[#64748B]",
+        badgeBg: "bg-amber-500/10 text-amber-600 border-amber-200"
+    };
+
+    const darkStyles = {
+        bg: "bg-[#0F1219]",
+        containerBg: "bg-transparent",
+        cardBg: "bg-[#1A1F2E] border-[#1E2A3B] p-6 flex items-center gap-6 cursor-pointer hover:border-[#F59E0B]/30 hover:bg-white/[0.02] transition-all rounded-2xl border",
+        border: "border-[#1E2A3B]",
+        inputBg: "bg-[#0F1219] border-[#1E2A3B] text-white",
+        selectBg: "bg-[#0F1219] border-[#1E2A3B] text-[#64748B]",
+        textTitle: "text-white",
+        placeholder: "placeholder:text-[#334155]",
+        emptyState: "bg-[#1A1F2E] border-[#1E2A3B]",
+        iconDefault: "text-white",
+        badgeBg: "bg-amber-500/10 text-amber-400 border-amber-500/20"
+    };
+
+    const s = isLight ? lightStyles : darkStyles;
 
     const fetchData = useCallback(async () => {
         if (!activeCompany) return;
@@ -93,18 +150,18 @@ export default function InvestigationsPage() {
     const openCount = investigations.filter((i) => i.status !== "cerrado").length;
 
     return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#0F1219]" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className={`flex-1 flex flex-col h-full overflow-hidden ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
             {/* Header */}
             <DashboardHeader onRefresh={fetchData} loading={loading}>
                 <div className="flex items-center gap-6 flex-1">
                     <div>
-                        <h1 className="text-white font-black text-xl tracking-tight leading-none uppercase">Investigaciones</h1>
+                        <h1 className={`${s.textTitle} font-black text-xl tracking-tight leading-none uppercase`}>Investigaciones</h1>
                         <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider mt-1">
                             Res. 1401/2007 — PROCESO POST-EVENTO
                         </p>
                     </div>
                     {openCount > 0 && (
-                        <span className="px-3 py-1 bg-amber-500/10 text-amber-400 rounded-full text-[10px] font-black border border-amber-500/20 uppercase tracking-wider">
+                        <span className={`px-3 py-1 ${s.badgeBg} rounded-full text-[10px] font-black border uppercase tracking-wider`}>
                             {openCount} abiertas
                         </span>
                     )}
@@ -121,11 +178,11 @@ export default function InvestigationsPage() {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Buscar por trabajador, ciudad, investigador…"
-                            className="w-full bg-[#0F1219] border border-[#1E2A3B] rounded-xl !pl-[44px] pr-4 py-2.5 text-white text-xs font-bold placeholder:text-[#334155] focus:outline-none focus:border-[#F59E0B]/50 transition-colors"
+                            className={`w-full ${s.inputBg} border ${s.border} rounded-xl !pl-[44px] pr-4 py-2.5 text-xs font-bold ${s.placeholder} focus:outline-none focus:border-[#F59E0B]/50 transition-colors`}
                         />
                     </div>
                     {/* Status filter */}
-                    <div className="flex rounded-xl overflow-hidden border border-[#1E2A3B]">
+                    <div className={`flex rounded-xl overflow-hidden border ${s.border}`}>
                         {[
                             { value: "all", label: "Todas" },
                             { value: "en_proceso", label: "En proceso" },
@@ -138,7 +195,7 @@ export default function InvestigationsPage() {
                                     "px-4 py-2 text-xs font-semibold transition-colors cursor-pointer",
                                     filterStatus === opt.value
                                         ? "bg-[#F59E0B] text-black"
-                                        : "bg-[#0F1219] text-[#64748B] hover:text-white",
+                                        : `${isLight ? "bg-white text-[#64748B] hover:text-[#0F1219]" : "bg-[#0F1219] text-[#64748B] hover:text-white"}`,
                                 ].join(" ")}
                             >
                                 {opt.label}
@@ -151,11 +208,11 @@ export default function InvestigationsPage() {
                 {loading ? (
                     <div className="space-y-3">
                         {Array.from({ length: 3 }).map((_, i) => (
-                            <div key={i} className="h-24 bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl animate-pulse" />
+                            <div key={i} className={`h-24 ${isLight ? "bg-gray-100" : "bg-[#1A1F2E]"} border ${s.border} rounded-2xl animate-pulse`} />
                         ))}
                     </div>
                 ) : filtered.length === 0 ? (
-                    <div className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-12 text-center">
+                    <div className={`${s.emptyState} border ${s.border} rounded-2xl p-12 text-center`}>
                         <ClipboardList className="w-10 h-10 text-[#334155] mx-auto mb-3" />
                         <p className="text-[#64748B] font-semibold">
                             {investigations.length === 0
@@ -176,7 +233,7 @@ export default function InvestigationsPage() {
                                 <div
                                     key={inv.id}
                                     onClick={() => router.push(`/dashboard/events/${inv.incident_id}/investigation`)}
-                                    className="bg-[#1A1F2E] border border-[#1E2A3B] rounded-2xl p-6 flex items-center gap-6 cursor-pointer hover:border-[#F59E0B]/30 hover:bg-white/[0.02] transition-all group"
+                                    className={s.cardBg}
                                 >
                                     {/* Icon */}
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isClosed ? "bg-emerald-400/10" : "bg-amber-400/10"}`}>
@@ -189,10 +246,10 @@ export default function InvestigationsPage() {
                                     {/* Content */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <p className="text-white font-semibold text-sm">
+                                            <p className={`${s.textTitle} font-semibold text-sm`}>
                                                 {ev?.worker_name ?? ev?.reported_by_name ?? "Trabajador no identificado"}
                                             </p>
-                                            <StatusBadge status={inv.status} />
+                                            <StatusBadge status={inv.status} isLight={isLight} />
                                         </div>
                                         <div className="flex items-center gap-4 mt-1 flex-wrap">
                                             {ev?.event_city && (
