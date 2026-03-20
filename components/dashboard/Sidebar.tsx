@@ -214,11 +214,11 @@ export function Sidebar() {
                             className={[
                                 "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all cursor-pointer",
                                 isActive
-                                    ? (isLightMode 
-                                        ? "bg-amber-500 text-black border border-amber-500/20" 
+                                    ? (isLightMode
+                                        ? "bg-amber-500 text-black border border-amber-500/20"
                                         : "bg-amber-500/10 text-amber-500 border border-amber-500/20")
-                                    : (isLightMode 
-                                        ? "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F1219]" 
+                                    : (isLightMode
+                                        ? "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F1219]"
                                         : "text-[#94A3B8] hover:bg-white/5 hover:text-white"),
                             ].join(" ")}
                         >
@@ -235,7 +235,7 @@ export function Sidebar() {
                     <User className="w-5 h-5 text-emerald-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-[var(--text-primary)] text-sm font-bold leading-none truncate">Carlos Mendez</p>
+                    <p className="text-[var(--text-primary)] text-sm font-bold leading-none truncate">Leonardo Pulido</p>
                     <p className="text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider mt-1 truncate">Senior Consultant</p>
                 </div>
 

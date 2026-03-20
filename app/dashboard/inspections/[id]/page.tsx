@@ -251,7 +251,7 @@ export default function InspectionDetailPage() {
     );
 
     return (
-        <div className={`min-h-screen ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className={`h-full overflow-y-auto flex flex-col ${s.bg}`} style={{ fontFamily: "'Inter', sans-serif", scrollbarGutter: "stable" }}>
             {/* HEADER */}
             <header className={`${s.headerBg} px-4 sm:px-6 py-4 flex items-center gap-3 sticky top-0 z-30`}>
                 <button onClick={() => router.push("/dashboard/inspections")} className={`p-2 rounded-lg text-[#64748B] hover:text-[#1B253B] transition-all flex-shrink-0 cursor-pointer`}>
@@ -286,7 +286,7 @@ export default function InspectionDetailPage() {
                 </div>
             </header>
 
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 space-y-5">
+            <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-5 space-y-5">
                 {/* Score card */}
                 <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                     <div className="flex items-center justify-between mb-3">
@@ -347,7 +347,7 @@ export default function InspectionDetailPage() {
                                             </div>
                                             {action ? (
                                                 <button onClick={() => setExpandedFinding(expanded ? null : item.id)}
-                                                    className="flex items-center gap-1 text-amber-500 text-xs font-semibold flex-shrink-0">
+                                                    className="flex items-center gap-1 text-amber-500 text-xs font-semibold flex-shrink-0 cursor-pointer">
                                                     Acción definida
                                                     {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                                                 </button>
