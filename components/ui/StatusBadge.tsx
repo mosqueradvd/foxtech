@@ -60,6 +60,16 @@ const lightStyles: Record<StatusVariant, { bg: string; text: string; label: stri
         text: "text-emerald-800",
         label: "Impacto Amb.",
     },
+    accidente_fatal: {
+        bg: "bg-red-200 border border-red-300",
+        text: "text-red-900",
+        label: "Accidente Fatal",
+    },
+    dano_propiedad: {
+        bg: "bg-purple-100 border border-purple-200",
+        text: "text-purple-800",
+        label: "Daño a Propiedad",
+    },
     otro: {
         bg: "bg-slate-100 border border-slate-200",
         text: "text-slate-700",
