@@ -461,7 +461,7 @@ export default function NotificationDetailPage() {
                             </div>
 
                             <blockquote className="text-slate-400 mt-10 text-md leading-relaxed border-l-2 border-amber-500 pl-4 mb-5">
-                                Notificación legal requerida por Ministerio del Trabajo. El incumplimiento de este plazo genera sanciones tipo A según el decreto 1072.
+                                Notificación legal requerida por Ministerio del Trabajo.
                             </blockquote>
                         </div>
 
