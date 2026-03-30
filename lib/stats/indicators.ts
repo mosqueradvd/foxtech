@@ -192,6 +192,152 @@ export function calcIndicators(
     };
 }
 
+// ─── Res. 312/2019 Art. 30 — Tipo A (Pantalla Estadísticas) ───────────────────
+// Base: 100 trabajadores para AT, 100.000 para EL
+// Estas funciones son INDEPENDIENTES de las HHT-based (RUC/CCS).
+
+export interface Res312Indicators {
+    /** Número de AT en el período */
+    totalAT: number;
+    /** AT Graves */
+    atGrave: number;
+    /** AT Fatales */
+    atFatal: number;
+    /** Incidentes / Casi-accidentes */
+    incidentes: number;
+    /** Eventos EL en el período */
+    totalEL: number;
+    /** Total días de incapacidad reales (AT) */
+    totalDisabilityDaysAT: number;
+    /** Días cargados por severidad (AT) */
+    diasCargadosAT: number;
+    /** Total días de incapacidad EL */
+    totalDisabilityDaysEL: number;
+
+    // ── Indicadores Res. 312 ────────────────────────
+    /** IF — Frecuencia: (AT / workers) × 100 */
+    IF: number;
+    /** IS — Severidad: ((días_inc + días_cargados) / workers) × 100 */
+    IS: number;
+    /** Mortalidad: (AT_fatal_año / Total_AT_año) × 100 — siempre anual */
+    mortalidadPct: number;
+    /** TA — Tasa de Accidentalidad: (AT / workers) × 100 (Dec. 1072) */
+    TA: number;
+    /** Prevalencia EL: (EL_total / workers) × 100,000 */
+    prevalenciaEL: number;
+    /** Incidencia EL: (EL_nuevos / workers) × 100,000 */
+    incidenciaEL: number;
+    /** Ausentismo Laboral: (días_AT+EL / días_programados) × 100 */
+    ausentismoLaboral: number;
+    /** Ausentismo Común: (días_común / días_programados) × 100 */
+    ausentismoComun: number;
+    /** Días programados = días_hábiles × workers */
+    diasProgramados: number;
+}
+
+/** IF Res. 312 — Frecuencia: (AT / workers) × 100 */
+export function calcRes312IF(atCount: number, workers: number): number {
+    if (workers <= 0) return 0;
+    return safe((atCount / workers) * 100);
+}
+
+/** IS Res. 312 — Severidad: ((días_incapacidad + días_cargados) / workers) × 100 */
+export function calcRes312IS(disabilityDays: number, chargedDays: number, workers: number): number {
+    if (workers <= 0) return 0;
+    return safe(((disabilityDays + chargedDays) / workers) * 100);
+}
+
+/** Prevalencia EL: (todos los EL / workers) × 100,000 */
+export function calcPrevalenciaEL(totalEL: number, workers: number): number {
+    if (workers <= 0) return 0;
+    return safe((totalEL / workers) * 100_000);
+}
+
+/** Incidencia EL: (EL nuevos / workers) × 100,000 */
+export function calcIncidenciaEL(newEL: number, workers: number): number {
+    if (workers <= 0) return 0;
+    return safe((newEL / workers) * 100_000);
+}
+
+/** Ausentismo: (días_ausencia / días_programados) × 100 */
+export function calcAusentismo(absenceDays: number, scheduledDays: number): number {
+    if (scheduledDays <= 0) return 0;
+    return safe((absenceDays / scheduledDays) * 100);
+}
+
+/**
+ * Aggregator para Res. 312/2019 Art. 30.
+ * @param periodEvents — eventos del período seleccionado
+ * @param yearATEvents — TODOS los AT del año completo (para mortalidad)
+ * @param workers — número de trabajadores
+ * @param workDaysPerMonth — días hábiles del mes (default 22)
+ * @param commonIllnessDays — días de incapacidad por enfermedad común (input manual)
+ */
+export function calcRes312Indicators(
+    periodEvents: Event[],
+    yearATEvents: Event[],
+    workers: number,
+    workDaysPerMonth: number = 22,
+    commonIllnessDays: number = 0,
+): Res312Indicators {
+    const w = Math.max(workers, 1);
+
+    // ── Count events ────────────────────────────────────
+    const atEvents = periodEvents.filter(isAT);
+    const totalAT = atEvents.length;
+    const atGrave = periodEvents.filter(isGrave).length;
+    const atFatal = periodEvents.filter(isFatal).length;
+    const incidentes = periodEvents.filter(
+        (e) => e.classification === "INCIDENTE_SIN_LESION" || e.classification === "CASI_ACCIDENTE"
+    ).length;
+
+    const elEvents = periodEvents.filter((e) => e.classification === "ENFERMEDAD_LABORAL");
+    const totalEL = elEvents.length;
+
+    // ── Disability days ─────────────────────────────────
+    const totalDisabilityDaysAT = atEvents.reduce(
+        (sum, e) => sum + (e.disability_days ?? 0), 0
+    );
+
+    const diasCargadosAT = atEvents.reduce((sum, e) => {
+        return sum + calculateDiasCargados(e.classification ?? "", e.disability_days ?? 0);
+    }, 0);
+
+    const totalDisabilityDaysEL = elEvents.reduce(
+        (sum, e) => sum + (e.disability_days ?? 0), 0
+    );
+
+    // ── Mortalidad — SIEMPRE sobre el año completo ──────
+    const yearATOnly = yearATEvents.filter(isAT);
+    const yearATTotal = yearATOnly.length;
+    const yearATFatal = yearATEvents.filter(isFatal).length;
+    const mortalidadPct = yearATTotal > 0 ? safe((yearATFatal / yearATTotal) * 100) : 0;
+
+    // ── Indicadores Res. 312 ────────────────────────────
+    const IF = calcRes312IF(totalAT, w);
+    const IS = calcRes312IS(totalDisabilityDaysAT, diasCargadosAT, w);
+    const TA = calcTA(totalAT, w);
+
+    const prevalenciaEL = calcPrevalenciaEL(totalEL, w);
+    // Por ahora tratar todos los EL como casos nuevos (is_new_case se implementa después)
+    const incidenciaEL = calcIncidenciaEL(totalEL, w);
+
+    // ── Ausentismo ──────────────────────────────────────
+    const diasProgramados = workDaysPerMonth * w;
+    const diasAusenciaLaboral = totalDisabilityDaysAT + totalDisabilityDaysEL;
+    const ausentismoLaboral = calcAusentismo(diasAusenciaLaboral, diasProgramados);
+    const ausentismoComun = calcAusentismo(commonIllnessDays, diasProgramados);
+
+    return {
+        totalAT, atGrave, atFatal, incidentes, totalEL,
+        totalDisabilityDaysAT, diasCargadosAT, totalDisabilityDaysEL,
+        IF, IS, mortalidadPct, TA,
+        prevalenciaEL, incidenciaEL,
+        ausentismoLaboral, ausentismoComun,
+        diasProgramados,
+    };
+}
+
 // ─── Trend data (monthly) ─────────────────────────────────────────────────────
 
 const MONTH_LABELS = [

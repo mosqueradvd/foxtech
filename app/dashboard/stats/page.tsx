@@ -24,9 +24,9 @@ import {
 } from "recharts";
 import { supabase, type Event, type Company } from "@/lib/supabase";
 import {
-    calcIndicators, groupByMonth, groupByClassification,
+    calcIndicators, calcRes312Indicators, groupByMonth, groupByClassification,
     filterByPeriod, periodToRange, monthsInRange, estimateHHT,
-    type StatsIndicators, type PeriodPreset,
+    type StatsIndicators, type Res312Indicators, type PeriodPreset,
 } from "@/lib/stats/indicators";
 import {
     generateHistoricalRUCExport,
@@ -104,11 +104,15 @@ const StatCard = ({
 const AbsenteeismCard = ({
     label,
     value,
-    color
+    color,
+    interpretation,
+    scheduledDays,
 }: {
     label: string,
     value: number,
-    color: "orange" | "blue"
+    color: "orange" | "blue",
+    interpretation?: string,
+    scheduledDays?: number,
 }) => {
     const textColor = color === "orange" ? "text-orange-500 dark:text-orange-400" : "text-blue-500 dark:text-blue-400";
     const barColor = color === "orange" ? "bg-orange-500" : "bg-blue-500";
@@ -121,9 +125,20 @@ const AbsenteeismCard = ({
             </div>
             <div className={`text-4xl font-black ${textColor} leading-none mb-2`}>
                 {value < 0.01 && value > 0 ? "< 0.01" : value.toFixed(2)}
+                <span className="text-base ml-1">%</span>
             </div>
-            <p className="text-[#475569] dark:text-[#94A3B8] text-[9px] font-bold uppercase tracking-widest">
-                Índice de ausentismo por HHT
+            {interpretation && (
+                <p className="text-[#475569] dark:text-[#94A3B8] text-[9px] font-bold leading-relaxed mb-1">
+                    {interpretation}
+                </p>
+            )}
+            {scheduledDays !== undefined && (
+                <p className="text-[#64748B] text-[8px] font-bold uppercase tracking-widest">
+                    Días programados: {scheduledDays.toLocaleString("es-CO")}
+                </p>
+            )}
+            <p className="text-[#64748B] text-[8px] font-bold uppercase tracking-widest mt-1">
+                Res. 312/2019 Art. 30
             </p>
         </div>
     );
@@ -183,7 +198,7 @@ function isColor(v: number): string {
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
 function KPICard({
-    icon: Icon, label, value, unit, colorFn, prev, description
+    icon: Icon, label, value, unit, colorFn, prev, description, reference
 }: {
     icon: React.ElementType;
     label: string;
@@ -192,13 +207,14 @@ function KPICard({
     colorFn?: (v: number) => string;
     prev?: number;
     description: string;
+    reference?: string;
 }) {
     const { resolvedTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     useEffect(() => { setMounted(true); }, []);
     const isDark = mounted && resolvedTheme === "dark";
 
-    const color = colorFn ? colorFn(value) : "text-white";
+    const color = colorFn ? colorFn(value) : "text-[var(--text-primary)]";
     const diff = prev !== undefined ? value - prev : undefined;
     const hasChange = diff !== undefined && isFinite(diff);
 
@@ -243,6 +259,9 @@ function KPICard({
                 </p>
             </div>
             <p className="text-[#64748B] font-bold text-[10px] leading-relaxed">{description}</p>
+            {reference && (
+                <p className="text-[#475569] dark:text-[#64748B] text-[8px] font-bold uppercase tracking-widest mt-1">{reference}</p>
+            )}
         </div>
     );
 }
@@ -293,6 +312,7 @@ export function StatsPage() {
     // Settings
     const [kConstant, setKConstant] = useState<number>(200000);
     const [commonIllnessDaysStr, setCommonIllnessDaysStr] = useState<string>("0");
+    const [workDaysPerMonth, setWorkDaysPerMonth] = useState<number>(22);
 
     useEffect(() => {
         const savedK = localStorage.getItem("foxtech_k_constant");
@@ -349,6 +369,16 @@ export function StatsPage() {
         return filterByPeriod(ev, prevRange);
     }, [allEvents, selectedCompanyId, prevRange]);
 
+    // ── Year-scoped events (for Mortalidad — always annual per Art. 30) ──
+    const yearRange = useMemo(() => periodToRange("year"), []);
+    const yearEvents = useMemo(() => {
+        let ev = allEvents;
+        if (selectedCompanyId !== "all") {
+            ev = ev.filter((e) => e.company_id === selectedCompanyId);
+        }
+        return filterByPeriod(ev, yearRange);
+    }, [allEvents, selectedCompanyId, yearRange]);
+
     // ── HHT ──────────────────────────────────────────────────────────────
     const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
     const dbWorkerCount =
@@ -359,7 +389,16 @@ export function StatsPage() {
     const estimatedHHT = estimateHHT(workerCount, monthsInPeriod);
     const hhtValue = hhtOverride !== "" ? Number(hhtOverride) : estimatedHHT;
 
-    // ── Indicators ────────────────────────────────────────────────────────
+    // ── Res. 312 Indicators (pantalla Estadísticas) ───────────────────────
+    const res312 = useMemo(
+        () => calcRes312Indicators(
+            filteredEvents, yearEvents, Math.max(workerCount, 1),
+            workDaysPerMonth, Number(commonIllnessDaysStr) || 0
+        ),
+        [filteredEvents, yearEvents, workerCount, workDaysPerMonth, commonIllnessDaysStr]
+    );
+
+    // ── RUC/CCS Indicators (tabla histórica, NO tocar) ────────────────────
     const stats = useMemo(
         () => calcIndicators(filteredEvents, hhtValue, Math.max(workerCount, 1), kConstant),
         [filteredEvents, hhtValue, workerCount, kConstant]
@@ -386,14 +425,7 @@ export function StatsPage() {
             .sort((a, b) => b.value - a.value);
     }, [filteredEvents]);
 
-    // Absenteeism calculations
-    const diasPerdidosEL = useMemo(
-        () => filteredEvents.filter(e => e.classification === "ENFERMEDAD_LABORAL").reduce((sum, e) => sum + (e.disability_days ?? 0), 0),
-        [filteredEvents]
-    );
-    const ausentismoLaboral = hhtValue > 0 ? ((stats.totalDisabilityDays + diasPerdidosEL) * kConstant) / hhtValue : 0;
-    const ausentismoComun = hhtValue > 0 ? ((Number(commonIllnessDaysStr) || 0) * kConstant) / hhtValue : 0;
-
+    // Absenteeism by diagnosis table
     const absenteeismByDiagnosis = useMemo(() => {
         const statsMap = new Map<string, {
             code: string;
@@ -537,6 +569,22 @@ export function StatsPage() {
                     {/* Tools Config / Optional slot */}
                     <div className="flex-1" />
 
+                    {/* Días Hábiles */}
+                    <div>
+                        <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
+                            Días Hábiles
+                        </label>
+                        <input
+                            type="number"
+                            min={1}
+                            max={31}
+                            value={workDaysPerMonth}
+                            onChange={(e) => setWorkDaysPerMonth(Math.max(1, Number(e.target.value) || 22))}
+                            title="Días laborables del período seleccionado"
+                            className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--text-primary)] text-xs font-bold focus:outline-none focus:border-amber-500/50 w-20"
+                        />
+                    </div>
+
                     {/* Workers Filter */}
                     <div>
                         <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
@@ -550,64 +598,131 @@ export function StatsPage() {
                             className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--text-primary)] text-xs font-bold focus:outline-none focus:border-amber-500/50 w-24"
                         />
                     </div>
+
+                    {/* Días Incapacidad Común */}
+                    <div>
+                        <label className="block text-[#64748B] text-[9px] font-black uppercase tracking-[0.2em] mb-2 leading-none">
+                            Días Incap. Común
+                        </label>
+                        <input
+                            type="number"
+                            min={0}
+                            value={commonIllnessDaysStr}
+                            onChange={(e) => setCommonIllnessDaysStr(e.target.value)}
+                            title="Días de incapacidad por enfermedad general (ingreso manual)"
+                            className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg px-4 py-2 text-[var(--text-primary)] text-xs font-bold focus:outline-none focus:border-amber-500/50 w-24"
+                        />
+                    </div>
                 </div>
             </DashboardHeader>
 
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                {/* ── KPI SECTION ── */}
-                <div id="kpi-section" className="grid grid-cols-4 gap-6">
-                    <StatCard
-                        title="IF"
-                        subtitle="Frecuencia"
-                        value={stats.IF}
-                        trend={2.4}
-                        trendIsUp={false}
-                        color="#F59E0B"
-                        icon={Activity}
-                    />
-                    <StatCard
-                        title="IS"
-                        subtitle="Severidad"
-                        value={stats.IS}
-                        trend={1.2}
-                        trendIsUp={true}
-                        color="#06B6D4"
-                        icon={Zap}
-                    />
-                    <StatCard
-                        title="TA"
-                        subtitle="Accidentalidad"
-                        value={stats.TA}
-                        unit="%"
-                        trend={0.5}
-                        trendIsUp={false}
-                        color="#8B5CF6"
-                        icon={TrendingUp}
-                    />
-                    <StatCard
-                        title="MORTALIDAD"
-                        subtitle="Tasa Fatal"
-                        value={stats.mortalidadPct}
-                        unit="%"
-                        trend={0}
-                        trendIsUp={false}
-                        color="#EF4444"
-                        icon={Skull}
-                    />
+                {/* ── GRUPO 1: ACCIDENTALIDAD (Res. 312 Art. 30) ── */}
+                <div id="kpi-section">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-1.5 h-6 rounded-full bg-amber-500" />
+                        <h2 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase">Accidentalidad</h2>
+                        <span className="text-[#64748B] text-[9px] font-bold uppercase tracking-wider">Res. 312/2019 Art. 30</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-6 mb-8">
+                        <KPICard
+                            icon={Activity}
+                            label="Frecuencia de Accidentalidad"
+                            value={res312.IF}
+                            colorFn={ifColor}
+                            description={`Por cada 100 trabajadores, se presentaron ${res312.IF < 0.01 && res312.IF > 0 ? '<0.01' : res312.IF.toFixed(2)} accidentes de trabajo.`}
+                            reference="Res. 312/2019"
+                        />
+                        <KPICard
+                            icon={Zap}
+                            label="Severidad de Accidentalidad"
+                            value={res312.IS}
+                            colorFn={isColor}
+                            description={`Por cada 100 trabajadores, se perdieron ${res312.IS.toFixed(2)} días por accidente de trabajo.`}
+                            reference="Res. 312/2019"
+                        />
+                        <KPICard
+                            icon={Skull}
+                            label="Proporción de AT Mortales"
+                            value={res312.mortalidadPct}
+                            unit="%"
+                            description={`En el año, el ${res312.mortalidadPct.toFixed(1)}% de los AT fueron mortales. Calculado sobre el año ${new Date().getFullYear()} completo.`}
+                            reference="Res. 312/2019"
+                        />
+                        <KPICard
+                            icon={TrendingUp}
+                            label="Tasa de Accidentalidad"
+                            value={res312.TA}
+                            unit="%"
+                            colorFn={ifColor}
+                            description={`Tasa de accidentalidad del período.`}
+                            reference="Dec. 1072/2015"
+                        />
+                    </div>
+                </div>
+
+                {/* ── GRUPO 2: ENFERMEDAD LABORAL ── */}
+                <div id="el-section">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-1.5 h-6 rounded-full bg-pink-500" />
+                        <h2 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase">Enfermedad Laboral</h2>
+                        <span className="text-[#64748B] text-[9px] font-bold uppercase tracking-wider">Res. 312/2019 Art. 30</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6 mb-8">
+                        <KPICard
+                            icon={Shield}
+                            label="Prevalencia Enfermedad Laboral"
+                            value={res312.prevalenciaEL}
+                            description={`Por cada 100.000 trabajadores existen ${res312.prevalenciaEL.toFixed(2)} casos de enfermedad laboral.`}
+                            reference="Res. 312/2019"
+                        />
+                        <KPICard
+                            icon={Users}
+                            label="Incidencia Enfermedad Laboral"
+                            value={res312.incidenciaEL}
+                            description={`Por cada 100.000 trabajadores existen ${res312.incidenciaEL.toFixed(2)} casos nuevos de enfermedad laboral.`}
+                            reference="Res. 312/2019"
+                        />
+                    </div>
+                </div>
+
+                {/* ── GRUPO 3: AUSENTISMO (Corregido — Res. 312 Art. 30) ── */}
+                <div id="absenteeism-section">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-1.5 h-6 rounded-full bg-cyan-500" />
+                        <h2 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase">Ausentismo por Causa Médica</h2>
+                        <span className="text-[#64748B] text-[9px] font-bold uppercase tracking-wider">Res. 312/2019 Art. 30</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6 mb-8">
+                        <AbsenteeismCard
+                            label="Laboral (AT + EL)"
+                            value={res312.ausentismoLaboral}
+                            color="orange"
+                            interpretation={`En el mes se perdió ${res312.ausentismoLaboral.toFixed(2)}% de días programados por incapacidad laboral.`}
+                            scheduledDays={res312.diasProgramados}
+                        />
+                        <AbsenteeismCard
+                            label="Común (EG)"
+                            value={res312.ausentismoComun}
+                            color="blue"
+                            interpretation={`En el mes se perdió ${res312.ausentismoComun.toFixed(2)}% de días programados por incapacidad común.`}
+                            scheduledDays={res312.diasProgramados}
+                        />
+                    </div>
                 </div>
 
                 {/* ── SUMMARY CHIPS ── */}
                 <div id="summary-section" className="flex flex-wrap gap-4">
-                    <SummaryChip label="AT" value={stats.totalAT} color="amber" />
-                    <SummaryChip label="AT GRAVE" value={stats.atGrave} color="orange" />
-                    <SummaryChip label="AT FATAL" value={stats.atFatal} color="red" />
-                    <SummaryChip label="EVENTOS REPORTADOS" value={stats.incidentes} color="blue" />
+                    <SummaryChip label="AT" value={res312.totalAT} color="amber" />
+                    <SummaryChip label="AT GRAVE" value={res312.atGrave} color="orange" />
+                    <SummaryChip label="AT FATAL" value={res312.atFatal} color="red" />
+                    <SummaryChip label="EL" value={res312.totalEL} color="blue" />
                 </div>
 
-                {/* ── CENTRAL SECTION: TREND CHART & ABSENTEEISM ── */}
-                <div id="central-section" className="grid grid-cols-12 gap-6">
-                    {/* Trend Area Chart (65%) */}
-                    <div className="col-span-8 bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-8">
+                {/* ── CENTRAL SECTION: TREND CHART ── */}
+                <div id="central-section">
+                    {/* Trend Area Chart */}
+                    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-8">
                         <div className="flex items-center justify-between mb-8">
                             <div>
                                 <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">Tendencia de Accidentalidad</h3>
@@ -661,20 +776,6 @@ export function StatsPage() {
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
-                    </div>
-
-                    {/* Absenteeism (35%) */}
-                    <div className="col-span-4 flex flex-col gap-6">
-                        <AbsenteeismCard
-                            label="Laboral (AT + EL)"
-                            value={ausentismoLaboral}
-                            color="orange"
-                        />
-                        <AbsenteeismCard
-                            label="Común (EG)"
-                            value={ausentismoComun}
-                            color="blue"
-                        />
                     </div>
                 </div>
                 {/* ── GTC-45 HAZARD DISTRIBUTION ── */}
