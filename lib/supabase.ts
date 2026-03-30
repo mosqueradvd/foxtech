@@ -29,6 +29,7 @@ export type Company = {
     employee_count?: number;
     hht_annual?: number;
     is_active?: boolean;
+    aplica_ruc?: boolean;
     created_at?: string;
 };
 
@@ -103,6 +104,7 @@ export type Event = {
     worker_arl?: string;
     worker_job_title?: string;
     worker_employment_type?: string;
+    worker_type?: string;
     worker_seniority_months?: number;
     worker_contract_start?: string;
     worker_education_level?: string;
@@ -303,3 +305,59 @@ export type SignatureRequest = {
     status: SignatureStatus;
     created_at?: string;
 };
+
+// ── RUC / ATEL Module ────────────────────────────────────────────────────────
+
+export type WorkerTypeCategory = "directo" | "subcontratista" | "cliente";
+export type RucSection = "ultimo_informe" | "certificado_arl";
+
+export interface RucHistoricalData {
+    id: string;
+    company_id: string;
+    section: RucSection;
+    worker_type: WorkerTypeCategory;
+    year_position: number; // -5, -4, -3, -2, -1, 0
+
+    // Bloque A: Exposición
+    num_trabajadores: number;
+    hht: number;
+    dias_trabajo_mes?: number;
+
+    // Bloque B: Accidentalidad
+    at_mortales: number;
+    at_con_incapacidad: number;
+    at_sin_incapacidad: number;
+    dias_incapacidad_at: number;
+    dias_cargados_at: number;
+    at_con_invalidez: number;
+    at_con_ipp: number;
+    at_graves_res_1401: number;
+    at_con_tiempo_perdido: number;
+    at_sin_tiempo_perdido: number;
+    casi_accidentes: number;
+
+    // Bloque C: Enfermedad Laboral
+    el_mortales: number;
+    el_con_incapacidad: number;
+    el_sin_incapacidad: number;
+    dias_incapacidad_el: number;
+    dias_cargados_el: number;
+    el_casos_nuevos: number;
+    el_casos_antiguos: number;
+    el_con_invalidez: number;
+    el_con_ipp: number;
+    el_con_tiempo_perdido: number;
+    el_sin_tiempo_perdido: number;
+    
+    // Bloque D: Ausentismo
+    dias_ausencia_incapacidad_laboral: number;
+    dias_ausencia_incapacidad_comun: number;
+
+    // Indicadores
+    if_at: number;
+    is_at: number;
+    ili: number;
+
+    created_at?: string;
+    updated_at?: string;
+}

@@ -256,6 +256,15 @@ function Step1Worker({
                     </select>
                 </div>
                 <div>
+                    <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Tipo de vinculación</label>
+                    <select value={formData.worker_type ?? "directo"} onChange={(e) => onFieldChange("worker_type", e.target.value)}
+                        className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3 py-3 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer">
+                        <option value="directo">Directo</option>
+                        <option value="subcontratista">Subcontratista</option>
+                        <option value="cliente">Cliente</option>
+                    </select>
+                </div>
+                <div>
                     <label className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold mb-1 block">Nivel educativo</label>
                     <select value={formData.worker_education_level ?? ""} onChange={(e) => onFieldChange("worker_education_level", e.target.value)}
                         className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3 py-3 text-[var(--text-primary)] text-sm outline-none focus:border-[#F59E0B] cursor-pointer">
@@ -646,6 +655,7 @@ export default function EventCharacterizationPage() {
                 worker_arl: eventData.worker_arl,
                 worker_job_title: eventData.worker_job_title,
                 worker_employment_type: eventData.worker_employment_type,
+                worker_type: eventData.worker_type || "directo",
                 worker_seniority_months: eventData.worker_seniority_months,
                 worker_contract_start: eventData.worker_contract_start,
                 worker_education_level: eventData.worker_education_level,
@@ -694,6 +704,7 @@ export default function EventCharacterizationPage() {
                 worker_arl: worker.arl, // ARL can be from worker directly if they are a contractor
                 worker_job_title: worker.job_title,
                 worker_employment_type: worker.employment_type,
+                worker_type: prev.worker_type || "directo",
                 worker_education_level: worker.education_level,
                 worker_contract_start: worker.hire_date,
                 worker_seniority_months: worker.hire_date ? calcSeniorityMonths(worker.hire_date) : undefined,

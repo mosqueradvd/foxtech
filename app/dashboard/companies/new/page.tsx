@@ -44,7 +44,8 @@ export default function NewCompanyWizard() {
 
         // Configuracion
         employee_count: "0",
-        hht_annual: "0"
+        hht_annual: "0",
+        aplica_ruc: false
     });
 
     const cities = formData.departamento ? (COLOMBIA_DEPARTMENTS[formData.departamento] ?? []) : [];
@@ -107,7 +108,8 @@ export default function NewCompanyWizard() {
                     telefono_empresa: formData.telefono_empresa.trim(),
                     email_empresa: formData.email_empresa.trim().toLowerCase(),
                     employee_count: parseInt(formData.employee_count) || 0,
-                    hht_annual: parseInt(formData.hht_annual) || 0
+                    hht_annual: parseInt(formData.hht_annual) || 0,
+                    aplica_ruc: formData.aplica_ruc
                 }
             ]);
 
@@ -312,6 +314,19 @@ export default function NewCompanyWizard() {
                                                 <input type="number" name="hht_annual" value={formData.hht_annual} onChange={handleChange} className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-4 py-3 text-[var(--text-primary)] text-base outline-none focus:border-[#F59E0B]" min="0" />
                                             </div>
                                         </div>
+                                        <div className="flex items-start gap-3 bg-[var(--bg-primary)] p-4 border border-[var(--border)] rounded-xl mt-4">
+                                            <input
+                                                type="checkbox"
+                                                id="aplica_ruc"
+                                                checked={formData.aplica_ruc}
+                                                onChange={() => setFormData(p => ({ ...p, aplica_ruc: !p.aplica_ruc }))}
+                                                className="mt-0.5 w-5 h-5 accent-[#F59E0B] rounded cursor-pointer"
+                                            />
+                                            <div>
+                                                <label htmlFor="aplica_ruc" className="text-[var(--text-primary)] text-sm font-bold cursor-pointer block leading-tight mb-1">Esta empresa aplica para RUC/CCS</label>
+                                                <p className="text-[var(--text-secondary)] text-xs">Habilita el módulo especial para generar los reportes mensuales de SST estandarizados.</p>
+                                            </div>
+                                        </div>
                                         <div className="bg-[var(--bg-primary)] p-4 border border-[var(--border)] rounded-xl">
                                             <p className="text-[var(--text-secondary)] text-xs italic">
                                                 Si no tienes HHT o Cant. de Trabajadores exactos aún, puedes dejarlo en 0 y actualizarlo después.
@@ -406,6 +421,12 @@ export default function NewCompanyWizard() {
                                         <span>HHT Anual:</span>
                                         <span className="text-[var(--text-primary)] font-bold">{formData.hht_annual}</span>
                                     </div>
+                                    {formData.aplica_ruc && (
+                                        <div className="flex justify-between text-[var(--text-secondary)] text-sm pt-1">
+                                            <span>Módulo RUC/CCS:</span>
+                                            <span className="text-[#F59E0B] font-bold">Activado</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

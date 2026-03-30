@@ -20,6 +20,7 @@ import {
     ShieldAlert,
     Sun,
     Moon,
+    Award,
 } from "lucide-react";
 import { useActiveCompany } from "@/hooks/useActiveCompany";
 import { useTheme } from "next-themes";
@@ -199,7 +200,13 @@ export function Sidebar() {
 
             {/* Nav items */}
             <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-                {navItems.map((item) => {
+                {navItems.flatMap((item) => {
+                    const items = [item];
+                    if (item.id === "stats" && activeCompany?.aplica_ruc) {
+                        items.push({ id: "ruc-atel", label: "RUC / ATEL", icon: Award, href: "/dashboard/ruc-atel" } as NavItem);
+                    }
+                    return items;
+                }).map((item) => {
                     const Icon = item.icon;
                     const isActive = item.href === "/dashboard"
                         ? pathname === "/dashboard"

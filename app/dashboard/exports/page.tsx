@@ -525,14 +525,15 @@ export default function ExportsPage() {
                 </section>
 
                 {/* ── Main Grid ── */}
-                <div className="grid grid-cols-[400px_1fr] gap-10 items-start">
+                <div className={`grid ${activeCompany?.aplica_ruc ? "grid-cols-1 max-w-5xl mx-auto w-full" : "grid-cols-[400px_1fr]"} gap-10 items-start`}>
 
                     {/* COLUMNA IZQUIERDA: RUC–CCS */}
-                    <div className="space-y-6">
-                        <section className={`${s.cardBg} rounded-2xl p-6 shadow-xl relative overflow-hidden`}>
-                            <div className="absolute top-0 right-0 p-3 opacity-5">
-                                <FileSpreadsheet className={`w-20 h-20 ${isLight ? "text-slate-300" : "text-white"}`} />
-                            </div>
+                    {!activeCompany?.aplica_ruc && (
+                        <div className="space-y-6">
+                            <section className={`${s.cardBg} rounded-2xl p-6 shadow-xl relative overflow-hidden`}>
+                                <div className="absolute top-0 right-0 p-3 opacity-5">
+                                    <FileSpreadsheet className={`w-20 h-20 ${isLight ? "text-slate-300" : "text-white"}`} />
+                                </div>
                             
                             <SectionHeader
                                 icon={<FileSpreadsheet className="w-5 h-5" />}
@@ -628,6 +629,7 @@ export default function ExportsPage() {
                             </div>
                         </section>
                     </div>
+                    )}
 
                     {/* COLUMNA DERECHA: Centro de Reportes PDF */}
                     <div className="space-y-6">
