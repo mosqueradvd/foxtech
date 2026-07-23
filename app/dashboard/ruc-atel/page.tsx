@@ -3,9 +3,10 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useActiveCompany } from "@/hooks/useActiveCompany";
 import { supabase } from "@/lib/supabase";
-import { Award, Download, AlertTriangle, Save, Loader2, Info } from "lucide-react";
+import { Award, Download, AlertTriangle, Save, Loader2, Info, Sparkles } from "lucide-react";
 import { useTheme } from "next-themes";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import RucImportModal from "@/components/dashboard/RucImportModal";
 import { generateRucExcel } from "@/lib/exports/ruc-atel-excel";
 import { RucHistoricalData, WorkerTypeCategory, Event } from "@/lib/supabase";
 
@@ -49,10 +50,43 @@ export default function RucAtelPage() {
 
     const [activeTab, setActiveTab] = useState<WorkerTypeCategory>("directo");
     const [saving, setSaving] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
     // Form states for editable sections
     const [section2, setSection2] = useState<MatrixData>(createEmptyMatrix());
     const [section3, setSection3] = useState<Record<number, RucHistoricalData>>({}); // only "directo"
+
+    const handleImportSuccess = (importedData: { s2: any; s3: any }) => {
+        if (importedData.s2) {
+            setSection2((prev) => {
+                const next = { ...prev };
+                WORKER_TYPES.forEach((wt) => {
+                    if (importedData.s2[wt.id]) {
+                        YEARS.forEach((y) => {
+                            if (importedData.s2[wt.id][y] || importedData.s2[wt.id][String(y)]) {
+                                const yearData = importedData.s2[wt.id][y] || importedData.s2[wt.id][String(y)];
+                                next[wt.id][y] = { ...next[wt.id][y], ...yearData };
+                            }
+                        });
+                    }
+                });
+                return next;
+            });
+        }
+
+        if (importedData.s3) {
+            setSection3((prev) => {
+                const next = { ...prev };
+                YEARS.forEach((y) => {
+                    if (importedData.s3[y] || importedData.s3[String(y)]) {
+                        const yearData = importedData.s3[y] || importedData.s3[String(y)];
+                        next[y] = { ...next[y], ...yearData };
+                    }
+                });
+                return next;
+            });
+        }
+    };
 
     const isLight = mounted && resolvedTheme === "light";
     const s = {
@@ -491,6 +525,12 @@ export default function RucAtelPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3 ml-auto mr-4">
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors cursor-pointer shadow-md shadow-indigo-600/20"
+                    >
+                        <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" /> Importar Excel (IA)
+                    </button>
                     <button onClick={handleSave} disabled={saving} className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-lg border ${s.border} ${isLight ? "bg-white hover:bg-slate-50 text-slate-700" : "bg-[#1E2A3B] hover:bg-[#2A374A] text-white"} transition-colors shadow-sm cursor-pointer`}>
                         {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Guardar Avance
                     </button>
@@ -529,7 +569,7 @@ export default function RucAtelPage() {
                     {renderMatrix("Sección 1: ATEL 5 Años", section1[activeTab], false)}
 
                     {renderMatrix(
-                        "Sección 2: Último Informe RUC (Editable)",
+                        "Sección 2: Último Informe RUC (Editable / Importado con IA)",
                         section2[activeTab],
                         true,
                         false,
@@ -561,6 +601,14 @@ export default function RucAtelPage() {
                 </div>
 
             </div>
+
+            {/* RUC SMART EXCEL IMPORT MODAL (IA) */}
+            <RucImportModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImportData={handleImportSuccess}
+                isLight={isLight}
+            />
         </div>
     );
 }
