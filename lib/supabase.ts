@@ -361,3 +361,40 @@ export interface RucHistoricalData {
     created_at?: string;
     updated_at?: string;
 }
+
+// ── Módulo de Costos del Evento (Modelo del Iceberg) ─────────────────────────
+// Guía RUC® CCS Numeral 4.1 | Decreto 1072/2015 Art. 2.2.4.6.31
+
+export interface EventCost {
+    id?: string;
+    event_id: string;
+
+    // COSTOS DIRECTOS — asegurados/visibles, cubiertos parcialmente por la ARL
+    costo_atencion_medica?: number;
+    costo_incapacidad_salario?: number;
+    costo_indemnizacion?: number;
+    costo_rehabilitacion?: number;
+    costo_danos_propiedad?: number;
+    costo_directo_otro?: number;
+    costo_directo_descripcion?: string;
+
+    // COSTOS INDIRECTOS — ocultos/no asegurados, asumidos por la empresa
+    costo_tiempo_perdido_accidentado?: number;
+    costo_tiempo_perdido_companeros?: number;
+    costo_tiempo_perdido_jefes?: number;
+    costo_investigacion?: number;
+    costo_reemplazo_contratacion?: number;
+    costo_entrenamiento_reemplazo?: number;
+    costo_horas_extra?: number;
+    costo_perdida_productividad?: number;
+    costo_danos_materiales_equipos?: number;
+    costo_sanciones_multas?: number;
+    costo_indirecto_otro?: number;
+    costo_indirecto_descripcion?: string;
+
+    // Metadatos
+    moneda?: string;
+    notas?: string;
+    created_at?: string;
+    updated_at?: string;
+}

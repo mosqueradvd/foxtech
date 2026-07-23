@@ -10,9 +10,10 @@ import { useRouter, useParams } from "next/navigation";
 import { useTheme } from "next-themes";
 import {
     ArrowLeft, ArrowRight, Check, Save, User, MapPin, Activity,
-    AlertTriangle, Image as ImageIcon, FileText, Loader2, ChevronRight, ClipboardList, Sparkles
+    AlertTriangle, Image as ImageIcon, FileText, Loader2, ChevronRight, ClipboardList, Sparkles,
+    DollarSign
 } from "lucide-react";
-import { supabase, type Event, type Worker } from "@/lib/supabase";
+import { supabase, type Event, type Worker, type EventCost } from "@/lib/supabase";
 import { WorkerSelector } from "@/components/module2/WorkerSelector";
 import { LocationSelector } from "@/components/module2/LocationSelector";
 import { InjuryClassifier } from "@/components/module2/InjuryClassifier";
@@ -163,6 +164,83 @@ function OriginalReportCard({ event }: { event: Event }) {
                     )}
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ─── Event Cost Card (right column summary) ───────────────────────────────────
+function EventCostCard({ eventId, onNavigate }: { eventId: string; onNavigate: () => void }) {
+    const [cost, setCost] = useState<EventCost | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        supabase.from("event_costs").select("*").eq("event_id", eventId).maybeSingle().then(({ data }) => {
+            setCost(data as EventCost | null);
+            setLoading(false);
+        });
+    }, [eventId]);
+
+    const formatCOP = (val: number) =>
+        new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(val);
+
+    if (loading) return (
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4 animate-pulse h-24" />
+    );
+
+    const totalDirectos = cost
+        ? ((cost.costo_atencion_medica ?? 0) + (cost.costo_incapacidad_salario ?? 0) + (cost.costo_indemnizacion ?? 0) + (cost.costo_rehabilitacion ?? 0) + (cost.costo_danos_propiedad ?? 0) + (cost.costo_directo_otro ?? 0))
+        : 0;
+    const totalIndirectos = cost
+        ? ((cost.costo_tiempo_perdido_accidentado ?? 0) + (cost.costo_tiempo_perdido_companeros ?? 0) + (cost.costo_tiempo_perdido_jefes ?? 0) + (cost.costo_investigacion ?? 0) + (cost.costo_reemplazo_contratacion ?? 0) + (cost.costo_entrenamiento_reemplazo ?? 0) + (cost.costo_horas_extra ?? 0) + (cost.costo_perdida_productividad ?? 0) + (cost.costo_danos_materiales_equipos ?? 0) + (cost.costo_sanciones_multas ?? 0) + (cost.costo_indirecto_otro ?? 0))
+        : 0;
+    const totalGeneral = totalDirectos + totalIndirectos;
+    const hasCosts = totalGeneral > 0;
+
+    return (
+        <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-[#F59E0B]" />
+                <p className="text-[var(--text-primary)] font-bold text-xs uppercase tracking-wider">
+                    Costo Estimado del Evento
+                </p>
+            </div>
+            {hasCosts ? (
+                <>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[#64748B] text-xs flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                                Directos
+                            </span>
+                            <span className="text-blue-400 text-xs font-bold">{formatCOP(totalDirectos)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[#64748B] text-xs flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                                Indirectos
+                            </span>
+                            <span className="text-red-400 text-xs font-bold">{formatCOP(totalIndirectos)}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
+                            <span className="text-[var(--text-primary)] text-xs font-bold uppercase">Total</span>
+                            <span className="text-[#F59E0B] text-sm font-black">{formatCOP(totalGeneral)}</span>
+                        </div>
+                    </div>
+                    <button onClick={onNavigate}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-xs font-semibold hover:text-[var(--text-primary)] hover:border-[#F59E0B]/40 transition-colors cursor-pointer">
+                        Ver detalle <ChevronRight className="w-3 h-3" />
+                    </button>
+                </>
+            ) : (
+                <>
+                    <p className="text-[#64748B] text-xs">Sin costos registrados — Guía RUC® numeral 4.1</p>
+                    <button onClick={onNavigate}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[#F59E0B] rounded-xl text-xs font-semibold hover:bg-[#F59E0B]/20 transition-colors cursor-pointer">
+                        <DollarSign className="w-3.5 h-3.5" />
+                        Registrar costos →
+                    </button>
+                </>
+            )}
         </div>
     );
 }
@@ -957,6 +1035,11 @@ export default function EventCharacterizationPage() {
                             )}
                         </div>
                     ) : null}
+
+                    {/* Cost summary card — only when classified/investigated */}
+                    {(event.classification_status === "classified" || event.classification_status === "investigated") && (
+                        <EventCostCard eventId={eventId} onNavigate={() => router.push(`/dashboard/events/${eventId}/investigation`)} />
+                    )}
                 </div>
             </div>
         </div>

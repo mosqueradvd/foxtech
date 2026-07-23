@@ -14,6 +14,7 @@ import {
     Minus, AlertTriangle, RefreshCw, Settings, Download, Loader2, CheckCircle2,
     Activity, Zap, Shield, Users, Skull, ChevronDown, FileSpreadsheet,
     LayoutDashboard, User, MoreVertical, Bell, ClipboardList, Building2, FileText,
+    DollarSign
 } from "lucide-react";
 import HazardFrequencyWidget from "@/components/dashboard/HazardFrequencyWidget";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
@@ -22,7 +23,7 @@ import {
     LineChart, Line,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { supabase, type Event, type Company } from "@/lib/supabase";
+import { supabase, type Event, type Company, type EventCost } from "@/lib/supabase";
 import {
     calcIndicators, calcRes312Indicators, groupByMonth, groupByClassification,
     filterByPeriod, periodToRange, monthsInRange, estimateHHT,
@@ -298,6 +299,7 @@ export function StatsPage() {
     // Data
     const [allEvents, setAllEvents] = useState<Event[]>([]);
     const [companies, setCompanies] = useState<Company[]>([]);
+    const [allCosts, setAllCosts] = useState<EventCost[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Filters
@@ -330,15 +332,17 @@ export function StatsPage() {
     // ── Load ────────────────────────────────────────────────────────────────
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const [{ data: evData }, { data: coData }] = await Promise.all([
+        const [{ data: evData }, { data: coData }, { data: costData }] = await Promise.all([
             supabase
                 .from("incidents")
                 .select("*, disability_records(*)")
                 .order("created_at", { ascending: false }),
             supabase.from("companies").select("*"),
+            supabase.from("event_costs").select("*"),
         ]);
         setAllEvents((evData ?? []) as Event[]);
         setCompanies((coData ?? []) as Company[]);
+        setAllCosts((costData ?? []) as EventCost[]);
         setLoading(false);
     }, []);
 
@@ -368,6 +372,61 @@ export function StatsPage() {
         }
         return filterByPeriod(ev, prevRange);
     }, [allEvents, selectedCompanyId, prevRange]);
+
+    // ── Economic Impact Calculations ──────────────────────────────────────────
+    const economicImpact = useMemo(() => {
+        const filteredEventIds = new Set(filteredEvents.map(e => e.id));
+        const costs = allCosts.filter(c => filteredEventIds.has(c.event_id));
+
+        let totalDirects = 0;
+        let totalIndirectos = 0;
+        let maxCost = 0;
+        let mostExpensiveEventName = "N/A";
+
+        costs.forEach(c => {
+            const dir = (c.costo_atencion_medica ?? 0) +
+                        (c.costo_incapacidad_salario ?? 0) +
+                        (c.costo_indemnizacion ?? 0) +
+                        (c.costo_rehabilitacion ?? 0) +
+                        (c.costo_danos_propiedad ?? 0) +
+                        (c.costo_directo_otro ?? 0);
+            const ind = (c.costo_tiempo_perdido_accidentado ?? 0) +
+                        (c.costo_tiempo_perdido_companeros ?? 0) +
+                        (c.costo_tiempo_perdido_jefes ?? 0) +
+                        (c.costo_investigacion ?? 0) +
+                        (c.costo_reemplazo_contratacion ?? 0) +
+                        (c.costo_entrenamiento_reemplazo ?? 0) +
+                        (c.costo_horas_extra ?? 0) +
+                        (c.costo_perdida_productividad ?? 0) +
+                        (c.costo_danos_materiales_equipos ?? 0) +
+                        (c.costo_sanciones_multas ?? 0) +
+                        (c.costo_indirecto_otro ?? 0);
+
+            totalDirects += dir;
+            totalIndirectos += ind;
+
+            const totalCost = dir + ind;
+            if (totalCost > maxCost) {
+                maxCost = totalCost;
+                const ev = filteredEvents.find(e => e.id === c.event_id);
+                if (ev) {
+                    mostExpensiveEventName = ev.worker_name || ev.reported_by_name || ev.classification?.replace(/_/g, " ") || "Evento";
+                }
+            }
+        });
+
+        const totalGeneral = totalDirects + totalIndirectos;
+        const averageCost = filteredEvents.length > 0 ? totalGeneral / filteredEvents.length : 0;
+
+        return {
+            totalDirects,
+            totalIndirectos,
+            totalGeneral,
+            maxCost,
+            mostExpensiveEventName,
+            averageCost
+        };
+    }, [filteredEvents, allCosts]);
 
     // ── Year-scoped events (for Mortalidad — always annual per Art. 30) ──
     const yearRange = useMemo(() => periodToRange("year"), []);
@@ -779,7 +838,7 @@ export function StatsPage() {
                     </div>
                 </div>
                 {/* ── GTC-45 HAZARD DISTRIBUTION ── */}
-                <div id="gtc45-section">
+                <div id="gtc45-section" className="mb-8">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">Distribución por Peligros GTC-45</h3>
@@ -787,6 +846,92 @@ export function StatsPage() {
                         </div>
                     </div>
                     <HazardFrequencyWidget hazardData={hazardData} loading={loading} />
+                </div>
+
+                {/* ── IMPACTO ECONÓMICO ── */}
+                <div id="economic-impact-section" className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl p-8 mb-8">
+                    <div className="flex items-center justify-between pb-6 border-b border-[var(--border)] mb-6">
+                        <div>
+                            <h3 className="text-[var(--text-primary)] text-xs font-black tracking-widest uppercase mb-1">IMPACTO ECONÓMICO — PERÍODO</h3>
+                            <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Estimación de costos indirectos y directos bajo el Modelo de Iceberg</p>
+                        </div>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--border)] bg-amber-500/10">
+                            <DollarSign className="w-4 h-4 text-[#F59E0B]" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Costos Directos */}
+                        <div className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl p-5 flex flex-col justify-between">
+                            <div>
+                                <span className="text-blue-400 text-lg">🔵</span>
+                                <h4 className="text-[var(--text-primary)] text-[10px] font-black tracking-widest uppercase mt-2 mb-1">Costos Directos</h4>
+                                <p className="text-[#64748B] text-[9px] font-bold uppercase tracking-wider">Asegurados / Visibles</p>
+                            </div>
+                            <div className="text-2xl font-black text-blue-400 mt-4">
+                                {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(economicImpact.totalDirects)}
+                            </div>
+                        </div>
+
+                        {/* Costos Indirectos */}
+                        <div className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl p-5 flex flex-col justify-between">
+                            <div>
+                                <span className="text-red-400 text-lg">🔴</span>
+                                <h4 className="text-[var(--text-primary)] text-[10px] font-black tracking-widest uppercase mt-2 mb-1">Costos Indirectos</h4>
+                                <p className="text-[#64748B] text-[9px] font-bold uppercase tracking-wider">No Asegurados / Ocultos</p>
+                            </div>
+                            <div className="text-2xl font-black text-red-400 mt-4">
+                                {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(economicImpact.totalIndirectos)}
+                            </div>
+                        </div>
+
+                        {/* Costo Total */}
+                        <div className="bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl p-5 flex flex-col justify-between">
+                            <div>
+                                <span className="text-amber-500 text-lg">💰</span>
+                                <h4 className="text-[var(--text-primary)] text-[10px] font-black tracking-widest uppercase mt-2 mb-1">Costo Total</h4>
+                                <p className="text-[#64748B] text-[9px] font-bold uppercase tracking-wider">Impacto Económico Consolidado</p>
+                            </div>
+                            <div className="text-2xl font-black text-[#F59E0B] mt-4">
+                                {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(economicImpact.totalGeneral)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-[var(--border)]/50">
+                        {/* Evento más costoso */}
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                                <AlertTriangle className="w-5 h-5 text-red-400" />
+                            </div>
+                            <div>
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Evento más costoso</p>
+                                <p className="text-[var(--text-primary)] text-sm font-black mt-0.5">
+                                    {economicImpact.mostExpensiveEventName}
+                                </p>
+                                <p className="text-red-400 text-xs font-semibold mt-0.5">
+                                    {economicImpact.maxCost > 0
+                                        ? new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(economicImpact.maxCost)
+                                        : "N/A"
+                                    }
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Costo promedio por evento */}
+                        <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                                <TrendingUp className="w-5 h-5 text-emerald-400" />
+                            </div>
+                            <div>
+                                <p className="text-[#64748B] text-[10px] font-bold uppercase tracking-wider">Costo promedio por evento</p>
+                                <p className="text-[var(--text-primary)] text-sm font-black mt-0.5">
+                                    {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(economicImpact.averageCost)}
+                                </p>
+                                <p className="text-[#64748B] text-[9px] font-bold uppercase mt-0.5">Calculado sobre {filteredEvents.length} eventos del período</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* ── DIAGNOSIS ABSENTEEISM TABLE ── */}

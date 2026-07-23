@@ -13,7 +13,8 @@ import {
     ArrowLeft, Save, CheckCircle2, AlertTriangle, Users,
     Search, Zap, ClipboardList, Plus, Trash2, Loader2,
     ChevronRight, ChevronDown, Lock, Clock, PenLine, Copy, Check, Share2, FileText,
-    Car, TriangleAlert, BookOpen, Camera, CalendarDays, Image, MessageCircle, Mail, Sparkles
+    Car, TriangleAlert, BookOpen, Camera, CalendarDays, Image, MessageCircle, Mail, Sparkles,
+    DollarSign, Info
 } from "lucide-react";
 import {
     CONDICIONES_SUBESTANDAR,
@@ -37,6 +38,7 @@ import {
     type SignatureRequest,
     type SignerRole,
     type LessonsLearned,
+    type EventCost,
 } from "@/lib/supabase";
 import { useTheme } from "next-themes";
 
@@ -46,9 +48,40 @@ const TABS = [
     { id: 0, label: "Equipo", icon: Users },
     { id: 1, label: "Causas", icon: Zap },
     { id: 2, label: "Acciones", icon: ClipboardList },
-    { id: 3, label: "Lección", icon: BookOpen },
-    { id: 4, label: "Firmas", icon: PenLine },
+    { id: 3, label: "Costos", icon: DollarSign },
+    { id: 4, label: "Lección", icon: BookOpen },
+    { id: 5, label: "Firmas", icon: PenLine },
 ] as const;
+
+// ── Helpers de costos ─────────────────────────────────────────────────────────
+
+const DEFAULT_COST: Omit<EventCost, "event_id"> = {
+    costo_atencion_medica: 0,
+    costo_incapacidad_salario: 0,
+    costo_indemnizacion: 0,
+    costo_rehabilitacion: 0,
+    costo_danos_propiedad: 0,
+    costo_directo_otro: 0,
+    costo_directo_descripcion: "",
+    costo_tiempo_perdido_accidentado: 0,
+    costo_tiempo_perdido_companeros: 0,
+    costo_tiempo_perdido_jefes: 0,
+    costo_investigacion: 0,
+    costo_reemplazo_contratacion: 0,
+    costo_entrenamiento_reemplazo: 0,
+    costo_horas_extra: 0,
+    costo_perdida_productividad: 0,
+    costo_danos_materiales_equipos: 0,
+    costo_sanciones_multas: 0,
+    costo_indirecto_otro: 0,
+    costo_indirecto_descripcion: "",
+    moneda: "COP",
+};
+
+function formatCOP(val: number): string {
+    if (val === 0) return "$0";
+    return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(val);
+}
 
 const DEFAULT_LESSONS: LessonsLearned = {
     que_ocurrio: "",
@@ -298,6 +331,12 @@ export default function InvestigationPage() {
     const [genLoadingRole, setGenLoadingRole] = useState<SignerRole | null>(null);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // ── Costs state ────────────────────────────────────────────────────────────
+    const [eventCost, setEventCost] = useState<EventCost & { id?: string }>({ ...DEFAULT_COST, event_id: incidentId });
+    const [costSaving, setCostSaving] = useState(false);
+    const [costSaved, setCostSaved] = useState(false);
+    const costSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // Form state
     const [team, setTeam] = useState({ sst: "", jefe: "", copasst: "", extra: "" });
     const [narrative, setNarrative] = useState("");
@@ -323,9 +362,10 @@ export default function InvestigationPage() {
     // ── Load ────────────────────────────────────────────────────────────────
     const load = useCallback(async () => {
         setLoading(true);
-        const [{ data: ev }, { data: invs }] = await Promise.all([
+        const [{ data: ev }, { data: invs }, { data: costData }] = await Promise.all([
             supabase.from("incidents").select("*").eq("id", incidentId).maybeSingle(),
             supabase.from("investigations").select("*").eq("incident_id", incidentId).maybeSingle(),
+            supabase.from("event_costs").select("*").eq("event_id", incidentId).maybeSingle(),
         ]);
         setIncident(ev as Event | null);
         const inv = invs as Investigation | null;
@@ -349,6 +389,11 @@ export default function InvestigationPage() {
                 sigs.forEach((s) => { if (s.signer_name) names[s.signer_role as SignerRole] = s.signer_name; });
                 setSignerNames(names);
             }
+        }
+        if (costData) {
+            setEventCost(costData as EventCost & { id?: string });
+        } else {
+            setEventCost({ ...DEFAULT_COST, event_id: incidentId });
         }
         setLoading(false);
     }, [incidentId]);
@@ -426,6 +471,30 @@ export default function InvestigationPage() {
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
         saveTimerRef.current = setTimeout(() => save(false), 3000);
     }, [save]);
+
+    // ── Save costs ────────────────────────────────────────────────────────────
+    const saveCosts = useCallback(async (showFeedback = true) => {
+        if (isClosed) return;
+        if (showFeedback) setCostSaving(true);
+        const { id: costId, ...costFields } = eventCost;
+        if (costId) {
+            await supabase.from("event_costs").update({ ...costFields, updated_at: new Date().toISOString() }).eq("id", costId);
+        } else {
+            const { data: inserted } = await supabase.from("event_costs").insert({ ...costFields, event_id: incidentId }).select().single();
+            if (inserted) setEventCost(prev => ({ ...prev, id: (inserted as EventCost & { id: string }).id }));
+        }
+        if (showFeedback) { setCostSaving(false); setCostSaved(true); setTimeout(() => setCostSaved(false), 2000); }
+    }, [eventCost, isClosed, incidentId]);
+
+    const scheduleCostSave = useCallback(() => {
+        if (costSaveTimer.current) clearTimeout(costSaveTimer.current);
+        costSaveTimer.current = setTimeout(() => saveCosts(false), 2000);
+    }, [saveCosts]);
+
+    const updCost = useCallback(<K extends keyof EventCost>(field: K, value: EventCost[K]) => {
+        setEventCost(prev => ({ ...prev, [field]: value }));
+        scheduleCostSave();
+    }, [scheduleCostSave]);
 
     // ── Close ────────────────────────────────────────────────────────────────
     const handleClose = async () => {
@@ -579,19 +648,41 @@ export default function InvestigationPage() {
             ) : (
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
                     {/* TABS */}
-                    <div className={`flex gap-1 ${s.cardBg} rounded-2xl p-1 mb-6`}>
-                        {TABS.map((tab) => {
-                            const Icon = tab.icon;
-                            return (
-                                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                                    className={["flex-1 flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer",
-                                        activeTab === tab.id ? "bg-[#F59E0B] text-black" : `${isLight ? "text-gray-500 hover:text-[#1E293B]" : "text-[#64748B] hover:text-white"}`].join(" ")}>
-                                    <Icon className="w-4 h-4 flex-shrink-0" />
-                                    <span>{tab.label}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                    {(() => {
+                        // Compute costs badge total
+                        const totalDirectos = (eventCost.costo_atencion_medica ?? 0) + (eventCost.costo_incapacidad_salario ?? 0) + (eventCost.costo_indemnizacion ?? 0) + (eventCost.costo_rehabilitacion ?? 0) + (eventCost.costo_danos_propiedad ?? 0) + (eventCost.costo_directo_otro ?? 0);
+                        const totalIndirectos = (eventCost.costo_tiempo_perdido_accidentado ?? 0) + (eventCost.costo_tiempo_perdido_companeros ?? 0) + (eventCost.costo_tiempo_perdido_jefes ?? 0) + (eventCost.costo_investigacion ?? 0) + (eventCost.costo_reemplazo_contratacion ?? 0) + (eventCost.costo_entrenamiento_reemplazo ?? 0) + (eventCost.costo_horas_extra ?? 0) + (eventCost.costo_perdida_productividad ?? 0) + (eventCost.costo_danos_materiales_equipos ?? 0) + (eventCost.costo_sanciones_multas ?? 0) + (eventCost.costo_indirecto_otro ?? 0);
+                        const totalCostos = totalDirectos + totalIndirectos;
+                        return (
+                            <div className={`flex gap-1 ${s.cardBg} rounded-2xl p-1 mb-6 overflow-x-auto`}>
+                                {TABS.map((tab) => {
+                                    const Icon = tab.icon;
+                                    const isCostTab = tab.id === 3;
+                                    const hasCostBadge = isCostTab && totalCostos > 0;
+                                    return (
+                                        <button key={tab.id}
+                                            onClick={() => {
+                                                // Auto-save costs when leaving cost tab
+                                                if (activeTab === 3 && tab.id !== 3) saveCosts(false);
+                                                setActiveTab(tab.id);
+                                            }}
+                                            className={["flex-1 flex items-center justify-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-2.5 rounded-xl text-[10px] sm:text-xs font-semibold transition-all cursor-pointer whitespace-nowrap relative",
+                                                activeTab === tab.id ? "bg-[#F59E0B] text-black" : `${isLight ? "text-gray-500 hover:text-[#1E293B]" : "text-[#64748B] hover:text-white"}`].join(" ")}>
+                                            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                                            <span>{tab.label}</span>
+                                            {hasCostBadge && (
+                                                <span className={`hidden sm:inline ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                                                    activeTab === 3 ? "bg-black/20 text-black" : "bg-emerald-500/20 text-emerald-400"
+                                                }`}>
+                                                    {new Intl.NumberFormat("es-CO", { notation: "compact", maximumFractionDigits: 1 }).format(totalCostos)}
+                                                </span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
 
                     {/* TAB 1: EQUIPO & NARRATIVA */}
                     {activeTab === 0 && (
@@ -996,8 +1087,236 @@ export default function InvestigationPage() {
                         </div>
                     )}
 
-                    {/* TAB 4: LECCIÓN APRENDIDA */}
-                    {activeTab === 3 && (
+                    {/* TAB 4: COSTOS DEL EVENTO */}
+                    {activeTab === 3 && (() => {
+                        const totalDirectos = (eventCost.costo_atencion_medica ?? 0) + (eventCost.costo_incapacidad_salario ?? 0) + (eventCost.costo_indemnizacion ?? 0) + (eventCost.costo_rehabilitacion ?? 0) + (eventCost.costo_danos_propiedad ?? 0) + (eventCost.costo_directo_otro ?? 0);
+                        const totalIndirectos = (eventCost.costo_tiempo_perdido_accidentado ?? 0) + (eventCost.costo_tiempo_perdido_companeros ?? 0) + (eventCost.costo_tiempo_perdido_jefes ?? 0) + (eventCost.costo_investigacion ?? 0) + (eventCost.costo_reemplazo_contratacion ?? 0) + (eventCost.costo_entrenamiento_reemplazo ?? 0) + (eventCost.costo_horas_extra ?? 0) + (eventCost.costo_perdida_productividad ?? 0) + (eventCost.costo_danos_materiales_equipos ?? 0) + (eventCost.costo_sanciones_multas ?? 0) + (eventCost.costo_indirecto_otro ?? 0);
+                        const totalGeneral = totalDirectos + totalIndirectos;
+                        const ratio = totalDirectos > 0 ? totalIndirectos / totalDirectos : 0;
+                        const heinrichEstimado = totalDirectos * 4;
+
+                        const numInput = (field: keyof EventCost, label: string, tooltip: string) => (
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1.5">
+                                    <label className={`text-xs font-semibold ${isLight ? "text-gray-500" : "text-[#94A3B8]"}`}>{label}</label>
+                                    <span title={tooltip} className="cursor-help">
+                                        <Info className="w-3 h-3 text-[#475569]" />
+                                    </span>
+                                </div>
+                                <div className="relative">
+                                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold ${isLight ? "text-gray-400" : "text-[#475569]"}`}>$</span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="1000"
+                                        value={eventCost[field] as number ?? 0}
+                                        disabled={isClosed}
+                                        onChange={(e) => updCost(field, parseFloat(e.target.value) || 0)}
+                                        className={`w-full pl-6 pr-3 py-2 rounded-xl text-sm font-semibold border focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50 ${
+                                            isLight ? "bg-gray-50 border-gray-200 text-[#1E293B]" : "bg-[#0F1420] border-[#1E2A3B] text-white"
+                                        }`}
+                                    />
+                                </div>
+                            </div>
+                        );
+
+                        return (
+                            <div className="space-y-5">
+                                {/* HEADER */}
+                                <div className={`${s.cardBg} rounded-2xl p-4 sm:p-5`}>
+                                    <div className="flex items-start justify-between flex-wrap gap-3">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <DollarSign className="w-4 h-4 text-[#F59E0B]" />
+                                                <h3 className={`${s.textTitle} font-bold text-sm`}>Costos del Evento</h3>
+                                                {costSaving && <Loader2 className="w-3.5 h-3.5 text-[#F59E0B] animate-spin" />}
+                                                {costSaved && !costSaving && <span className="text-emerald-400 text-xs font-semibold">Guardado ✓</span>}
+                                            </div>
+                                            <p className="text-[#64748B] text-[10px] font-semibold">
+                                                Modelo del Iceberg — Guía RUC® CCS Numeral 4.1 | Dec. 1072/2015 Art. 2.2.4.6.31
+                                            </p>
+                                        </div>
+                                        {!isClosed && (
+                                            <button onClick={() => saveCosts(true)} disabled={costSaving}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F59E0B] text-black text-xs font-bold rounded-xl hover:bg-amber-400 transition-colors cursor-pointer disabled:opacity-60">
+                                                <Save className="w-3 h-3" /> Guardar
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* SECCIÓN 1 — COSTOS DIRECTOS */}
+                                <div className={`${s.cardBg} rounded-2xl p-4 sm:p-5 border-l-4 border-blue-500`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-lg">🔵</span>
+                                        <h4 className={`${s.textTitle} font-bold text-sm`}>COSTOS DIRECTOS</h4>
+                                    </div>
+                                    <p className={`text-xs mb-4 ${isLight ? "text-blue-600" : "text-blue-400"}`}>
+                                        Costos visibles — cubiertos parcialmente por la ARL
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {numInput("costo_atencion_medica", "Atención médica y hospitalaria", "Gastos médicos, urgencias, hospitalización no cubiertos por ARL")}
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <label className={`text-xs font-semibold ${isLight ? "text-gray-500" : "text-[#94A3B8]"}`}>Salario durante incapacidad</label>
+                                                <span title="Días × salario diario del trabajador durante la incapacidad" className="cursor-help">
+                                                    <Info className="w-3 h-3 text-[#475569]" />
+                                                </span>
+                                                {(incident?.disability_days ?? 0) > 0 && (
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${isLight ? "bg-blue-50 text-blue-600" : "bg-blue-900/30 text-blue-400"}`}>
+                                                        Sugerido: {incident?.disability_days} días
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <span className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold ${isLight ? "text-gray-400" : "text-[#475569]"}`}>$</span>
+                                                <input type="number" min="0" step="1000"
+                                                    value={eventCost.costo_incapacidad_salario ?? 0}
+                                                    disabled={isClosed}
+                                                    onChange={(e) => updCost("costo_incapacidad_salario", parseFloat(e.target.value) || 0)}
+                                                    className={`w-full pl-6 pr-3 py-2 rounded-xl text-sm font-semibold border focus:outline-none focus:border-[#F59E0B]/50 transition-colors disabled:opacity-50 ${
+                                                        isLight ? "bg-gray-50 border-gray-200 text-[#1E293B]" : "bg-[#0F1420] border-[#1E2A3B] text-white"
+                                                    }`} />
+                                            </div>
+                                        </div>
+                                        {numInput("costo_indemnizacion", "Indemnización", "Pagos por IPP, invalidez o muerte según tabla legal")}
+                                        {numInput("costo_rehabilitacion", "Rehabilitación", "Fisioterapia, terapia ocupacional, adaptaciones")}
+                                        {numInput("costo_danos_propiedad", "Daños a la propiedad", "Reparación o reemplazo de equipos, instalaciones, vehículos")}
+                                        {numInput("costo_directo_otro", "Otros costos directos", "Cualquier otro costo directo no listado")}
+                                        <div className="sm:col-span-2 space-y-1">
+                                            <label className={`text-xs font-semibold ${isLight ? "text-gray-500" : "text-[#94A3B8]"}`}>Descripción de otros costos directos</label>
+                                            <textarea rows={2} value={eventCost.costo_directo_descripcion ?? ""} disabled={isClosed}
+                                                onChange={(e) => updCost("costo_directo_descripcion", e.target.value)}
+                                                placeholder="Detalle los otros costos directos..."
+                                                className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#F59E0B]/50 transition-colors resize-none disabled:opacity-50 ${
+                                                    isLight ? "bg-gray-50 border-gray-200 text-[#1E293B] placeholder:text-gray-400" : "bg-[#0F1420] border-[#1E2A3B] text-white placeholder:text-[#334155]"
+                                                }`} />
+                                        </div>
+                                    </div>
+                                    <div className={`mt-4 pt-3 border-t ${isLight ? "border-blue-100" : "border-blue-900/30"} flex items-center justify-between`}>
+                                        <span className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-blue-600" : "text-blue-400"}`}>Subtotal Directos</span>
+                                        <span className={`text-base font-black ${isLight ? "text-blue-700" : "text-blue-300"}`}>{formatCOP(totalDirectos)}</span>
+                                    </div>
+                                </div>
+
+                                {/* SECCIÓN 2 — COSTOS INDIRECTOS */}
+                                <div className={`${s.cardBg} rounded-2xl p-4 sm:p-5 border-l-4 border-red-500`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-lg">🔴</span>
+                                        <h4 className={`${s.textTitle} font-bold text-sm`}>COSTOS INDIRECTOS</h4>
+                                    </div>
+                                    <p className={`text-xs mb-4 ${isLight ? "text-red-600" : "text-red-400"}`}>
+                                        Costos ocultos — asumidos íntegramente por la empresa. Según Heinrich: 4× los costos directos.
+                                    </p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {numInput("costo_tiempo_perdido_accidentado", "Tiempo perdido — accidentado", "Horas improductivas el día del accidente antes de la incapacidad")}
+                                        {numInput("costo_tiempo_perdido_companeros", "Tiempo perdido — compañeros", "Tiempo que otros trabajadores dejaron de producir por atender el evento")}
+                                        {numInput("costo_tiempo_perdido_jefes", "Tiempo perdido — supervisores/jefes", "Tiempo de supervisores gestionando el evento")}
+                                        {numInput("costo_investigacion", "Investigación del accidente", "Horas del profesional SST, COPASST y otros en la investigación")}
+                                        {numInput("costo_reemplazo_contratacion", "Reemplazo y contratación", "Costos de buscar y contratar un reemplazo temporal o definitivo")}
+                                        {numInput("costo_entrenamiento_reemplazo", "Entrenamiento del reemplazo", "Capacitación del trabajador sustituto hasta alcanzar productividad")}
+                                        {numInput("costo_horas_extra", "Horas extra", "Pago de horas extra para compensar la pérdida de producción")}
+                                        {numInput("costo_perdida_productividad", "Pérdida de productividad", "Reducción de rendimiento del equipo durante el período de recuperación")}
+                                        {numInput("costo_danos_materiales_equipos", "Daños a materiales y equipos", "Pérdidas en materiales, producto en proceso o terminado")}
+                                        {numInput("costo_sanciones_multas", "Sanciones y multas", "Multas del Ministerio del Trabajo u otras autoridades")}
+                                        {numInput("costo_indirecto_otro", "Otros costos indirectos", "Cualquier otro costo indirecto no listado")}
+                                        <div className="sm:col-span-2 space-y-1">
+                                            <label className={`text-xs font-semibold ${isLight ? "text-gray-500" : "text-[#94A3B8]"}`}>Descripción de otros costos indirectos</label>
+                                            <textarea rows={2} value={eventCost.costo_indirecto_descripcion ?? ""} disabled={isClosed}
+                                                onChange={(e) => updCost("costo_indirecto_descripcion", e.target.value)}
+                                                placeholder="Detalle los otros costos indirectos..."
+                                                className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#F59E0B]/50 transition-colors resize-none disabled:opacity-50 ${
+                                                    isLight ? "bg-gray-50 border-gray-200 text-[#1E293B] placeholder:text-gray-400" : "bg-[#0F1420] border-[#1E2A3B] text-white placeholder:text-[#334155]"
+                                                }`} />
+                                        </div>
+                                    </div>
+                                    <div className={`mt-4 pt-3 border-t ${isLight ? "border-red-100" : "border-red-900/30"} flex items-center justify-between`}>
+                                        <span className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-red-600" : "text-red-400"}`}>Subtotal Indirectos</span>
+                                        <span className={`text-base font-black ${isLight ? "text-red-700" : "text-red-300"}`}>{formatCOP(totalIndirectos)}</span>
+                                    </div>
+                                </div>
+
+                                {/* SECCIÓN 3 — RESUMEN DEL ICEBERG */}
+                                <div className={`${isLight ? "bg-gradient-to-br from-slate-50 to-gray-50 border-gray-200" : "bg-gradient-to-br from-[#141824] to-[#0F1420] border-[#1E2A3B]"} border rounded-2xl p-4 sm:p-6`}>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <DollarSign className="w-4 h-4 text-[#F59E0B]" />
+                                        <h4 className={`${s.textTitle} font-bold text-sm uppercase tracking-wider`}>Resumen — Iceberg de Costos</h4>
+                                    </div>
+
+                                    {/* Summary table */}
+                                    <div className={`rounded-xl border ${isLight ? "border-gray-200 bg-white" : "border-[#1E2A3B] bg-[#0A0F1A]"} overflow-hidden mb-4`}>
+                                        <div className={`flex items-center justify-between px-4 py-3 border-b ${isLight ? "border-gray-100 bg-blue-50/50" : "border-[#1E2A3B] bg-blue-900/10"}`}>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                                                <span className={`text-xs font-semibold ${isLight ? "text-gray-600" : "text-[#94A3B8]"}`}>Costos Directos</span>
+                                            </div>
+                                            <span className={`text-sm font-black ${isLight ? "text-blue-700" : "text-blue-300"}`}>{formatCOP(totalDirectos)}</span>
+                                        </div>
+                                        <div className={`flex items-center justify-between px-4 py-3 border-b ${isLight ? "border-gray-100 bg-red-50/50" : "border-[#1E2A3B] bg-red-900/10"}`}>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                                                <span className={`text-xs font-semibold ${isLight ? "text-gray-600" : "text-[#94A3B8]"}`}>Costos Indirectos</span>
+                                            </div>
+                                            <span className={`text-sm font-black ${isLight ? "text-red-700" : "text-red-300"}`}>{formatCOP(totalIndirectos)}</span>
+                                        </div>
+                                        <div className={`flex items-center justify-between px-4 py-3 ${isLight ? "bg-gray-50" : "bg-[#141824]"}`}>
+                                            <span className={`text-xs font-black uppercase tracking-wider ${s.textTitle}`}>TOTAL DEL EVENTO</span>
+                                            <span className={`text-lg font-black text-[#F59E0B]`}>{formatCOP(totalGeneral)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Ratio Heinrich */}
+                                    {totalDirectos > 0 && (
+                                        <div className={`rounded-xl p-3 mb-3 flex items-start gap-3 ${
+                                            ratio >= 4
+                                                ? (isLight ? "bg-emerald-50 border border-emerald-200" : "bg-emerald-900/10 border border-emerald-700/30")
+                                                : (isLight ? "bg-amber-50 border border-amber-200" : "bg-amber-900/10 border border-amber-700/30")
+                                        }`}>
+                                            <span className="text-xl flex-shrink-0">{ratio >= 4 ? "✅" : "⚠️"}</span>
+                                            <div>
+                                                <p className={`text-xs font-bold ${
+                                                    ratio >= 4 ? (isLight ? "text-emerald-700" : "text-emerald-400") : (isLight ? "text-amber-700" : "text-amber-400")
+                                                }`}>
+                                                    Relación Indirectos/Directos: <span className="text-base">{ratio.toFixed(1)}x</span>
+                                                </p>
+                                                <p className={`text-[11px] mt-0.5 ${
+                                                    ratio >= 4 ? (isLight ? "text-emerald-600" : "text-emerald-500") : (isLight ? "text-amber-600" : "text-amber-500")
+                                                }`}>
+                                                    {ratio >= 4
+                                                        ? "Relación esperada según modelo Heinrich"
+                                                        : "Por debajo del promedio Heinrich — verifica que estén todos los costos indirectos"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Estimación Heinrich si indirectos = 0 */}
+                                    {totalDirectos > 0 && totalIndirectos === 0 && (
+                                        <div className={`rounded-xl p-3 flex items-start gap-3 ${isLight ? "bg-blue-50 border border-blue-200" : "bg-blue-900/10 border border-blue-700/30"}`}>
+                                            <Info className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isLight ? "text-blue-600" : "text-blue-400"}`} />
+                                            <div>
+                                                <p className={`text-xs font-bold ${isLight ? "text-blue-700" : "text-blue-300"}`}>
+                                                    Estimado costos indirectos (Heinrich 4×): {formatCOP(heinrichEstimado)}
+                                                </p>
+                                                <p className={`text-[11px] mt-0.5 ${isLight ? "text-blue-500" : "text-blue-500"}`}>
+                                                    Estimación teórica — diligencia los costos reales para mayor precisión
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {totalGeneral === 0 && (
+                                        <p className={`text-center text-xs py-2 ${isLight ? "text-gray-400" : "text-[#475569]"}`}>
+                                            Diligencia los campos para calcular el costo total del evento
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* TAB 5: LECCIÓN APRENDIDA */}
+                    {activeTab === 4 && (
                         <div className="space-y-4">
                             {/* header info */}
                             <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
@@ -1121,8 +1440,8 @@ export default function InvestigationPage() {
                         </div>
                     )}
 
-                    {/* TAB 5: FIRMAS */}
-                    {activeTab === 4 && (
+                    {/* TAB 6: FIRMAS */}
+                    {activeTab === 5 && (
                         <div className="space-y-4">
                             <div className={`${s.cardBg} rounded-2xl p-4 sm:p-6`}>
                                 <SectionTitle icon={PenLine} isLight={isLight}>Firmas Digitales</SectionTitle>
